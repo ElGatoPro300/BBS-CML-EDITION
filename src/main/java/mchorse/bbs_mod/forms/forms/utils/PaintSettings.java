@@ -17,6 +17,8 @@ public class PaintSettings
     public static final float SHADER_SHADOW_DEFAULT = 1F;
     public static final float SHADER_SHADOW_FIX_BUG = 0.005F;
     public static final float SHADER_SHADOW_FIX_BUG_THRESHOLD = 0.01F;
+    /* When form color opacity is 0, still cast a faint Iris shadow. */
+    public static final float SHADER_SHADOW_ZERO_OPACITY = 0.05F;
 
     public float r = 1F;
     public float g = 1F;
@@ -91,6 +93,15 @@ public class PaintSettings
     public static float resolveAutoShaderShadowForPoseAlpha(float paintAlpha)
     {
         return paintAlpha != 0F ? SHADER_SHADOW_FIX_BUG : SHADER_SHADOW_DEFAULT;
+    }
+
+    /**
+     * Shadow-pass alpha when the form's display opacity is zero so Iris still receives a
+     * faint castersilhouette without showing the mesh in the main pass.
+     */
+    public static float resolveZeroOpacityShaderShadowAlpha(float formAlpha)
+    {
+        return formAlpha <= 0.001F ? SHADER_SHADOW_ZERO_OPACITY : formAlpha;
     }
 
     public float effectiveShaderShadow(Color legacy)

@@ -73,6 +73,8 @@ public class ModelVAORenderer
     private static boolean paintPass;
     private static boolean paintOverlayPass;
     private static boolean paintOverlaySynced;
+    /* Captured-matrix redraw after Iris (or immediate low-opacity bypass) — not the paint-overlay shader branch. */
+    private static boolean deferredTranslucentPass;
 
     private static final Matrix4f formRootInverse = new Matrix4f();
     private static final Matrix4f paintEffectInverse = new Matrix4f();
@@ -98,13 +100,17 @@ public class ModelVAORenderer
         private final Matrix4f projection;
         private final Matrix4f modelView;
         private final boolean synced;
+        private final boolean fullModel;
+        private final boolean depthWrite;
         private final Runnable draw;
 
-        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
+        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, Runnable draw)
         {
             this.projection = projection;
             this.modelView = modelView;
             this.synced = synced;
+            this.fullModel = fullModel;
+            this.depthWrite = depthWrite;
             this.draw = draw;
         }
     }
@@ -124,15 +130,43 @@ public class ModelVAORenderer
 
     public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, Runnable draw)
     {
-        enqueuePaintOverlay(projection, modelView, false, draw);
+        enqueuePaintOverlay(projection, modelView, false, false, true, draw);
     }
 
     public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
+    {
+        enqueuePaintOverlay(projection, modelView, synced, false, true, draw);
+    }
+
+    /**
+     * Queues a full translucent mesh redraw for after Iris compositing.
+     * {@code depthWrite} true = character meshes (self-occlusion); false = flat panels (keep scene depth / fog).
+     */
+    public static void submitDeferredTranslucentModel(Runnable draw)
+    {
+        submitDeferredTranslucentModel(draw, true);
+    }
+
+    public static void submitDeferredTranslucentModel(Runnable draw, boolean depthWrite)
+    {
+        enqueuePaintOverlay(
+            new Matrix4f(RenderSystem.getProjectionMatrix()),
+            new Matrix4f(RenderSystem.getModelViewMatrix()),
+            false,
+            true,
+            depthWrite,
+            draw
+        );
+    }
+
+    private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, Runnable draw)
     {
         PaintOverlayEntry entry = new PaintOverlayEntry(
             new Matrix4f(projection),
             new Matrix4f(modelView),
             synced,
+            fullModel,
+            depthWrite,
             draw
         );
 
@@ -174,7 +208,14 @@ public class ModelVAORenderer
 
             MatrixStackUtils.pushIdentityModelView();
 
-            beginPaintOverlayPass(entry.synced);
+            if (entry.fullModel)
+            {
+                beginDeferredTranslucentModelPass(entry.depthWrite);
+            }
+            else
+            {
+                beginPaintOverlayPass(entry.synced);
+            }
 
             try
             {
@@ -182,7 +223,15 @@ public class ModelVAORenderer
             }
             finally
             {
-                endPaintOverlayPass();
+                if (entry.fullModel)
+                {
+                    endDeferredTranslucentModelPass();
+                }
+                else
+                {
+                    endPaintOverlayPass();
+                }
+
                 MatrixStackUtils.popModelView();
             }
         }
@@ -294,6 +343,52 @@ public class ModelVAORenderer
         GL11.glPolygonOffset(-1F, -1F);
     }
 
+    /**
+     * Full translucent redraw after Iris composite — BBS model shader keeps low form alpha.
+     * Depth test stays on. {@code depthWrite} true for character meshes (self-occlusion);
+     * false for flat panels so scene depth / fog stay intact.
+     */
+    public static void beginDeferredTranslucentModelPass(boolean depthWrite)
+    {
+        savedDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        savedCullEnabled = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        /* Captured full camera+entity matrix while RenderSystem model-view is identity.
+         * Do not set paintOverlayPass — that enables the paint-only shader branch and would
+         * discard textured geometry when PaintColor.a is 0. */
+        deferredTranslucentPass = true;
+
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(depthWrite);
+        RenderSystem.enableCull();
+    }
+
+    public static void beginDeferredTranslucentModelPass()
+    {
+        beginDeferredTranslucentModelPass(true);
+    }
+
+    public static void endDeferredTranslucentModelPass()
+    {
+        deferredTranslucentPass = false;
+        RenderSystem.depthMask(savedDepthMask);
+        RenderSystem.depthFunc(savedDepthFunc);
+        RenderSystem.enableDepthTest();
+        RenderSystem.defaultBlendFunc();
+
+        if (savedCullEnabled)
+        {
+            RenderSystem.enableCull();
+        }
+        else
+        {
+            RenderSystem.disableCull();
+        }
+    }
+
     public static void endPaintOverlayPass()
     {
         endPaintPass();
@@ -328,6 +423,16 @@ public class ModelVAORenderer
     public static boolean isPaintOverlayPass()
     {
         return paintOverlayPass;
+    }
+
+    public static boolean isDeferredTranslucentPass()
+    {
+        return deferredTranslucentPass;
+    }
+
+    private static boolean usesCapturedModelView()
+    {
+        return paintOverlayPass || deferredTranslucentPass;
     }
 
     /**
@@ -609,7 +714,7 @@ public class ModelVAORenderer
 
     private static Matrix4f overlayFormRootInverse()
     {
-        if (paintOverlayPass)
+        if (usesCapturedModelView())
         {
             return overlayFormRootInverse.identity();
         }
@@ -787,10 +892,10 @@ public class ModelVAORenderer
     {
         Matrix4f modelView;
 
-        if (paintOverlayPass)
+        if (usesCapturedModelView())
         {
-            /* Overlay stack already carries the full terrain + entity transform captured at enqueue;
-             * RenderSystem model-view is identity during overlay draws. */
+            /* Overlay/deferred stack already carries the full terrain + entity transform captured
+             * at enqueue; RenderSystem model-view is identity during these draws. */
             modelView = new Matrix4f(stack.peek().getPositionMatrix());
         }
         else

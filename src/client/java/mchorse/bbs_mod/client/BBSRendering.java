@@ -231,7 +231,9 @@ public class BBSRendering
     {
         if (toggleFramebuffer && framebuffer != null)
         {
-            framebuffer.beginWrite(true);
+            /* Keep the already-composited world; only re-bind. Clearing here wiped film
+             * frames and made deferred translucent redraws (low Iris opacity) disappear. */
+            framebuffer.beginWrite(false);
             reassignFramebuffer(framebuffer);
         }
     }
@@ -784,10 +786,47 @@ public class BBSRendering
      * Any Iris world draw (chunk-layer film/editor pass or entity/gbuffer pass). VAO models
      * must use the vanilla translucent program for the base pass so Iris can composite them;
      * the custom BBS model shader is only used for deferred paint/glow overlays.
+     * Exception: form color alpha &lt; 1 must be deferred too — shader packs and vanilla
+     * entity_translucent discard low vertex alpha; the BBS model shader only cuts out texture holes.
      */
     public static boolean isIrisWorldModelPass()
     {
         return isIrisShadersEnabled() && isRenderingWorld();
+    }
+
+    /**
+     * Iris {@code entity_translucent} typically discards below ~0.1 ({@code alphaTestRef}).
+     * Use {@code 28/255} so {@code #1bffffff} (≈0.106) is deferred too — at the old 0.1
+     * cutoff that byte still went through Iris and washed fog/sky in the film viewport.
+     */
+    public static final float TRANSLUCENT_ALPHA_DISCARD_REF = 28F / 255F;
+
+    /**
+     * True when Iris would discard (or mis-composite) low form opacity on character meshes;
+     * queue a BBS model redraw after compositing. Kept near alphaTestRef so slight opacity
+     * (e.g. {@code #fcffffff}) still uses shader-pack lighting.
+     */
+    public static boolean needsIrisTranslucentModelDeferral(float alpha)
+    {
+        return isIrisWorldModelPass() && !isIrisShadowPass() && alpha < TRANSLUCENT_ALPHA_DISCARD_REF;
+    }
+
+    /**
+     * Flat forms (shape/billboard) through Iris translucent at any alpha &lt; 1 wash fog/sky.
+     * Always defer them under Iris; they do not need pack mesh shading.
+     */
+    public static boolean needsIrisTranslucentFlatDeferral(float alpha)
+    {
+        return isIrisWorldModelPass() && !isIrisShadowPass() && alpha < 0.999F;
+    }
+
+    /**
+     * Vanilla entity_translucent discards below {@link #TRANSLUCENT_ALPHA_DISCARD_REF}. Use for
+     * Shape/Billboard without Iris: switch to the BBS model shader in-place with normal depth.
+     */
+    public static boolean needsBbsModelForLowOpacity(float alpha)
+    {
+        return !isIrisShadowPass() && alpha < TRANSLUCENT_ALPHA_DISCARD_REF;
     }
 
     /**

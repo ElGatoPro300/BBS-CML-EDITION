@@ -1585,6 +1585,11 @@ public class UIFilmController extends UIElement
         this.stencilMap.setup();
         this.stencilMap.setIncrement(!altPressed);
         this.stencilMap.allowedBones = null;
+
+        /* stencil.apply() sets glViewport to the film/video size; save so UI scale stays correct. */
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         this.stencil.apply();
 
         if (altPressed)
@@ -1660,7 +1665,12 @@ public class UIFilmController extends UIElement
         this.stencil.unbind(this.stencilMap);
         this.panel.replayEditor.updateGizmoHover();
 
-        MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
+        /* Rebind the main target without clearing — beginWrite(true) wiped the film
+         * preview every mouse move over the viewport (deferred translucents looked like flicker).
+         * beginWrite(false) alone may not restore glViewport, which made the whole UI look zoomed. */
+        BBSRendering.ensureMainFramebuffer();
+        MinecraftClient.getInstance().getFramebuffer().beginWrite(false);
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
     }
 
     private void ensureStencilFramebuffer()

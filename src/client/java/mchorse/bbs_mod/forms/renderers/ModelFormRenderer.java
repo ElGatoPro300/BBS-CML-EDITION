@@ -551,8 +551,13 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean bbsModelShader = this.usesBbsModelShader(model);
         boolean hasGlow = this.hasAnyGlow(model);
         boolean syncedGlow = hasGlow && glow.resolveSync();
-        boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral;
-        boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive;
+        /* Do not gate on supportsBbsModelShaderEffects — Iris entity_translucent discards
+         * below alphaTestRef (~0.1); deferred BBS redraw is Iris-only (no-shader models keep
+         * the normal BBS path so mesh depth / shading stay correct). */
+        boolean shadowPass = renderContext != null && renderContext.isShadowPass;
+        boolean deferTranslucentModel = !ui && !shadowPass && BBSRendering.needsIrisTranslucentModelDeferral(color.a);
+        boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
+        boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
         boolean deferGlowToOverlay = shaderOverlay;
         boolean paintOnlyGlow = glow.resolvePaintOnly();
         boolean shapeKeyPositiveOverlay = model.hasShapeKeys() && this.hasAnyPositiveGlow(model, glow, legacyGlow);
@@ -560,7 +565,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean stripMainPassGlow = deferGlowToOverlay || (deferPaintToOverlay && hasGlow && paintOnlyGlow);
         GlowSettings mainPassGlow = this.resolveMainPassGlow(glow, legacyGlow, stripMainPassGlow, shapeKeyPositiveOverlay);
 
-        if (!bbsModelShader && !shaderOverlay && !deferPaintToOverlay && !paintOnlyGlow && !shapeKeyPositiveOverlay)
+        if (!bbsModelShader && !shaderOverlay && !deferPaintToOverlay && !paintOnlyGlow && !shapeKeyPositiveOverlay && !deferTranslucentModel)
         {
             FormColorBlend.blendFormGlowBrighten(color, glow, legacyGlow);
         }
@@ -593,7 +598,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         EffectTransform paintTransformSnapshot = paint.transform.copy();
         Vector3f paintMaskHalfSnapshot = new Vector3f(paintMaskHalf);
 
-        if (paintActive && bbsModelShader)
+        if (paintActive && (bbsModelShader || deferTranslucentModel))
         {
             ModelVAORenderer.setPaintEffectTransform(formRootInverse, paint.transform, paintMaskHalf);
         }
@@ -602,7 +607,63 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         {
             TextureBlend textureBlendSnapshot = textureBlend == null ? null : new TextureBlend(textureBlend.from, textureBlend.to, textureBlend.blend);
 
-            if (deferPaintToOverlay)
+            if (deferTranslucentModel)
+            {
+                Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(newStack.peek().getPositionMatrix()));
+                Matrix3f normalMatrix = new Matrix3f(newStack.peek().getNormalMatrix());
+                Matrix4f baseTransformSnapshot = baseTransform == null ? null : new Matrix4f(baseTransform);
+                Color colorSnapshot = color.copy();
+                Color paintSnapshot = paintColor.copy();
+                Pose poseSnapshot = this.getPose().copy();
+                float transitionSnapshot = transition;
+                int overlayLight = light;
+                int overlayOverlay = overlay;
+                Link defaultTextureSnapshot = defaultTexture;
+                TextureBlend textureBlendSnapshotFinal = textureBlendSnapshot;
+                boolean paintActiveSnapshot = paintActive;
+                boolean hasGlowSnapshot = hasGlow;
+
+                ModelVAORenderer.submitDeferredTranslucentModel(() ->
+                {
+                    this.applyOverlayPosePipeline(target, model, transitionSnapshot, poseSnapshot, baseTransformSnapshot);
+
+                    try
+                    {
+                        if (paintActiveSnapshot)
+                        {
+                            ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformSnapshot, paintMaskHalfSnapshot);
+                            ModelVAORenderer.setPaint(paintSnapshot.r, paintSnapshot.g, paintSnapshot.b, paintSnapshot.a);
+                        }
+                        else
+                        {
+                            ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
+                        }
+
+                        if (hasGlowSnapshot)
+                        {
+                            ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
+                        }
+                        else
+                        {
+                            ModelVAORenderer.clearGlowing();
+                        }
+
+                        MatrixStack overlayStack = new MatrixStack();
+
+                        overlayStack.peek().getPositionMatrix().set(positionMatrix);
+                        overlayStack.peek().getNormalMatrix().set(normalMatrix);
+
+                        this.renderModelGeometry(overlayStack, BBSShaders::getModel, model, overlayLight, overlayOverlay, null, colorSnapshot, defaultTextureSnapshot, textureBlendSnapshotFinal);
+                    }
+                    finally
+                    {
+                        ModelVAORenderer.clearPaintEffectTransform();
+                        ModelVAORenderer.clearPaint();
+                        ModelVAORenderer.clearGlowing();
+                    }
+                });
+            }
+            else if (deferPaintToOverlay)
             {
                 /* Iris base pass uses the vanilla entity shader; paint is applied only in the
                  * deferred BBS model overlay so the base pass cannot leak a root-origin pixel. */
@@ -617,16 +678,19 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
             }
 
-            if (stripMainPassGlow || shapeKeyPositiveOverlay)
+            if (!deferTranslucentModel)
             {
-                ModelVAORenderer.setGlow(mainPassGlow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
-            }
-            else if (hasGlow)
-            {
-                ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
-            }
+                if (stripMainPassGlow || shapeKeyPositiveOverlay)
+                {
+                    ModelVAORenderer.setGlow(mainPassGlow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
+                }
+                else if (hasGlow)
+                {
+                    ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
+                }
 
-            this.renderModelGeometryWithEmission(newStack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend, glow, glowColor, legacyGlow, paintColor, glowDeferredToOverlay);
+                this.renderModelGeometryWithEmission(newStack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend, glow, glowColor, legacyGlow, paintColor, glowDeferredToOverlay);
+            }
 
             if (deferPaintToOverlay)
             {
@@ -1503,6 +1567,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 return;
             }
 
+            FormColorBlend.finishShadowOpacity(color, context.isShadowPass);
+
             this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition(), context.renderEquipment, context.world, context);
         }
     }
@@ -1527,6 +1593,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Color color = new Color().set(context.color, true);
 
         color.mul(this.form.color.get());
+        FormColorBlend.finishShadowOpacity(color, context.isShadowPass);
 
         if (texture != null)
         {

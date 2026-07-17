@@ -141,6 +141,8 @@ void main()
         return;
     }
 
+    /* Texture cutout only (same as no-shader). Form/vertex opacity is kept — Iris packs
+     * discard low vertex alpha; this shader must not. */
     if (texSample.a < 0.1)
     {
         discard;

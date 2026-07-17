@@ -159,6 +159,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             Color formColor = this.form.color.get();
 
             color.mul(formColor);
+            FormColorBlend.finishShadowOpacity(color, BBSRendering.isIrisShadowPass());
 
             GlowSettings glow = this.form.glowSettings.get();
             Color legacyGlow = this.form.glowingColor.get();
@@ -179,16 +180,17 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
             boolean paintActive = paintStrength != 0F;
-            boolean deferPaintToOverlay = paintActive && irisWorldPaintDeferral;
+            boolean deferTranslucentModel = BBSRendering.needsIrisTranslucentModelDeferral(color.a);
+            boolean deferPaintToOverlay = paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
             Supplier<ShaderProgram> renderShader = shader;
-            boolean bbsModelShader = !BBSRendering.isIrisWorldModelPass();
+            boolean bbsModelShader = !BBSRendering.isIrisWorldModelPass() || deferTranslucentModel;
             boolean syncedGlow = hasGlow && glow.resolveSync();
-            boolean shaderOverlay = irisWorldPaintDeferral && syncedGlow && !paintActive;
+            boolean shaderOverlay = irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
             boolean deferGlowToOverlay = shaderOverlay;
             boolean paintOnlyGlow = glow.resolvePaintOnly();
             boolean stripMainPassGlow = deferGlowToOverlay || (deferPaintToOverlay && hasGlow && paintOnlyGlow);
 
-            if (!bbsModelShader && !shaderOverlay && !deferPaintToOverlay && !paintOnlyGlow)
+            if (!bbsModelShader && !shaderOverlay && !deferPaintToOverlay && !paintOnlyGlow && !deferTranslucentModel)
             {
                 FormColorBlend.blendFormGlowBrighten(color, glow, legacyGlow);
             }
@@ -217,7 +219,74 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             gameRenderer.getLightmapTextureManager().enable();
             gameRenderer.getOverlayTexture().setupOverlayColor();
 
-            if (deferPaintToOverlay)
+            if (deferTranslucentModel)
+            {
+                ModelVAORenderer.setPaint(paintActive ? paintColor.r : 0F, paintActive ? paintColor.g : 0F, paintActive ? paintColor.b : 0F, paintActive ? paintStrength : 0F);
+
+                if (hasGlow)
+                {
+                    ModelVAORenderer.setGlow(glow, resolvedGlow.r, resolvedGlow.g, resolvedGlow.b, legacyGlow);
+                }
+                else
+                {
+                    ModelVAORenderer.clearGlowing();
+                }
+
+                Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(matrices.peek().getPositionMatrix()));
+                Matrix3f normalMatrix = new Matrix3f(matrices.peek().getNormalMatrix());
+                TextureBlend textureBlendSnapshot = this.form.textureBlend == null ? null : new TextureBlend(this.form.textureBlend.from, this.form.textureBlend.to, this.form.textureBlend.blend);
+                boolean useShaderBlend = FormTextureBlendRenderer.isBlending(this.form.textureBlend);
+                float cr = color.r;
+                float cg = color.g;
+                float cb = color.b;
+                float ca = color.a;
+                int overlayLight = light;
+                int overlayOverlay = overlay;
+                boolean paintActiveSnapshot = paintActive;
+                float pr = paintColor.r;
+                float pg = paintColor.g;
+                float pb = paintColor.b;
+                float pa = paintStrength;
+
+                ModelVAORenderer.submitDeferredTranslucentModel(() ->
+                {
+                    try
+                    {
+                        if (paintActiveSnapshot)
+                        {
+                            ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformSnapshot, paintMaskHalfSnapshot, false);
+                            ModelVAORenderer.setPaint(pr, pg, pb, pa);
+                        }
+                        else
+                        {
+                            ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
+                        }
+
+                        if (hasGlow)
+                        {
+                            ModelVAORenderer.setGlow(glow, resolvedGlow.r, resolvedGlow.g, resolvedGlow.b, legacyGlow);
+                        }
+                        else
+                        {
+                            ModelVAORenderer.clearGlowing();
+                        }
+
+                        MatrixStack overlayStack = new MatrixStack();
+
+                        overlayStack.peek().getPositionMatrix().set(positionMatrix);
+                        overlayStack.peek().getNormalMatrix().set(normalMatrix);
+
+                        this.renderExtrudedOverlayPass(useShaderBlend, textureBlendSnapshot, texture, overlayStack, cr, cg, cb, ca, overlayLight, overlayOverlay);
+                    }
+                    finally
+                    {
+                        ModelVAORenderer.clearPaintEffectTransform();
+                        ModelVAORenderer.clearPaint();
+                        ModelVAORenderer.clearGlowing();
+                    }
+                });
+            }
+            else if (deferPaintToOverlay)
             {
                 ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
             }
@@ -230,6 +299,8 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
             }
 
+            if (!deferTranslucentModel)
+            {
             if (stripMainPassGlow)
             {
                 GlowSettings glowOff = glow.copy();
@@ -412,6 +483,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 ModelVAORenderer.clearPaintEffectTransform();
                 ModelVAORenderer.clearPaint();
                 ModelVAORenderer.clearGlowing();
+            }
             }
 
             RenderSystem.defaultBlendFunc();

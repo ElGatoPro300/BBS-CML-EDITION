@@ -10,6 +10,23 @@ public class FormColorBlend
     public static final float EMISSION_STRENGTH = 8F;
     public static final float OVERLAY_GLOW_BOOST = EMISSION_STRENGTH;
 
+    /**
+     * After multiplying form color, restore a faint alpha on the Iris shadow pass when the
+     * form opacity is zero so a silhouette still casts.
+     */
+    public static void finishShadowOpacity(Color color, boolean shadowPass)
+    {
+        if (color == null || !shadowPass)
+        {
+            return;
+        }
+
+        if (color.a <= 0.001F)
+        {
+            color.a = PaintSettings.SHADER_SHADOW_ZERO_OPACITY;
+        }
+    }
+
     public enum BlendMode
     {
         MULTIPLY,
