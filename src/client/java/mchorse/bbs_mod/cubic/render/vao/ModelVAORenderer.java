@@ -73,6 +73,8 @@ public class ModelVAORenderer
     private static boolean paintPass;
     private static boolean paintOverlayPass;
     private static boolean paintOverlaySynced;
+    /* Multiply Iris-lit pixels by FormColorTint inside the color mask (keeps pack lighting/shadows). */
+    private static boolean colorTintOverlayPass;
     /* Captured-matrix redraw after Iris (or immediate low-opacity bypass) — not the paint-overlay shader branch. */
     private static boolean deferredTranslucentPass;
 
@@ -112,16 +114,18 @@ public class ModelVAORenderer
         private final Matrix4f modelView;
         private final boolean synced;
         private final boolean fullModel;
+        private final boolean colorTint;
         private final boolean depthWrite;
         private final boolean depthTest;
         private final Runnable draw;
 
-        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, boolean depthTest, Runnable draw)
+        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean colorTint, boolean depthWrite, boolean depthTest, Runnable draw)
         {
             this.projection = projection;
             this.modelView = modelView;
             this.synced = synced;
             this.fullModel = fullModel;
+            this.colorTint = colorTint;
             this.depthWrite = depthWrite;
             this.depthTest = depthTest;
             this.draw = draw;
@@ -143,12 +147,12 @@ public class ModelVAORenderer
 
     public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, Runnable draw)
     {
-        enqueuePaintOverlay(projection, modelView, false, false, true, true, draw);
+        enqueuePaintOverlay(projection, modelView, false, false, false, true, true, draw);
     }
 
     public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
     {
-        enqueuePaintOverlay(projection, modelView, synced, false, true, true, draw);
+        enqueuePaintOverlay(projection, modelView, synced, false, false, true, true, draw);
     }
 
     /**
@@ -178,6 +182,7 @@ public class ModelVAORenderer
             new Matrix4f(RenderSystem.getModelViewMatrix()),
             false,
             true,
+            false,
             depthWrite,
             depthTest,
             draw
@@ -186,16 +191,22 @@ public class ModelVAORenderer
 
     private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, Runnable draw)
     {
-        enqueuePaintOverlay(projection, modelView, synced, fullModel, depthWrite, true, draw);
+        enqueuePaintOverlay(projection, modelView, synced, fullModel, false, depthWrite, true, draw);
     }
 
     private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, boolean depthTest, Runnable draw)
+    {
+        enqueuePaintOverlay(projection, modelView, synced, fullModel, false, depthWrite, depthTest, draw);
+    }
+
+    private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean colorTint, boolean depthWrite, boolean depthTest, Runnable draw)
     {
         PaintOverlayEntry entry = new PaintOverlayEntry(
             new Matrix4f(projection),
             new Matrix4f(modelView),
             synced,
             fullModel,
+            colorTint,
             depthWrite,
             depthTest,
             draw
@@ -243,6 +254,10 @@ public class ModelVAORenderer
             {
                 beginDeferredTranslucentModelPass(entry.depthWrite, entry.depthTest);
             }
+            else if (entry.colorTint)
+            {
+                beginColorTintOverlayPass();
+            }
             else
             {
                 beginPaintOverlayPass(entry.synced);
@@ -257,6 +272,10 @@ public class ModelVAORenderer
                 if (entry.fullModel)
                 {
                     endDeferredTranslucentModelPass();
+                }
+                else if (entry.colorTint)
+                {
+                    endColorTintOverlayPass();
                 }
                 else
                 {
@@ -294,6 +313,24 @@ public class ModelVAORenderer
             new Matrix4f(RenderSystem.getProjectionMatrix()),
             new Matrix4f(RenderSystem.getModelViewMatrix()),
             synced,
+            draw
+        );
+    }
+
+    /**
+     * Queues a multiply color-mask overlay after Iris composite so FormColorTint keeps pack
+     * lighting/shadows instead of redrawing the whole mesh with the unlit BBS path.
+     */
+    public static void submitColorTintOverlay(Runnable draw)
+    {
+        ModelVAORenderer.enqueuePaintOverlay(
+            new Matrix4f(RenderSystem.getProjectionMatrix()),
+            new Matrix4f(RenderSystem.getModelViewMatrix()),
+            false,
+            false,
+            true,
+            true,
+            true,
             draw
         );
     }
@@ -372,6 +409,66 @@ public class ModelVAORenderer
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-1F, -1F);
+    }
+
+    /**
+     * Multiply the Iris-lit framebuffer by FormColorTint inside the color mask. Keeps pack
+     * lighting/shadows while applying the spatial Color transform.
+     */
+    public static void beginColorTintOverlayPass()
+    {
+        colorTintOverlayPass = true;
+        paintOverlayPass = false;
+        paintOverlaySynced = false;
+
+        savedDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
+        savedCullEnabled = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+
+        RenderSystem.enableBlend();
+        RenderSystem.blendFuncSeparate(
+            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.DST_COLOR,
+            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ZERO,
+            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.DST_ALPHA,
+            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ZERO
+        );
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(false);
+
+        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(-1F, -1F);
+    }
+
+    public static void endColorTintOverlayPass()
+    {
+        colorTintOverlayPass = false;
+
+        GL11.glPolygonOffset(0F, 0F);
+
+        if (savedPolygonOffsetFill)
+        {
+            GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        }
+        else
+        {
+            GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        }
+
+        RenderSystem.depthMask(savedDepthMask);
+        RenderSystem.depthFunc(savedDepthFunc);
+        RenderSystem.defaultBlendFunc();
+
+        if (savedCullEnabled)
+        {
+            RenderSystem.enableCull();
+        }
+        else
+        {
+            RenderSystem.disableCull();
+        }
     }
 
     /**
@@ -476,6 +573,11 @@ public class ModelVAORenderer
         return paintOverlayPass;
     }
 
+    public static boolean isColorTintOverlayPass()
+    {
+        return colorTintOverlayPass;
+    }
+
     public static boolean isDeferredTranslucentPass()
     {
         return deferredTranslucentPass;
@@ -483,7 +585,7 @@ public class ModelVAORenderer
 
     private static boolean usesCapturedModelView()
     {
-        return paintOverlayPass || deferredTranslucentPass;
+        return paintOverlayPass || deferredTranslucentPass || colorTintOverlayPass;
     }
 
     /**
@@ -1021,6 +1123,13 @@ public class ModelVAORenderer
         if (colorTintMaskedUniform != null)
         {
             colorTintMaskedUniform.set(colorTintMasked ? 1F : 0F);
+        }
+
+        GlUniform colorTintOverlayUniform = shader.getUniform("ColorTintOverlay");
+
+        if (colorTintOverlayUniform != null)
+        {
+            colorTintOverlayUniform.set(colorTintOverlayPass ? 1F : 0F);
         }
 
         /* After Iris composite, RenderSystem fog is often collapsed (FogEnd≈1) or left as

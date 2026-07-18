@@ -49,6 +49,7 @@
         { "name": "ColorMaskShape", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "FormColorTint", "type": "float", "count": 4, "values": [ 1.0, 1.0, 1.0, 1.0 ] },
         { "name": "ColorTintMasked", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "ColorTintOverlay", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "GlowPaintOnly", "type": "float", "count": 1, "values": [ 0.0 ] }
     ]
 }

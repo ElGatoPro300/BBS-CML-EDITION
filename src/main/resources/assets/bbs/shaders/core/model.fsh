@@ -29,6 +29,8 @@ uniform float ColorMaskBottomAnchored;
 uniform float ColorMaskShape;
 uniform vec4 FormColorTint;
 uniform float ColorTintMasked;
+/* 1 = multiply Iris-lit framebuffer by FormColorTint inside the color mask (keeps pack lighting). */
+uniform float ColorTintOverlay;
 
 in float vertexDistance;
 in vec4 vertexColor;
@@ -149,6 +151,30 @@ void main()
         texSample.rgb = mix(texSample.rgb, texBlend.rgb, blendFactor);
         /* Per-pixel crossfade: shared opaque pixels stay solid; exclusive pixels fade independently. */
         texSample.a = fromA * (1.0 - blendFactor) + toA * blendFactor;
+    }
+
+    /* Iris color-mask overlay: multiply already-lit pack shading by FormColorTint inside the
+       spatial mask (blend DST_COLOR/ZERO). Outside the mask this pass discards. */
+    if (ColorTintOverlay > 0.5)
+    {
+        if (texSample.a < 0.1)
+        {
+            discard;
+        }
+
+        float cmask = bbsPaintEffectMask(formRootPos, ColorEffectInverse, ColorEffectActive, ColorMaskHalf, ColorMaskBottomAnchored, ColorMaskShape);
+
+        if (cmask < 0.001)
+        {
+            discard;
+        }
+
+        vec3 tintRgb = mix(vec3(1.0), FormColorTint.rgb, cmask);
+        float tintA = mix(1.0, FormColorTint.a, cmask);
+
+        fragColor = vec4(tintRgb, tintA);
+
+        return;
     }
 
     /* Shader-pack paint overlay pass: alpha-blend paint RGB over the Iris first pass.

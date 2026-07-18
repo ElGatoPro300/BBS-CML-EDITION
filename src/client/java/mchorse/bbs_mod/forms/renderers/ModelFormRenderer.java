@@ -567,10 +567,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean paintActive = this.hasAnyPaint(model);
         boolean bbsModelShader = this.usesBbsModelShader(model);
         Color formColor = this.form.color.get();
-        /* Iris entity shaders have no ColorEffect uniforms — redraw with the BBS model shader
-         * after composite (same strategy as low-alpha / paint overlay). */
+        /* Iris entity shaders have no ColorEffect uniforms — keep the live Iris lighting pass
+         * and multiply FormColorTint via a BBS color-tint overlay (same idea as paint overlay). */
         boolean colorTransformWanted = this.canApplyColorTransformMask(model);
-        boolean colorTransformDefer = !ui && !shadowPass && colorTransformWanted && BBSRendering.isIrisWorldModelPass();
         boolean hasGlow = this.hasAnyGlow(model);
         boolean syncedGlow = hasGlow && glow.resolveSync();
         boolean paintOnlyGlow = glow.resolvePaintOnly();
@@ -597,8 +596,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean noshadingOpacityDefer = !ui && !shadowPass
             && BBSRendering.needsIrisNoshadingOpacityDeferral(opacityAlpha, this.form.noshadingOpacity.get());
         boolean opacityDefer = lowAlphaDefer || noshadingOpacityDefer;
-        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer || colorTransformDefer;
-        boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel);
+        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer;
+        boolean deferColorTintToOverlay = colorTransformWanted && irisWorldPaintDeferral && !deferTranslucentModel;
+        boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel || deferColorTintToOverlay);
         boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
         boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
         /* Low-alpha Iris redraw: albedo deferred; additive overlay if somehow deferred with glow. */
@@ -665,7 +665,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             ModelVAORenderer.setPaintEffectTransform(formRootInverse, paint.transform, paintMaskHalf);
         }
 
-        if (colorTransformActive)
+        /* Apply ColorEffect only on BBS model draws. Iris live uses a multiply overlay instead. */
+        if (colorTransformWanted && (bbsModelShader || deferTranslucentModel))
         {
             ModelVAORenderer.setColorEffectTransform(formRootInverse, formColor.transform, colorMaskHalf);
             ModelVAORenderer.setFormColorTint(formColor.r, formColor.g, formColor.b, formColor.a);
@@ -956,6 +957,49 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 }
             }
 
+            if (deferColorTintToOverlay)
+            {
+                /* Iris already drew pack-lit albedo; multiply FormColorTint inside the mask so
+                 * changing Color transform numbers never leaves the Iris lighting path. */
+                Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(newStack.peek().getPositionMatrix()));
+                Matrix3f normalMatrix = new Matrix3f(newStack.peek().getNormalMatrix());
+                Matrix4f baseTransformSnapshot = baseTransform == null ? null : new Matrix4f(baseTransform);
+                Color colorSnapshot = color.copy();
+                Pose poseSnapshot = this.getPose().copy();
+                float transitionSnapshot = transition;
+                int overlayLight = light;
+                int overlayOverlay = overlay;
+                Link defaultTextureSnapshot = defaultTexture;
+                TextureBlend textureBlendSnapshotFinal = textureBlendSnapshot;
+
+                ModelVAORenderer.submitColorTintOverlay(() ->
+                {
+                    this.applyOverlayPosePipeline(target, model, transitionSnapshot, poseSnapshot, baseTransformSnapshot);
+
+                    try
+                    {
+                        ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
+                        ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
+                        ModelVAORenderer.clearPaint();
+                        ModelVAORenderer.clearGlowing();
+
+                        MatrixStack overlayStack = new MatrixStack();
+
+                        overlayStack.peek().getPositionMatrix().set(positionMatrix);
+                        overlayStack.peek().getNormalMatrix().set(normalMatrix);
+
+                        this.renderModelGeometry(overlayStack, BBSShaders::getModel, model, overlayLight, overlayOverlay, null, colorSnapshot, defaultTextureSnapshot, textureBlendSnapshotFinal);
+                    }
+                    finally
+                    {
+                        ModelVAORenderer.clearColorEffectTransform();
+                        ModelVAORenderer.clearFormColorTint();
+                        ModelVAORenderer.clearPaint();
+                        ModelVAORenderer.clearGlowing();
+                    }
+                });
+            }
+
             if (deferPaintToOverlay)
             {
                 Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(newStack.peek().getPositionMatrix()));
@@ -978,7 +1022,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                     try
                     {
-                        if (colorTransformActive)
+                        if (colorTransformActive && !deferColorTintToOverlay)
                         {
                             ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
                             ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
@@ -1025,7 +1069,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                         try
                         {
-                            if (colorTransformActive)
+                            if (colorTransformActive && !deferColorTintToOverlay)
                             {
                                 ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
                                 ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
@@ -1580,8 +1624,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     }
 
     /**
-     * Spatial color masks need the BBS model shader ({@code ColorEffect*} uniforms). Iris
-     * entity programs cannot apply them, so those draws are deferred to a BBS redraw.
+     * Spatial color masks need ColorEffect uniforms. Without Iris those run in the BBS model
+     * shader; with Iris the lit entity pass stays live and a multiply color-tint overlay
+     * applies the mask so pack lighting/shadows do not jump.
      */
     private boolean canApplyColorTransformMask(ModelInstance model)
     {
