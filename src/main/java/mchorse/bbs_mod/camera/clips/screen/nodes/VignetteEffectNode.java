@@ -12,7 +12,7 @@ import java.util.List;
  *
  * Inputs:
  *   0  strength    0=off, 1=full black edges
- *   1  smoothness  0…1 transition softness
+ *   1  smoothness  0…1 transition softness (defaults to 0.5 if unconnected)
  *   2  color       ARGB packed color (default opaque black)
  */
 public class VignetteEffectNode extends ShapeNode

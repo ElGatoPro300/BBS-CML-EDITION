@@ -276,7 +276,10 @@ public class ColorGradeRenderer
                 {
                     vec2 uv = v_uv - vec2(0.5);
                     float dist = length(uv) * 2.0 / sqrt(2.0);
-                    float inner = max(0.0, 1.0 - u_vigSmooth);
+                    /* smoothstep is undefined when edge0 == edge1; clamp so strength=1
+                     * with smoothness=0 still yields a hard radial falloff. */
+                    float smooth = max(u_vigSmooth, 1e-3);
+                    float inner = max(0.0, 1.0 - smooth);
                     float alpha = smoothstep(inner, 1.0, dist) * u_vigStr;
                     rgb = mix(rgb, u_vigColor, clamp(alpha, 0.0, 1.0));
                 }

@@ -23,6 +23,8 @@ public class ScreenNodeClip extends CameraClip
         float t = context.relativeTick + context.transition;
         float factor = this.envelope.factorEnabled(this.duration.get(), t);
 
+        this.effect.reset();
+
         ScreenNodeEvaluator evaluator = new ScreenNodeEvaluator(this.graph.get());
 
         evaluator.computeEffect(t, factor, this.effect);
