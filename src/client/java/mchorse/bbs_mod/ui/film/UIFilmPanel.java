@@ -2524,6 +2524,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public void focusLinkedPropertiesTab(String panelId)
     {
+        /* Undo/redo restores keyframe selection across all editors (including the replay
+         * keyframe editor). That re-pick must not steal the properties tab while the user
+         * is editing an embedded Image/Subtitle (or other camera) keyframe view. */
+        if (this.undoHandler != null && this.undoHandler.isUndoing())
+        {
+            return;
+        }
+
         this.clearSelectionsExcept(panelId);
 
         String linkedPanelId = this.getLinkedPropertiesPanelId(panelId);
