@@ -510,24 +510,15 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 ModelVAORenderer.setGlow(glow, resolvedGlow.r, resolvedGlow.g, resolvedGlow.b, legacyGlow);
             }
 
-            boolean suppressDepth = ShaderOpacityPatch.shouldSuppressDepthWrite(opacityAlpha);
-            boolean forceDepth = ShaderOpacityPatch.isActive() && opacityAlpha >= 0.95F;
+            boolean forceDepth = ShaderOpacityPatch.shouldForceLiveDepthWrite(opacityAlpha);
             boolean savedDepthMask = false;
 
-            if (suppressDepth || forceDepth)
+            if (forceDepth)
             {
                 savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+                ShaderOpacityPatch.setForceLiveDepthWrite(true);
                 RenderSystem.enableDepthTest();
-                RenderSystem.depthMask(!suppressDepth);
-
-                if (forceDepth)
-                {
-                    ShaderOpacityPatch.setForceLiveDepthWrite(true);
-                }
-                else
-                {
-                    ShaderOpacityPatch.setSuppressLiveDepthWrite(true);
-                }
+                RenderSystem.depthMask(true);
             }
 
             try
@@ -700,15 +691,6 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 if (forceDepth)
                 {
                     ShaderOpacityPatch.setForceLiveDepthWrite(false);
-                }
-
-                if (suppressDepth)
-                {
-                    ShaderOpacityPatch.setSuppressLiveDepthWrite(false);
-                }
-
-                if (suppressDepth || forceDepth)
-                {
                     RenderSystem.depthMask(savedDepthMask);
                 }
             }

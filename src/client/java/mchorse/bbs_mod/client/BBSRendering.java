@@ -812,9 +812,8 @@ public class BBSRendering
      * the rest of the scene).
      * <p>
      * With the Complementary/BSL opacity patch, mid/low opacity also stays on Iris (same look /
-     * lighting). Cloud/fog holes are avoided by suppressing depth writes on translucent live
-     * draws ({@link mchorse.bbs_mod.utils.iris.ShaderOpacityPatch#shouldSuppressDepthWrite(float)}),
-     * not by moving them past deferred (that stole pack shading and ground shadows).
+     * lighting). Very low alpha may still draw after deferred to avoid VL cloud holes; near-opaque
+     * (e.g. {@code #f2}) keeps live depth writes so Complementary shading is not flattened.
      */
     public static final float TRANSLUCENT_ALPHA_DISCARD_REF = 28F / 255F;
 

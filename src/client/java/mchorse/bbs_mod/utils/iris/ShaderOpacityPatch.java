@@ -25,10 +25,10 @@ import java.util.regex.Pattern;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 
 /**
- * Runtime opacity fix for Complementary / BSL. Keeps translucent BBS forms on the Iris
- * lighting path (pack shading + shadow maps). VL cloud/fog holes are avoided by suppressing
- * depth writes on translucent live draws rather than moving them past deferred (which stole
- * shading and ground shadows). Opaque film render-depth can still use a post-deferred queue.
+ * Runtime opacity fix for Complementary / BSL. Keeps mid/high-opacity BBS forms on the Iris
+ * lighting path (pack shading + shadow maps + depth). Only very low alpha is deferred past
+ * VL clouds. Never suppress live depth for near-opaque alphas — that flattened Complementary
+ * shading (e.g. at {@code #f2}).
  */
 public class ShaderOpacityPatch
 {
@@ -53,7 +53,6 @@ public class ShaderOpacityPatch
     private static boolean flushingPostDeferred;
     private static boolean flushingDepthWrite = true;
     private static boolean forceLiveDepthWrite;
-    private static boolean suppressLiveDepthWrite;
 
     private static String loadingPackName = "";
 
@@ -146,11 +145,6 @@ public class ShaderOpacityPatch
         forceLiveDepthWrite = force;
     }
 
-    public static void setSuppressLiveDepthWrite(boolean suppress)
-    {
-        suppressLiveDepthWrite = suppress;
-    }
-
     public static void reassertPostDeferredDepthState()
     {
         if (flushingPostDeferred)
@@ -165,12 +159,6 @@ public class ShaderOpacityPatch
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
             RenderSystem.depthMask(true);
-        }
-        else if (suppressLiveDepthWrite)
-        {
-            RenderSystem.enableDepthTest();
-            RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
-            RenderSystem.depthMask(false);
         }
     }
 
@@ -195,10 +183,15 @@ public class ShaderOpacityPatch
     }
 
     /**
-     * Queue forms until after deferred so VL clouds composite first. Only used for opaque
-     * film {@code renderDepthFrame} stacking now — translucent forms stay on the live Iris
-     * path (pack lighting + shadow maps) with {@link #shouldSuppressDepthWrite(float)} so
-     * they do not punch VL depth holes. Never delay during the shadow pass.
+     * Below this, translucent forms may join the post-deferred queue to avoid VL sky holes.
+     * Above it they stay on the live Iris path so pack shading and ground shadows remain.
+     */
+    public static final float POST_DEFERRED_TRANSLUCENT_ALPHA = 0.35F;
+
+    /**
+     * Queue forms until after deferred so VL clouds composite first. Only very translucent
+     * forms (or opaque film {@code renderDepthFrame}) join — mid/high opacity stays live for
+     * pack lighting and shadow maps. Never delay during the shadow pass.
      */
     public static boolean shouldDelayUntilPostDeferred(float alpha)
     {
@@ -230,41 +223,27 @@ public class ShaderOpacityPatch
             return false;
         }
 
-        /* Translucent: keep Iris lighting/shading live; suppress depth write instead. */
-        if (alpha < 0.95F)
+        /* Very translucent only — mid/near-opaque (#f2 etc.) must stay live even in the film
+         * editor; delaying them when renderDepthFrame is set flattened Complementary shading. */
+        if (alpha < POST_DEFERRED_TRANSLUCENT_ALPHA)
         {
-            return false;
+            return true;
         }
 
-        /* Opaque film actors still share the post-deferred depth queue for render depth. */
-        return filmRenderDepth;
-    }
-
-    /**
-     * Translucent live Iris draws must not stamp depth before VL clouds composite
-     * ({@code z0 > 0.56} hole punch), but still need the entity/gbuffer lighting pass.
-     */
-    public static boolean shouldSuppressDepthWrite(float alpha)
-    {
-        if (!isActive() || flushingPostDeferred || alpha <= 0.001F || alpha >= 0.95F)
-        {
-            return false;
-        }
-
-        try
-        {
-            return mchorse.bbs_mod.client.BBSRendering.isIrisShadersEnabled()
-                && !mchorse.bbs_mod.client.BBSRendering.isIrisShadowPass();
-        }
-        catch (Throwable t)
-        {
-            return false;
-        }
+        /* Fully opaque film actors may still share the post-deferred depth queue. */
+        return filmRenderDepth && alpha >= 0.999F;
     }
 
     public static boolean shouldJoinPostDeferredQueue(float alpha)
     {
         return shouldDelayUntilPostDeferred(alpha, true);
+    }
+
+    public static boolean shouldForceLiveDepthWrite(float alpha)
+    {
+        /* Any live Iris draw under the opacity patch needs depth for Complementary shading.
+         * Only post-deferred very-low-alpha skips the live path entirely. */
+        return isActive() && alpha >= POST_DEFERRED_TRANSLUCENT_ALPHA;
     }
 
     /**
