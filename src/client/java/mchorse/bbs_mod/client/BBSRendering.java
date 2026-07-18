@@ -1358,6 +1358,10 @@ public class BBSRendering
             return;
         }
 
+        /* Safety net: Subtitle's text FBO can shrink glViewport; restore after the pass. */
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         RenderSystem.disableDepthTest();
 
         MatrixStack matrices = batcher.getContext().getMatrices();
@@ -1398,6 +1402,7 @@ public class BBSRendering
         }
 
         bossBars.clear();
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
         RenderSystem.enableDepthTest();
     }
 }

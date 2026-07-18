@@ -66,6 +66,13 @@ public class UISubtitleRenderer
         int width = fb.textureWidth;
         int height = fb.textureHeight;
 
+        /* Text-atlas FBO applyClear() shrinks glViewport; beginWrite(false) alone may not
+         * restore it (same class of bug as UIFilmController stencil picking). Save so
+         * Hotbar/Bossbar/Image drawn after a Subtitle keep full-frame placement. */
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
+
         Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
 
         width /= 2;
@@ -145,8 +152,12 @@ public class UISubtitleRenderer
                 yy += subtitle.lineHeight;
             }
 
-            /* Render the texture */
-            fb.beginWrite(true);
+            batcher.flush();
+
+            /* Do not clear the main target — that would wipe Hotbar/Bossbar/Image already
+             * drawn earlier in renderHudOverlays. Also restore viewport explicitly. */
+            fb.beginWrite(false);
+            GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
 
             RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
 
@@ -177,7 +188,10 @@ public class UISubtitleRenderer
             blur.set(0F, 0F);
         }
 
+        batcher.flush();
         RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         RenderSystem.enableCull();
     }
 
