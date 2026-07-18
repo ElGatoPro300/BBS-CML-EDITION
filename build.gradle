@@ -52,6 +52,14 @@ loom {
 	}
 }
 
+configurations {
+	sodiumIrisRuntime {
+		canBeConsumed = false
+		canBeResolved = true
+		transitive = false
+	}
+}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -67,13 +75,122 @@ dependencies {
 	// These are included in the Fabric API production distribution and allow you to update your mod to the latest modules at a later more convenient time.
 
 	// modImplementation "net.fabricmc.fabric-api:fabric-api-deprecated:${project.fabric_version}"
-	modImplementation "maven.modrinth:sodium:mc1.21.1-0.6.13-fabric"
-	modImplementation "maven.modrinth:iris:1.8.8+1.21.1-fabric"
+	/*
+	 * Sodium 0.8.x + Iris 1.8.14-beta must NOT go through Loom remapping on Yarn:
+	 * remapped jars break mixins (Iris NPE on missing iris-fabric.refmap.json,
+	 * Sodium BakedQuad @Overwrite failures). Compile against remapped copies;
+	 * load the original intermediary jars from run/mods at runtime.
+	 */
+	modCompileOnly "maven.modrinth:sodium:mc1.21.1-0.8.12-fabric"
+	modCompileOnly "maven.modrinth:iris:1.8.14-beta.1+1.21.1-fabric"
+	sodiumIrisRuntime "maven.modrinth:sodium:mc1.21.1-0.8.12-fabric"
+	sodiumIrisRuntime "maven.modrinth:iris:1.8.14-beta.1+1.21.1-fabric"
 	modImplementation "maven.modrinth:watermedia:2.1.37"
 	modImplementation "maven.modrinth:lambdynamiclights:4.1.0+1.21.1"
 
 	modImplementation "org.anarres:jcpp:1.4.14"
 	modImplementation "io.github.douira:glsl-transformer:2.0.0-pre13"
+}
+
+/*
+ * Copy unremapped Sodium/Iris jars into run/mods (Loom remapping breaks both on Yarn).
+ * Patches applied:
+ * - Iris: stub iris-fabric.refmap.json (missing from the published jar)
+ * - Sodium: requireAnnotations=false so BakedQuad interface methods can merge under Yarn names
+ */
+tasks.register('copySodiumIrisToRunMods') {
+	dependsOn configurations.sodiumIrisRuntime
+	def runtimeFiles = provider { configurations.sodiumIrisRuntime.files }
+	def modsDir = layout.projectDirectory.dir('run/mods')
+
+	inputs.files(runtimeFiles)
+	outputs.dir(modsDir)
+
+	doLast {
+		def destDir = modsDir.asFile
+		destDir.mkdirs()
+
+		runtimeFiles.get().each { File input ->
+			def isIris = input.name.toLowerCase().contains('iris')
+			def isSodium = input.name.toLowerCase().contains('sodium')
+			def destName = isIris
+				? 'iris-fabric-1.8.14-beta.1+mc1.21.1.jar'
+				: 'sodium-fabric-0.8.12+mc1.21.1.jar'
+			def dest = new File(destDir, destName)
+
+			def temp = new File(temporaryDir, destName + '.tmp')
+			temp.parentFile.mkdirs()
+
+			java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new FileInputStream(input))
+			java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(new FileOutputStream(temp))
+			byte[] buffer = new byte[8192]
+			java.util.zip.ZipEntry entry
+			boolean wroteFabricRefmap = false
+
+			while ((entry = zis.nextEntry) != null)
+			{
+				if (entry.name == 'iris-fabric.refmap.json')
+				{
+					wroteFabricRefmap = true
+				}
+
+				byte[] content = null
+
+				if (!entry.directory)
+				{
+					java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()
+					int len
+
+					while ((len = zis.read(buffer)) > 0)
+					{
+						bos.write(buffer, 0, len)
+					}
+
+					content = bos.toByteArray()
+
+					/* Yarn/named remapping makes Sodium interface methods collide with
+					   vanilla getters; relax overwrite annotation requirement. */
+					if (isSodium && (entry.name == 'sodium-fabric.mixins.json' || entry.name == 'sodium-common.mixins.json'))
+					{
+						String text = new String(content, 'UTF-8')
+						text = text.replace('"requireAnnotations": true', '"requireAnnotations": false')
+						content = text.getBytes('UTF-8')
+					}
+				}
+
+				zos.putNextEntry(new java.util.zip.ZipEntry(entry.name))
+
+				if (content != null)
+				{
+					zos.write(content)
+				}
+
+				zos.closeEntry()
+				zis.closeEntry()
+			}
+
+			if (isIris && !wroteFabricRefmap)
+			{
+				zos.putNextEntry(new java.util.zip.ZipEntry('iris-fabric.refmap.json'))
+				zos.write('{"mappings":{},"data":{}}\n'.getBytes('UTF-8'))
+				zos.closeEntry()
+			}
+
+			zis.close()
+			zos.close()
+
+			if (dest.exists())
+			{
+				dest.delete()
+			}
+
+			java.nio.file.Files.move(temp.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		}
+	}
+}
+
+tasks.matching { it.name == 'runClient' || it.name == 'configureClientLaunch' || it.name == 'prepareClientRun' }.configureEach {
+	dependsOn 'copySodiumIrisToRunMods'
 }
 
 processResources {
