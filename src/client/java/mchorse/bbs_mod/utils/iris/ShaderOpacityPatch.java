@@ -440,7 +440,7 @@ public class ShaderOpacityPatch
                     .copy(null, opaqueDepth, null, liveDepth, width, height);
             }
 
-            access.bbs$bindDefault();
+            /* access.bbs$bindDefault() — removed: bindDefault() doesn't exist in Iris 1.7.6 */
         }
         catch (Throwable ignored)
         {

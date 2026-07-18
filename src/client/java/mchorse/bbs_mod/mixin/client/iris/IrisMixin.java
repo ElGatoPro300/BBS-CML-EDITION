@@ -24,7 +24,7 @@ public class IrisMixin
         info.setReturnValue(returnValue);
     }
 
-    @Inject(method = "loadExternalShaderpack", at = @At("HEAD"), remap = false)
+    @Inject(method = "loadExternalShaderpack", at = @At("HEAD"), remap = false, require = 0)
     private static void onLoadExternalShaderpack(String name, CallbackInfoReturnable<Boolean> info)
     {
         ShaderCurves.reset();
@@ -40,7 +40,7 @@ public class IrisMixin
         ShaderOpacityPatch.clearLoadingPackName();
     }
 
-    @Inject(method = "loadExternalShaderpack", at = @At(value = "RETURN", ordinal = 9), remap = false)
+    @Inject(method = "loadExternalShaderpack", at = @At(value = "RETURN", ordinal = 9), remap = false, require = 0)
     private static void onTrueReturnLoadExternalShaderPack(CallbackInfoReturnable<Boolean> info)
     {
         ShaderCurves.finishLoading();
