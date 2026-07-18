@@ -518,7 +518,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
             this.renderer.render(formContext.stencilMap(this.stencilMap));
 
-            if (gizmoMatrix != null)
+            if (gizmoMatrix != null && Gizmo.isInteractive())
             {
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
@@ -559,7 +559,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     {
         Matrix4f gizmoMatrix = null;
 
-        if (this.formTransformGizmoOrigin != null)
+        if (UIBaseMenu.renderAxes && this.formTransformGizmoOrigin != null)
         {
             gizmoMatrix = this.formTransformGizmoOrigin.apply(context.getTransition());
         }

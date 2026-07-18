@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.Draw;
+import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
@@ -196,6 +197,18 @@ public class Gizmo
         return index >= STENCIL_X && index <= STENCIL_HANDLE_MAX;
     }
 
+    /** Whether axis visuals (interactive gizmos or coolerAxes) should draw. F8 toggles this. */
+    public static boolean isVisible()
+    {
+        return UIBaseMenu.renderAxes;
+    }
+
+    /** Hover, stencil pick and drag require both F8 axes on and the gizmos setting enabled. */
+    public static boolean isInteractive()
+    {
+        return UIBaseMenu.renderAxes && BBSSettings.gizmos.get();
+    }
+
     public boolean isDragging()
     {
         return this.index != -1;
@@ -240,7 +253,7 @@ public class Gizmo
 
     public boolean start(int index, int mouseX, int mouseY, UIPropTransform transform)
     {
-        if (!BBSSettings.gizmos.get())
+        if (!isInteractive())
         {
             return false;
         }
@@ -519,7 +532,7 @@ public class Gizmo
      */
     public void captureVisual(MatrixStack stack)
     {
-        if (BBSRendering.isIrisShadowPass())
+        if (BBSRendering.isIrisShadowPass() || !isVisible())
         {
             return;
         }
@@ -580,7 +593,7 @@ public class Gizmo
      */
     public void renderInterface(UIContext context, Matrix4f projection, Area area)
     {
-        if (BBSRendering.isIrisShadowPass() || !this.hasGizmoMatrix
+        if (BBSRendering.isIrisShadowPass() || !isVisible() || !this.hasGizmoMatrix
             || context == null || projection == null || area == null)
         {
             return;
@@ -624,13 +637,8 @@ public class Gizmo
      */
     public void renderStencilInterface(UIContext context, Matrix4f projection, Area area, StencilMap map)
     {
-        if (BBSRendering.isIrisShadowPass() || !this.hasGizmoMatrix
+        if (BBSRendering.isIrisShadowPass() || !isInteractive() || !this.hasGizmoMatrix
             || context == null || projection == null || area == null || map == null)
-        {
-            return;
-        }
-
-        if (!BBSSettings.gizmos.get())
         {
             return;
         }
@@ -800,6 +808,11 @@ public class Gizmo
 
     public void render(MatrixStack stack)
     {
+        if (!isVisible())
+        {
+            return;
+        }
+
         this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
         this.hasGizmoMatrix = true;
 
@@ -859,13 +872,13 @@ public class Gizmo
 
     public void renderStencil(MatrixStack stack, StencilMap map)
     {
-        this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
-        this.hasGizmoMatrix = true;
-
-        if (!BBSSettings.gizmos.get())
+        if (!isInteractive())
         {
             return;
         }
+
+        this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
+        this.hasGizmoMatrix = true;
 
         float scale = this.computeScale(stack);
         float thickness = BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get();

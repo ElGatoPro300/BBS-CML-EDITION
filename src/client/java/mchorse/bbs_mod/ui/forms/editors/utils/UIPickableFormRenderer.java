@@ -231,9 +231,12 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
                 MatrixStackUtils.multiply(stack, matrix);
             }
 
-            RenderSystem.disableCull();
-            Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-            RenderSystem.enableCull();
+            if (Gizmo.isInteractive())
+            {
+                RenderSystem.disableCull();
+                Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
+                RenderSystem.enableCull();
+            }
 
             stack.pop();
 

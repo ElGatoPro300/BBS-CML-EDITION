@@ -59,7 +59,16 @@ public abstract class UIBaseMenu
         UIElement popka = new UIElement();
 
         popka.keys().register(Keys.KEYBINDS, () -> this.context.toggleKeybinds());
-        popka.keys().register(Keys.TRANSFORMATIONS_TOGGLE_AXES, () -> renderAxes = !renderAxes);
+        popka.keys().register(Keys.TRANSFORMATIONS_TOGGLE_AXES, () ->
+        {
+            renderAxes = !renderAxes;
+
+            if (!renderAxes)
+            {
+                Gizmo.INSTANCE.setHoveredIndex(-1);
+                Gizmo.INSTANCE.stop();
+            }
+        });
         this.root.add(popka);
 
         this.context.keybinds.relative(this.viewport).wh(0.5F, 1F);
