@@ -14,6 +14,12 @@ public class BBSLogoButtonWidget extends ButtonWidget
         super(x, y, width, height, Text.empty(), onPress, DEFAULT_NARRATION_SUPPLIER);
     }
 
+    public void setSize(int size)
+    {
+        this.width = size;
+        this.height = size;
+    }
+
     @Override
     protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta)
     {

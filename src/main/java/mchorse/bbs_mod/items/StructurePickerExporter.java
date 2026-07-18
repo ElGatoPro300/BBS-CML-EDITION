@@ -66,7 +66,7 @@ public class StructurePickerExporter
             NbtCompound nbt = new NbtCompound();
 
             template.writeNbt(nbt);
-            NbtIo.writeCompressed(nbt, file.toPath());
+            NbtIo.writeCompressed(nbt, file);
         }
         catch (IOException e)
         {
