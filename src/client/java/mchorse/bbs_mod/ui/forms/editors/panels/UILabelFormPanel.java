@@ -94,11 +94,10 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.paintColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
-
-            color.a = 1F;
-            this.form.paintColor.set(color);
-
             PaintSettings settings = this.form.paintSettings.get().copy();
+
+            color.a = settings.intensity;
+            this.form.paintColor.set(color);
 
             settings.r = color.r;
             settings.g = color.g;
@@ -109,16 +108,17 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.paintIntensity = new UITrackpad((value) ->
         {
             PaintSettings settings = this.form.paintSettings.get().copy();
+            float intensity = PaintSettings.clampIntensity(value.floatValue());
 
-            settings.intensity = value.floatValue();
+            settings.intensity = intensity;
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();
 
-            legacy.a = value.floatValue();
+            legacy.a = intensity;
             this.form.paintColor.set(legacy);
         });
-        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
         this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
         this.glowingColor = new UIColor((c) ->
         {

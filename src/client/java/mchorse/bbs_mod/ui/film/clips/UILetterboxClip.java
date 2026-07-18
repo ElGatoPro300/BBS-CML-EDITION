@@ -15,6 +15,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.clips.Clips;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 
@@ -22,6 +23,8 @@ import net.minecraft.util.math.MathHelper;
 
 public class UILetterboxClip extends UIClip<LetterboxClip>
 {
+    private static final Color DEFAULT_COLOR = Color.rgba(Colors.A100);
+
     public UIColor color;
     public UITrackpad rotation;
     public UITrackpad zoom;
@@ -42,10 +45,7 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
     {
         super.registerUI();
 
-        this.color = new UIColor((c) -> this.editor.editMultiple(this.clip.color, (value) ->
-        {
-            value.set(Colors.setA(c, 1F));
-        }));
+        this.color = this.createColorChannel(this.clip.color);
 
         this.rotation = this.createChannelTrackpad(this.clip.rotation, -45, 45, UIKeys.SCREEN_PANELS_LETTERBOX_ROTATION);
         this.zoom = this.createChannelTrackpad(this.clip.zoom, 0.1F, 10F, UIKeys.SCREEN_PANELS_LETTERBOX_ZOOM);
@@ -63,6 +63,17 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
             this.keyframes.view.getGraph().clearSelection();
         });
         this.edit.keys().register(Keys.FORMS_EDIT, () -> this.edit.clickItself());
+    }
+
+    private UIColor createColorChannel(KeyframeChannel<Color> channel)
+    {
+        return new UIColor((c) ->
+        {
+            int tick = this.getClipTick();
+
+            channel.insert(tick, Color.rgba(Colors.setA(c, 1F)));
+            this.fillData();
+        });
     }
 
     private UITrackpad createChannelTrackpad(KeyframeChannel<Double> channel, IKey tooltip)
@@ -133,7 +144,7 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
     {
         super.fillData();
 
-        this.color.setColor(Colors.setA(this.clip.color.get(), 1F));
+        this.color.setColor(Colors.setA(this.getColorValue(this.clip.color, DEFAULT_COLOR).getARGBColor(), 1F));
         this.rotation.setValue(this.getChannelValue(this.clip.rotation, 0D));
         this.zoom.setValue(this.getChannelValue(this.clip.zoom, 1D));
         this.width.setValue(this.getChannelValue(this.clip.width, 1D));
@@ -142,6 +153,18 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
         this.offsetY.setValue(this.getChannelValue(this.clip.offsetY, 0D));
 
         this.keyframes.setChannels(this.clip.channels);
+
+        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
+        {
+            if ("color".equals(sheet.id))
+            {
+                sheet.defaultInsertValue = DEFAULT_COLOR.copy();
+            }
+            else if ("width".equals(sheet.id) || "height".equals(sheet.id))
+            {
+                sheet.defaultInsertValue = 1D;
+            }
+        }
 
         this.updateTrackTitles(this.keyframes);
     }
@@ -158,6 +181,18 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
         return channel.interpolate(tick);
     }
 
+    private Color getColorValue(KeyframeChannel<Color> channel, Color fallback)
+    {
+        int tick = this.getClipTick();
+
+        if (channel.isEmpty())
+        {
+            return fallback;
+        }
+
+        return channel.interpolate(tick, fallback);
+    }
+
     private void updateTrackTitles(UIKeyframeEditor editor)
     {
         for (UIKeyframeSheet sheet : editor.view.getGraph().getSheets())
@@ -170,6 +205,7 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
     {
         return switch (id)
         {
+            case "color" -> UIKeys.SCREEN_PANELS_LETTERBOX_COLOR;
             case "height" -> UIKeys.SCREEN_PANELS_LETTERBOX_HEIGHT;
             case "size" -> UIKeys.SCREEN_PANELS_LETTERBOX_HEIGHT;
             case "width" -> UIKeys.SCREEN_PANELS_LETTERBOX_WIDTH;

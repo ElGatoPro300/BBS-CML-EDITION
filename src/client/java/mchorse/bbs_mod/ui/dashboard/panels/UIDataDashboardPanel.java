@@ -45,8 +45,13 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
         /* Call save() directly rather than simulating a click on the save icon — the icon may be
            removed from the toolbar (e.g. the film editor moves Save into the menu bar), and
            clickItself() would then NPE on a detached element. */
-        savePlease.keys().register(Keys.SAVE, this::save).active(() -> this.data != null);
+        savePlease.keys().register(Keys.SAVE, this::manualSave).active(() -> this.data != null);
         this.add(savePlease);
+    }
+
+    protected void manualSave()
+    {
+        this.save();
     }
 
     public T getData()
@@ -216,9 +221,14 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
                 this.savingTimer.mark(seconds * 1000L);
 
                 this.save();
-                context.notifySuccess(UIKeys.PANELS_SAVED_NOTIFICATION.format(this.data.getId()));
+                this.onAutoSaved(context);
             }
         }
+    }
+
+    protected void onAutoSaved(UIContext context)
+    {
+        context.notifySuccess(UIKeys.PANELS_SAVED_NOTIFICATION.format(this.data.getId()));
     }
 
     protected boolean canSave(UIContext context)

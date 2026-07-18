@@ -37,6 +37,7 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
 
     private UIToggle freezeTime;
     private UITrackpad time;
+    private UITrackpad sunPathRotation;
     private UIElement timeContent;
     private UIToggle pauseWeather;
     private UIElement weatherContent;
@@ -78,6 +79,10 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
         this.time = new UITrackpad((v) -> this.pendingTime = (int) v.doubleValue());
         this.time.limit(0D, 24000D, true).increment(100D).values(100D, 10D, 1000D);
 
+        this.sunPathRotation = new UITrackpad((v) -> WorldPropertiesHelper.setSunPathRotation(v.floatValue()));
+        this.sunPathRotation.limit(-180D, 180D).increment(5D).values(5D, 1D, 15D);
+        this.sunPathRotation.setValue(WorldPropertiesHelper.getSunPathRotation());
+
         UIButton day = new UIButton(UIKeys.WORLD_TIME_DAY, (b) -> this.setTime(1000));
         UIButton noon = new UIButton(UIKeys.WORLD_TIME_NOON, (b) -> this.setTime(6000));
         UIButton night = new UIButton(UIKeys.WORLD_TIME_NIGHT, (b) -> this.setTime(13000));
@@ -87,7 +92,9 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
             this.freezeTime,
             UI.label(UIKeys.WORLD_TIME_LABEL).marginTop(4),
             this.time,
-            UI.row(4, day, noon, night, midnight)
+            UI.row(4, day, noon, night, midnight),
+            UI.label(UIKeys.WORLD_SUN_PATH_ROTATION).marginTop(4),
+            this.sunPathRotation
         );
 
         this.pauseWeather = new UIToggle(UIKeys.WORLD_PAUSE_WEATHER, !WorldPropertiesHelper.readGamerule(GameRules.DO_WEATHER_CYCLE, true), (b) ->
@@ -180,6 +187,7 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
         this.mobSpawning.setValue(WorldPropertiesHelper.readGamerule(GameRules.DO_MOB_SPAWNING, true));
         this.gamma.setValue(WorldPropertiesHelper.getGammaPercent());
         this.nightVision.setValue(WorldPropertiesHelper.hasNightVision());
+        this.sunPathRotation.setValue(WorldPropertiesHelper.getSunPathRotation());
     }
 
     private void setGamma(double percent)

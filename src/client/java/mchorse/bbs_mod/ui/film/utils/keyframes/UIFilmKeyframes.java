@@ -1,10 +1,13 @@
 package mchorse.bbs_mod.ui.film.utils.keyframes;
 
 import mchorse.bbs_mod.camera.utils.TimeUtils;
+import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIVisibleRenderKeyframeUtils;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
@@ -60,6 +63,12 @@ public class UIFilmKeyframes extends UIKeyframes
     }
 
     @Override
+    protected float getPlayheadTick()
+    {
+        return this.getOffset();
+    }
+
+    @Override
     protected void selectNextKeyframe(int direction)
     {
         super.selectNextKeyframe(direction);
@@ -80,6 +89,17 @@ public class UIFilmKeyframes extends UIKeyframes
             long offset = this.getClipOffset();
 
             this.editor.setCursor(Math.max(0, (int) (Math.round(this.fromGraphX(context.mouseX)) + offset)));
+        }
+    }
+
+    @Override
+    public void toolbarInsertIndividual(UIKeyframeSheet sheet, float tick)
+    {
+        super.toolbarInsertIndividual(sheet, tick);
+
+        if (sheet != null && FormUtils.isVisiblePropertyPath(sheet.id))
+        {
+            UIVisibleRenderKeyframeUtils.syncRenderOnVisibleInsert(sheet.channel, tick);
         }
     }
 

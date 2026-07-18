@@ -10,6 +10,7 @@ import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.Illusion;
+import mchorse.bbs_mod.forms.forms.utils.InverseKinematics;
 import mchorse.bbs_mod.forms.forms.utils.LookAt;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
@@ -18,6 +19,7 @@ import mchorse.bbs_mod.forms.states.AnimationStates;
 import mchorse.bbs_mod.forms.states.StatePlayer;
 import mchorse.bbs_mod.forms.values.ValueAnchor;
 import mchorse.bbs_mod.forms.values.ValueIllusion;
+import mchorse.bbs_mod.forms.values.ValueInverseKinematics;
 import mchorse.bbs_mod.forms.values.ValueLookAt;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
@@ -59,7 +61,14 @@ public abstract class Form extends ValueGroup
     public final ValueFloat uiScale = new ValueFloat("uiScale", 1F);
     public final ValueAnchor anchor = new ValueAnchor("anchor", new Anchor());
     public final ValueLookAt lookAt = new ValueLookAt("look_at", new LookAt());
+    public final ValueInverseKinematics inverseKinematics = new ValueInverseKinematics("inverse_kinematics", new InverseKinematics());
     public final ValueBoolean shaderShadow = new ValueBoolean("shaderShadow", true);
+    /**
+     * When true under Iris, this form uses the clean deferred opacity path for its
+     * {@code color} alpha (same compositing as post-{@code #1b}) without affecting
+     * other models' pack shading.
+     */
+    public final ValueBoolean noshadingOpacity = new ValueBoolean("noshading_opacity", false);
 
     /* FS-style paint overlay: paintSettings controls color and intensity; paintColor is kept for backward compatibility */
     public final ValueColor paintColor = new ValueColor("paint_color", new Color().set(1F, 1F, 1F, 0F));
@@ -103,6 +112,9 @@ public abstract class Form extends ValueGroup
     protected Object renderer;
     protected String cachedID;
 
+    /** Bumped when any nested value changes; used for incremental entity sync and UI preview cache. */
+    private transient int editRevision = 0;
+
     /** Runtime texture crossfade state driven by the film texture track bend keyframes. */
     public transient TextureBlend textureBlend;
 
@@ -120,6 +132,7 @@ public abstract class Form extends ValueGroup
         this.name.invisible();
         this.uiScale.invisible();
         this.shaderShadow.invisible();
+        this.noshadingOpacity.invisible();
         this.render.invisible();
         this.add(this.visible);
         this.add(this.render);
@@ -146,7 +159,9 @@ public abstract class Form extends ValueGroup
         this.add(this.uiScale);
         this.add(this.anchor);
         this.add(this.lookAt);
+        this.add(this.inverseKinematics);
         this.add(this.shaderShadow);
+        this.add(this.noshadingOpacity);
         this.add(this.paintColor);
         this.add(this.paintSettings);
         this.add(this.glowingColor);
@@ -420,6 +435,19 @@ public abstract class Form extends ValueGroup
         }
     }
 
+    public int getEditRevision()
+    {
+        return this.editRevision;
+    }
+
+    @Override
+    public void postNotify(BaseValue value, int flag)
+    {
+        this.editRevision += 1;
+
+        super.postNotify(value, flag);
+    }
+
     /* Data comparison and (de)serialization */
 
     @Override
@@ -478,7 +506,7 @@ public abstract class Form extends ValueGroup
                     settings.r = legacy.r;
                     settings.g = legacy.g;
                     settings.b = legacy.b;
-                    settings.intensity = legacy.a;
+                    settings.intensity = PaintSettings.resolveLegacyPaintIntensity(legacy);
                     this.paintSettings.set(settings);
                 }
             }
@@ -490,7 +518,7 @@ public abstract class Form extends ValueGroup
                 settings.r = legacy.r;
                 settings.g = legacy.g;
                 settings.b = legacy.b;
-                settings.intensity = legacy.a;
+                settings.intensity = PaintSettings.resolveLegacyPaintIntensity(legacy);
                 this.paintSettings.set(settings);
             }
 

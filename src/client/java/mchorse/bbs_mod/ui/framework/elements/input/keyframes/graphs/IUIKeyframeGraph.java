@@ -128,9 +128,11 @@ public interface IUIKeyframeGraph
 
         if (value == null)
         {
-            if ("shadow_size".equals(sheet.id))
+            if ("shadow".equals(sheet.id) || "shadow_size".equals(sheet.id) || "shadow_size_z".equals(sheet.id))
             {
-                value = 0.5D;
+                value = "shadow".equals(sheet.id)
+                    ? sheet.channel.getFactory().createEmpty()
+                    : 0.5D;
             }
             else if ("shadow_opacity".equals(sheet.id))
             {
@@ -140,6 +142,10 @@ public interface IUIKeyframeGraph
             {
                 value = segment.createInterpolated();
                 extra = segment.a;
+            }
+            else if (sheet.defaultInsertValue != null)
+            {
+                value = sheet.channel.getFactory().copy(sheet.defaultInsertValue);
             }
             else if (property != null)
             {

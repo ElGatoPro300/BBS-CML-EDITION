@@ -7,7 +7,7 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
 public class UIDoubleKeyframeFactory extends UIKeyframeFactory<Double>
 {
-    private UITrackpad value;
+    protected UITrackpad value;
     private UIBezierHandles handles;
 
     public UIDoubleKeyframeFactory(Keyframe<Double> keyframe, UIKeyframes editor)

@@ -10,6 +10,7 @@ import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
+import mchorse.bbs_mod.ui.forms.editors.UIForms;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -52,6 +53,7 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
     private IEntity target;
     private Supplier<Boolean> renderForm;
+    private Supplier<Boolean> renderFormMesh;
 
     public UIPickableFormRenderer(UIFormEditor formEditor)
     {
@@ -84,9 +86,29 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         this.renderForm = renderForm;
     }
 
+    /**
+     * Optional override for whether the form mesh itself is drawn in the UI preview.
+     * When null, follows {@link #isPreviewVisible()}. Used by model-block F7 world
+     * rendering so gizmos/picking can stay active without double-drawing the model.
+     */
+    public void setRenderFormMesh(Supplier<Boolean> renderFormMesh)
+    {
+        this.renderFormMesh = renderFormMesh;
+    }
+
     private boolean isPreviewVisible()
     {
         return this.renderForm == null || this.renderForm.get();
+    }
+
+    private boolean shouldRenderFormMesh()
+    {
+        if (this.renderFormMesh != null)
+        {
+            return this.renderFormMesh.get();
+        }
+
+        return this.isPreviewVisible();
     }
 
     private void clearGizmoPickState()
@@ -160,11 +182,16 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             .modelRenderer()
             .equipment(false);
 
-        FormUtilsClient.render(this.form, formContext);
+        boolean renderMesh = this.shouldRenderFormMesh();
 
-        if (this.form.hitbox.get())
+        if (renderMesh)
         {
-            this.renderFormHitbox(context);
+            FormUtilsClient.render(this.form, formContext);
+
+            if (this.form.hitbox.get() && this.form.visible.get())
+            {
+                this.renderFormHitbox(context);
+            }
         }
 
         if (this.area.w > 0 && this.area.h > 0)
@@ -319,7 +346,14 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     {
         super.render(context);
 
-        if (!this.isPreviewVisible() || !this.stencil.hasPicked())
+        if (!this.isPreviewVisible() || this.stencil.getFramebuffer() == null)
+        {
+            return;
+        }
+
+        RenderSystem.enableBlend();
+
+        if (!this.stencil.hasPicked())
         {
             return;
         }
@@ -330,7 +364,6 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         int w = texture.width;
         int h = texture.height;
 
-        RenderSystem.enableBlend();
         context.batcher.drawPickerPreview(texture.id, index, BBSSettings.modelEditorHoverHighlight(), this.area.x, this.area.y, this.area.w, this.area.h, w, h);
 
         if (pair != null && pair.a != null)
@@ -349,7 +382,8 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     @Override
     protected void renderGrid(UIContext context)
     {
-        if (this.isPreviewVisible())
+        /* Hide the preview grid when only gizmos/picking run over world rendering. */
+        if (this.isPreviewVisible() && this.shouldRenderFormMesh())
         {
             super.renderGrid(context);
         }

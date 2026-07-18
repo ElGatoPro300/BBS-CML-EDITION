@@ -12,6 +12,7 @@ import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
+import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
 import mchorse.bbs_mod.data.types.BaseType;
@@ -576,7 +577,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 {
                     boolean local = this.transform != null && this.transform.isLocal();
 
-                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local);
+                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local,
+                        ModelFormRenderer.isBobjModel(this.form));
                 }
             }
         }
@@ -787,17 +789,24 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     {
         super.render(context);
 
-        if (!this.pickingEnabled || !this.stencil.hasPicked())
+        if (!this.pickingEnabled || this.stencil.getFramebuffer() == null)
         {
             return;
         }
 
         Texture texture = this.stencil.getFramebuffer().getMainTexture();
-        int index = this.stencil.getIndex();
         int w = texture.width;
         int h = texture.height;
 
         RenderSystem.enableBlend();
+
+        if (!this.stencil.hasPicked())
+        {
+            return;
+        }
+
+        int index = this.stencil.getIndex();
+
         context.batcher.drawPickerPreview(texture.id, index, BBSSettings.modelEditorHoverHighlight(), this.area.x, this.area.y, this.area.w, this.area.h, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
@@ -872,7 +881,19 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 this.deletePreview();
 
                 this.previewModel = new ModelInstance(globalModel.id, globalModel.model, globalModel.animations, globalModel.texture);
-                this.previewModel.setup();
+
+                if (globalModel.model instanceof BOBJModel bobjModel && bobjModel.getVao() != null)
+                {
+                    /* BOBJ VAO lives on the shared model; global setup already created it. */
+                }
+                else if (globalModel.isVAORendered())
+                {
+                    this.previewModel.borrowVaosFrom(globalModel);
+                }
+                else
+                {
+                    this.previewModel.setup();
+                }
 
                 if (this.config != null)
                 {

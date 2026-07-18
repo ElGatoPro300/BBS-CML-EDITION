@@ -4,18 +4,27 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.TrailForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FlatGlowOverlayPass;
+import mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
@@ -88,7 +97,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
             Draw.fillBox(builder, stack, -outlineOffset, -outlineSize, -outlineOffset, outlineOffset, outlineSize, outlineOffset, 0, 0, 0);
-            Draw.fillBox(builder, stack, -axisOffset, -axisSize, -axisOffset, axisOffset, axisSize, axisOffset, 0, 1, 0);
+            Draw.fillBox(builder, stack, -axisOffset, -1F, -axisOffset, axisOffset, 1F, axisOffset, 0, 1, 0);
 
             RenderSystem.setShader(GameRenderer::getPositionColorProgram);
             RenderSystem.disableDepthTest();
@@ -167,14 +176,15 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         }
 
         Link defaultTexture = this.form.texture.get();
+        Color tint = new Color().set(context.color, true);
 
         FormTextureBlendRenderer.draw(this.form.textureBlend, defaultTexture, (link, alphaFactor) ->
         {
-            this.renderTrailPass(stack, trails, loop, length, current, baseX, baseY, baseZ, link, alphaFactor, camInverse);
+            this.renderTrailPass(stack, trails, loop, length, current, baseX, baseY, baseZ, link, tint, alphaFactor);
         });
     }
 
-    private void renderTrailPass(MatrixStack stack, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Link textureLink, float alphaFactor, Matrix4f camInverse)
+    private void renderTrailPass(MatrixStack stack, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Link textureLink, Color tint, float alphaFactor)
     {
         if (textureLink == null)
         {
@@ -184,81 +194,221 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         BBSModClient.getTextures().bindTexture(textureLink);
         stack.push();
 
-        Matrix4f m = new Matrix4f();
-        m.set(camInverse);
-        m.invert();
+        PaintSettings paintSettings = this.form.paintSettings.get();
+        Color legacyPaint = this.form.paintColor.get();
+        float paintStrength = paintSettings.resolveIntensity(legacyPaint);
+        boolean positivePaint = FormColorBlend.hasPositivePaint(paintSettings, legacyPaint);
+        Color resolvedPaint = positivePaint ? FormColorBlend.resolvePaintColor(paintSettings, legacyPaint) : null;
 
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
-        Trail last = null;
+        GlowSettings glowSettings = this.form.glowSettings.get();
+        Color legacyGlow = this.form.glowingColor.get();
+        float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
 
-        for (Iterator<Trail> trailIt = trails.iterator(); trailIt.hasNext(); )
+        Color color = tint.copy();
+
+        color.a *= alphaFactor;
+
+        if (paintStrength < 0F)
         {
-            Trail trail = trailIt.next();
-
-            if (last != null && !last.stop && !trail.stop)
-            {
-                double x1 = trail.top.x - baseX;
-                double x2 = trail.bottom.x - baseX;
-                double x3 = last.bottom.x - baseX;
-                double x4 = last.top.x - baseX;
-
-                double y1 = trail.top.y - baseY;
-                double y2 = trail.bottom.y - baseY;
-                double y3 = last.bottom.y - baseY;
-                double y4 = last.top.y - baseY;
-
-                double z1 = trail.top.z - baseZ;
-                double z2 = trail.bottom.z - baseZ;
-                double z3 = last.bottom.z - baseZ;
-                double z4 = last.top.z - baseZ;
-
-                if (loop)
-                {
-                    float u1 = trail.tick / length;
-                    float u2 = last.tick / length;
-
-                    builder.vertex(m, (float) x1, (float) y1, (float) z1).texture(u1, 0F).next();
-                    builder.vertex(m, (float) x2, (float) y2, (float) z2).texture(u1, 1F).next();
-                    builder.vertex(m, (float) x3, (float) y3, (float) z3).texture(u2, 1F).next();
-                    builder.vertex(m, (float) x4, (float) y4, (float) z4).texture(u2, 0F).next();
-                    /* Other side */
-                    builder.vertex(m, (float) x4, (float) y4, (float) z4).texture(u2, 0F).next();
-                    builder.vertex(m, (float) x3, (float) y3, (float) z3).texture(u2, 1F).next();
-                    builder.vertex(m, (float) x2, (float) y2, (float) z2).texture(u1, 1F).next();
-                    builder.vertex(m, (float) x1, (float) y1, (float) z1).texture(u1, 0F).next();
-                }
-                else
-                {
-                    float u1 = (current - trail.tick) / length;
-                    float u2 = (current - last.tick) / length;
-
-                    builder.vertex(m, (float) x1, (float) y1, (float) z1).texture(u1, 0F).next();
-                    builder.vertex(m, (float) x2, (float) y2, (float) z2).texture(u1, 1F).next();
-                    builder.vertex(m, (float) x3, (float) y3, (float) z3).texture(u2, 1F).next();
-                    builder.vertex(m, (float) x4, (float) y4, (float) z4).texture(u2, 0F).next();
-                    /* Other side */
-                    builder.vertex(m, (float) x4, (float) y4, (float) z4).texture(u2, 0F).next();
-                    builder.vertex(m, (float) x3, (float) y3, (float) z3).texture(u2, 1F).next();
-                    builder.vertex(m, (float) x2, (float) y2, (float) z2).texture(u1, 1F).next();
-                    builder.vertex(m, (float) x1, (float) y1, (float) z1).texture(u1, 0F).next();
-                }
-            }
-            else
-            {
-                length = current - trail.tick;
-            }
+            FormColorBlend.applyPaintBlend(color, paintSettings, legacyPaint);
         }
 
-        RenderSystem.setShader(GameRenderer::getPositionTexProgram);
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.enableBlend();
-        RenderSystem.setShaderColor(1F, 1F, 1F, alphaFactor);
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
-        RenderSystem.enableDepthTest();
+        if (glowIntensity < 0F)
+        {
+            FormColorBlend.blendFormGlowBrighten(color, glowSettings, legacyGlow);
+        }
 
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.getBuffer();
+        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        Matrix4f identityMatrix = new Matrix4f();
+
+        this.buildTrailQuads(builder, identityMatrix, trails, loop, length, current, baseX, baseY, baseZ, color);
+
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        if (positivePaint)
+        {
+            this.submitDeferredTrailPaintOverlay(trails, loop, length, current, baseX, baseY, baseZ, textureLink, resolvedPaint, color.a);
+        }
+
+        if (glowIntensity > 0F)
+        {
+            this.renderGlowOverlay(tessellator, identityMatrix, trails, loop, length, current, baseX, baseY, baseZ, glowSettings, legacyGlow, color.a, glowIntensity);
+        }
+
+        RenderSystem.enableDepthTest();
         stack.pop();
+    }
+
+    private void submitDeferredTrailPaintOverlay(ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Link textureLink, Color resolvedPaint, float alpha)
+    {
+        ArrayDeque<Trail> trailSnapshot = this.copyTrails(trails);
+        Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
+        Matrix4f paintMatrix = new Matrix4f(RenderSystem.getModelViewMatrix());
+
+        paintOverlay.a *= alpha;
+
+        ModelVAORenderer.submitPaintOverlay(false, () ->
+        {
+            BBSModClient.getTextures().bindTexture(textureLink);
+            this.renderPaintOverlayPass(trailSnapshot, loop, length, current, baseX, baseY, baseZ, paintOverlay, paintMatrix);
+        });
+    }
+
+    private ArrayDeque<Trail> copyTrails(ArrayDeque<Trail> trails)
+    {
+        ArrayDeque<Trail> copy = new ArrayDeque<>();
+
+        for (Trail trail : trails)
+        {
+            Trail snapshot = new Trail();
+
+            snapshot.tick = trail.tick;
+            snapshot.stop = trail.stop;
+            snapshot.top = new Vector3d(trail.top);
+            snapshot.bottom = new Vector3d(trail.bottom);
+            copy.addLast(snapshot);
+        }
+
+        return copy;
+    }
+
+    private void renderPaintOverlay(ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Color resolvedPaint, float alpha)
+    {
+        Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
+
+        paintOverlay.a *= alpha;
+        this.renderPaintOverlayPass(trails, loop, length, current, baseX, baseY, baseZ, paintOverlay, new Matrix4f());
+    }
+
+    private void renderPaintOverlayPass(ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Color paintOverlay, Matrix4f vertexMatrix)
+    {
+        Tessellator tessellator = Tessellator.getInstance();
+
+        FlatPaintOverlayPass.render(() ->
+        {
+            BufferBuilder paintBuilder = tessellator.getBuffer();
+            paintBuilder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+            int paintLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
+            int overlay = OverlayTexture.DEFAULT_UV;
+
+            this.buildTrailPaintQuads(paintBuilder, vertexMatrix, trails, loop, length, current, baseX, baseY, baseZ, paintOverlay, overlay, paintLight);
+            BufferRenderer.drawWithGlobalProgram(paintBuilder.end());
+        });
+    }
+
+    private void renderGlowOverlay(Tessellator tessellator, Matrix4f matrix, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, GlowSettings glowSettings, Color legacyGlow, float alpha, float glowIntensity)
+    {
+        FlatGlowOverlayPass.render(glowSettings, legacyGlow, alpha, glowIntensity, (glowColor) ->
+        {
+            BufferBuilder glowBuilder = tessellator.getBuffer();
+            glowBuilder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+
+            RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+            this.buildTrailQuads(glowBuilder, matrix, trails, loop, length, current, baseX, baseY, baseZ, glowColor);
+            BufferRenderer.drawWithGlobalProgram(glowBuilder.end());
+        });
+    }
+
+    private void buildTrailQuads(BufferBuilder builder, Matrix4f matrix, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Color color)
+    {
+        Trail lastTrail = null;
+
+        for (Trail trail : trails)
+        {
+            if (lastTrail != null && !lastTrail.stop && !trail.stop)
+            {
+                float u1 = loop ? trail.tick / length : (current - trail.tick) / length;
+                float u2 = loop ? lastTrail.tick / length : (current - lastTrail.tick) / length;
+
+                this.addTrailSegment(builder, matrix, trail, lastTrail, baseX, baseY, baseZ, u1, u2, color);
+            }
+
+            lastTrail = trail;
+        }
+    }
+
+    private void buildTrailPaintQuads(BufferBuilder builder, Matrix4f matrix, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Color color, int overlay, int light)
+    {
+        Trail lastTrail = null;
+
+        for (Trail trail : trails)
+        {
+            if (lastTrail != null && !lastTrail.stop && !trail.stop)
+            {
+                float u1 = loop ? trail.tick / length : (current - trail.tick) / length;
+                float u2 = loop ? lastTrail.tick / length : (current - lastTrail.tick) / length;
+
+                this.addTrailPaintSegment(builder, matrix, trail, lastTrail, baseX, baseY, baseZ, u1, u2, color, overlay, light);
+            }
+
+            lastTrail = trail;
+        }
+    }
+
+    private void addTrailSegment(BufferBuilder builder, Matrix4f matrix, Trail trail, Trail lastTrail, double baseX, double baseY, double baseZ, float u1, float u2, Color color)
+    {
+        float x1 = (float) (trail.top.x - baseX);
+        float x2 = (float) (trail.bottom.x - baseX);
+        float x3 = (float) (lastTrail.bottom.x - baseX);
+        float x4 = (float) (lastTrail.top.x - baseX);
+
+        float y1 = (float) (trail.top.y - baseY);
+        float y2 = (float) (trail.bottom.y - baseY);
+        float y3 = (float) (lastTrail.bottom.y - baseY);
+        float y4 = (float) (lastTrail.top.y - baseY);
+
+        float z1 = (float) (trail.top.z - baseZ);
+        float z2 = (float) (trail.bottom.z - baseZ);
+        float z3 = (float) (lastTrail.bottom.z - baseZ);
+        float z4 = (float) (lastTrail.top.z - baseZ);
+
+        builder.vertex(matrix, x1, y1, z1).texture(u1, 0F).color(color.r, color.g, color.b, color.a);
+        builder.vertex(matrix, x2, y2, z2).texture(u1, 1F).color(color.r, color.g, color.b, color.a);
+        builder.vertex(matrix, x3, y3, z3).texture(u2, 1F).color(color.r, color.g, color.b, color.a);
+        builder.vertex(matrix, x4, y4, z4).texture(u2, 0F).color(color.r, color.g, color.b, color.a);
+
+        builder.vertex(matrix, x4, y4, z4).texture(u2, 0F).color(color.r, color.g, color.b, color.a);
+        builder.vertex(matrix, x3, y3, z3).texture(u2, 1F).color(color.r, color.g, color.b, color.a);
+        builder.vertex(matrix, x2, y2, z2).texture(u1, 1F).color(color.r, color.g, color.b, color.a);
+        builder.vertex(matrix, x1, y1, z1).texture(u1, 0F).color(color.r, color.g, color.b, color.a);
+    }
+
+    private void addTrailPaintSegment(BufferBuilder builder, Matrix4f matrix, Trail trail, Trail lastTrail, double baseX, double baseY, double baseZ, float u1, float u2, Color color, int overlay, int light)
+    {
+        float x1 = (float) (trail.top.x - baseX);
+        float x2 = (float) (trail.bottom.x - baseX);
+        float x3 = (float) (lastTrail.bottom.x - baseX);
+        float x4 = (float) (lastTrail.top.x - baseX);
+
+        float y1 = (float) (trail.top.y - baseY);
+        float y2 = (float) (trail.bottom.y - baseY);
+        float y3 = (float) (lastTrail.bottom.y - baseY);
+        float y4 = (float) (lastTrail.top.y - baseY);
+
+        float z1 = (float) (trail.top.z - baseZ);
+        float z2 = (float) (trail.bottom.z - baseZ);
+        float z3 = (float) (lastTrail.bottom.z - baseZ);
+        float z4 = (float) (lastTrail.top.z - baseZ);
+
+        this.fillPaintVertex(builder, matrix, x1, y1, z1, u1, 0F, color, overlay, light);
+        this.fillPaintVertex(builder, matrix, x2, y2, z2, u1, 1F, color, overlay, light);
+        this.fillPaintVertex(builder, matrix, x3, y3, z3, u2, 1F, color, overlay, light);
+        this.fillPaintVertex(builder, matrix, x4, y4, z4, u2, 0F, color, overlay, light);
+
+        this.fillPaintVertex(builder, matrix, x4, y4, z4, u2, 0F, color, overlay, light);
+        this.fillPaintVertex(builder, matrix, x3, y3, z3, u2, 1F, color, overlay, light);
+        this.fillPaintVertex(builder, matrix, x2, y2, z2, u1, 1F, color, overlay, light);
+        this.fillPaintVertex(builder, matrix, x1, y1, z1, u1, 0F, color, overlay, light);
+    }
+
+    private void fillPaintVertex(BufferBuilder builder, Matrix4f matrix, float x, float y, float z, float u, float v, Color color, int overlay, int light)
+    {
+        builder.vertex(matrix, x, y, z).color(color.r, color.g, color.b, color.a).texture(u, v).overlay(overlay).light(light).normal(0F, 0F, 1F);
     }
 
     @Override

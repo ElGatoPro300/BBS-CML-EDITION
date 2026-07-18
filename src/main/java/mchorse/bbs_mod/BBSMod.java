@@ -30,6 +30,7 @@ import mchorse.bbs_mod.camera.clips.converters.IdleToPathConverter;
 import mchorse.bbs_mod.camera.clips.converters.PathToDollyConverter;
 import mchorse.bbs_mod.camera.clips.converters.PathToKeyframeConverter;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
+import mchorse.bbs_mod.camera.clips.misc.BossBarClip;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
 import mchorse.bbs_mod.camera.clips.misc.ImageClip;
@@ -51,6 +52,7 @@ import mchorse.bbs_mod.camera.clips.overwrite.KeyframeClip;
 import mchorse.bbs_mod.camera.clips.overwrite.PathClip;
 import mchorse.bbs_mod.camera.clips.screen.CinematicClip;
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
+import mchorse.bbs_mod.camera.clips.screen.EyeClip;
 import mchorse.bbs_mod.camera.clips.screen.GrainClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
@@ -88,8 +90,10 @@ import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
+import mchorse.bbs_mod.items.BlockPickerItem;
 import mchorse.bbs_mod.items.GunItem;
 import mchorse.bbs_mod.items.MobKillerItem;
+import mchorse.bbs_mod.items.StructurePickerItem;
 import mchorse.bbs_mod.math.molang.MolangParser;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ServerNetwork;
@@ -159,7 +163,7 @@ import java.util.function.Consumer;
 public class BBSMod implements ModInitializer
 {
     public static final String MOD_ID = "bbs";
-    public static final String VERSION = "2.0-beta-2";
+    public static final String VERSION = "2.1-beta-1";
 
     public static final EventBus events = new EventBus();
 
@@ -234,6 +238,8 @@ public class BBSMod implements ModInitializer
     public static final BlockItem TRIGGER_BLOCK_ITEM = new BlockItem(TRIGGER_BLOCK, new Item.Settings());
     public static final GunItem GUN_ITEM = new GunItem(new Item.Settings().maxCount(1));
     public static final MobKillerItem MOB_KILLER_ITEM = new MobKillerItem(new Item.Settings().maxCount(1));
+    public static final BlockPickerItem BLOCK_PICKER_ITEM = new BlockPickerItem(new Item.Settings().maxCount(1));
+    public static final StructurePickerItem STRUCTURE_PICKER_ITEM = new StructurePickerItem(new Item.Settings().maxCount(1));
     public static final BlockItem CHROMA_RED_BLOCK_ITEM = new BlockItem(CHROMA_RED_BLOCK, new Item.Settings());
     public static final BlockItem CHROMA_GREEN_BLOCK_ITEM = new BlockItem(CHROMA_GREEN_BLOCK, new Item.Settings());
     public static final BlockItem CHROMA_BLUE_BLOCK_ITEM = new BlockItem(CHROMA_BLUE_BLOCK, new Item.Settings());
@@ -274,6 +280,8 @@ public class BBSMod implements ModInitializer
             entries.add(CHROMA_WHITE_BLOCK_ITEM);
             entries.add(new ItemStack(GUN_ITEM));
             entries.add(new ItemStack(MOB_KILLER_ITEM));
+            entries.add(new ItemStack(BLOCK_PICKER_ITEM));
+            entries.add(new ItemStack(STRUCTURE_PICKER_ITEM));
         })
         .build();
 
@@ -534,7 +542,9 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("vignette"), VignetteClip.class, new ClipFactoryData(Icons.CIRCLE, 0x222244))
             .register(Link.bbs("letterbox"), LetterboxClip.class, new ClipFactoryData(Icons.FULLSCREEN, 0x111111))
             .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.FIVE_STAR, 0x887766))
-            .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc));
+            .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc))
+            .register(Link.bbs("boss_bar"), BossBarClip.class, new ClipFactoryData(Icons.SKULL, 0xaa00ff))
+            .register(Link.bbs("eye"), EyeClip.class, new ClipFactoryData(Icons.VISIBLE, 0x111111));
 
         events.post(new RegisterCameraClipsEvent(factoryCameraClips));
 
@@ -561,7 +571,9 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("vignette"), VignetteClip.class, new ClipFactoryData(Icons.CIRCLE, 0x222244))
             .register(Link.bbs("letterbox"), LetterboxClip.class, new ClipFactoryData(Icons.FULLSCREEN, 0x111111))
             .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.FIVE_STAR, 0x887766))
-            .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc));
+            .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc))
+            .register(Link.bbs("boss_bar"), BossBarClip.class, new ClipFactoryData(Icons.SKULL, 0xaa00ff))
+            .register(Link.bbs("eye"), EyeClip.class, new ClipFactoryData(Icons.VISIBLE, 0x111111));
 
         setupConfig(Icons.PROCESSOR, "bbs", new File(settingsFolder, "bbs.json"), BBSSettings::register);
 
@@ -595,6 +607,8 @@ public class BBSMod implements ModInitializer
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "trigger"), TRIGGER_BLOCK_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "gun"), GUN_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "mob_killer"), MOB_KILLER_ITEM);
+        Registry.register(Registries.ITEM, new Identifier(MOD_ID, "block_picker"), BLOCK_PICKER_ITEM);
+        Registry.register(Registries.ITEM, new Identifier(MOD_ID, "structure_picker"), STRUCTURE_PICKER_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "chroma_red"), CHROMA_RED_BLOCK_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "chroma_green"), CHROMA_GREEN_BLOCK_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "chroma_blue"), CHROMA_BLUE_BLOCK_ITEM);
@@ -630,6 +644,11 @@ public class BBSMod implements ModInitializer
                     trigger.trigger(serverPlayer, false);
                 }
 
+                return ActionResult.SUCCESS;
+            }
+
+            if (player.getStackInHand(hand).getItem() == STRUCTURE_PICKER_ITEM)
+            {
                 return ActionResult.SUCCESS;
             }
 

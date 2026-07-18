@@ -5,6 +5,7 @@ import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -18,6 +19,7 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
     public UIColor color;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
+    public UIFormPaintTransform paintTransform;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
     public UIToggle billboard;
@@ -36,11 +38,10 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         this.paintColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
-
-            color.a = 1F;
-            this.form.paintColor.set(color);
-
             PaintSettings settings = this.form.paintSettings.get().copy();
+
+            color.a = settings.intensity;
+            this.form.paintColor.set(color);
 
             settings.r = color.r;
             settings.g = color.g;
@@ -51,17 +52,19 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         this.paintIntensity = new UITrackpad((value) ->
         {
             PaintSettings settings = this.form.paintSettings.get().copy();
+            float intensity = PaintSettings.clampIntensity(value.floatValue());
 
-            settings.intensity = value.floatValue();
+            settings.intensity = intensity;
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();
 
-            legacy.a = value.floatValue();
+            legacy.a = intensity;
             this.form.paintColor.set(legacy);
         });
-        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
         this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.paintTransform = new UIFormPaintTransform(() -> this.form.paintSettings.get(), (settings) -> this.form.paintSettings.set(settings));
         this.glowingColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
@@ -89,7 +92,7 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         this.billboard = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_TITLE, false, (b) -> this.form.billboard.set(b.getValue()));
         this.shading = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_SHADING, false, (b) -> this.form.shading.set(b.getValue()));
 
-        this.options.add(this.pick, this.color, this.paintColor, this.paintIntensity, this.glowingColor, this.glowIntensity, this.billboard, this.shading);
+        this.options.add(this.pick, this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.glowingColor, this.glowIntensity, this.billboard, this.shading);
     }
 
     @Override
@@ -104,6 +107,7 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         paint.resolveColor(form.paintColor.get(), paintDisplay);
         this.paintColor.setColor(paintDisplay.getRGBColor());
         this.paintIntensity.setValue(paint.intensity);
+        this.paintTransform.syncFromForm();
         GlowSettings glow = form.glowSettings.get();
         Color glowDisplay = new Color();
 

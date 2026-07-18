@@ -10,6 +10,7 @@ import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.base.BaseKeyframeFactoryValue;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
@@ -92,7 +93,7 @@ public class FormProperties extends ValueGroup
         if (property instanceof BaseKeyframeFactoryValue<?> keyframeFactoryValue)
         {
             String key = FormUtils.getPropertyPath(property);
-            boolean allowed = property.isVisible() || "render".equals(key);
+            boolean allowed = property.isVisible() || FormUtils.isRenderPropertyPath(key);
 
             if (allowed)
             {
@@ -220,12 +221,6 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = Lerps.lerp(poseTransform.glowRadius, sourcePose.glowRadius, blend);
                             poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-                            poseTransform.textureBlend = Lerps.lerp(poseTransform.textureBlend, sourcePose.textureBlend, blend);
-
-                            if (sourcePose.texture != null && blend >= 0.5F)
-                            {
-                                poseTransform.texture = LinkUtils.copy(sourcePose.texture);
-                            }
                         }
                         else
                         {
@@ -238,9 +233,9 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = sourcePose.glowRadius;
                             poseTransform.lighting = sourcePose.lighting;
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-                            poseTransform.texture = LinkUtils.copy(sourcePose.texture);
-                            poseTransform.textureBlend = sourcePose.textureBlend;
                         }
+
+                        this.applyPoseBoneTexture(poseTransform, segment, transform);
                     }
                 }
 
@@ -255,7 +250,7 @@ public class FormProperties extends ValueGroup
             return;
         }
 
-        if ("render".equals(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
+        if (FormUtils.isRenderPropertyPath(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
         {
             @SuppressWarnings("unchecked")
             KeyframeChannel<Boolean> render = (KeyframeChannel<Boolean>) value;
@@ -279,6 +274,11 @@ public class FormProperties extends ValueGroup
                 this.applyIllusionTextureBlend(form, segment);
             }
 
+            if ("color".equals(id))
+            {
+                form.noshadingOpacity.setRuntimeValue(segment.getClosest().isNoshadingOpacity());
+            }
+
             if (blend < 1F)
             {
                 IKeyframeFactory factory = value.getFactory();
@@ -286,11 +286,11 @@ public class FormProperties extends ValueGroup
                 Object a = factory.copy(segment.createInterpolated());
                 Object interpolated = factory.interpolate(v, v, a, a, Interpolations.LINEAR, MathUtils.clamp(blend, 0F, 1F));
 
-                property.setRuntimeValue(factory.copy(interpolated));
+                property.setRuntimeValue(coerceRuntimeValue(property, factory.copy(interpolated)));
             }
             else
             {
-                property.setRuntimeValue(segment.createInterpolated());
+                property.setRuntimeValue(coerceRuntimeValue(property, segment.createInterpolated()));
             }
         }
         else
@@ -303,6 +303,11 @@ public class FormProperties extends ValueGroup
             if (id.startsWith("illusion"))
             {
                 form.illusionTextureBlend = null;
+            }
+
+            if ("color".equals(id))
+            {
+                form.noshadingOpacity.setRuntimeValue(null);
             }
 
             property.setRuntimeValue(null);
@@ -328,6 +333,27 @@ public class FormProperties extends ValueGroup
         }
 
         property.setRuntimeValue(channel.interpolate(tick, true));
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Object coerceRuntimeValue(BaseValueBasic property, Object value)
+    {
+        if (property instanceof ValueBoolean)
+        {
+            if (value instanceof Boolean)
+            {
+                return value;
+            }
+
+            if (value instanceof Number)
+            {
+                return ((Number) value).floatValue() > 0.001F;
+            }
+
+            return value != null;
+        }
+
+        return value;
     }
 
     private void applyTextureBlend(Form form, KeyframeSegment segment)
@@ -395,6 +421,67 @@ public class FormProperties extends ValueGroup
     private static float getSegmentBlendFactor(KeyframeSegment segment)
     {
         return (float) segment.a.getInterpolation().interpolate(0D, 1D, segment.x);
+    }
+
+    private static PoseTransform getKeyframeBoneTransform(Keyframe<?> keyframe, String boneName)
+    {
+        if (keyframe == null)
+        {
+            return null;
+        }
+
+        Object value = keyframe.getValue();
+
+        if (value instanceof PoseTransform poseTransform)
+        {
+            return poseTransform;
+        }
+
+        if (value instanceof Pose pose)
+        {
+            return pose.get(boneName);
+        }
+
+        return null;
+    }
+
+    /**
+     * Applies bone texture crossfade for pose overlay limb tracks, matching the
+     * form-level texture timeline blend (from fades out, to fades in).
+     */
+    private void applyPoseBoneTexture(PoseTransform target, KeyframeSegment segment, Transform transform)
+    {
+        if (segment.a.isBend() && !segment.isSame()
+            && segment.a.getValue() instanceof PoseTransform aPose
+            && segment.b.getValue() instanceof PoseTransform bPose
+            && aPose.texture != null && bPose.texture != null
+            && !aPose.texture.equals(bPose.texture))
+        {
+            target.texture = LinkUtils.copy(aPose.texture);
+            target.textureBlendTo = LinkUtils.copy(bPose.texture);
+            target.textureBlend = getSegmentBlendFactor(segment);
+
+            return;
+        }
+
+        if (transform instanceof PoseTransform pose)
+        {
+            PoseTransform pick = pose;
+
+            if (segment.a.getValue() instanceof PoseTransform aPose)
+            {
+                pick = aPose;
+
+                if (segment.x >= 1F && segment.b.getValue() instanceof PoseTransform bPose)
+                {
+                    pick = bPose;
+                }
+            }
+
+            target.texture = pick.texture != null ? LinkUtils.copy(pick.texture) : null;
+            target.textureBlendTo = pose.textureBlendTo != null ? LinkUtils.copy(pose.textureBlendTo) : null;
+            target.textureBlend = pose.textureBlend;
+        }
     }
 
     public void resetProperties(Form form)
@@ -491,6 +578,25 @@ public class FormProperties extends ValueGroup
                     Boolean v = (Boolean) kf.getValue();
 
                     newProperty.insert(kf.getTick(), v ? 1F : 0F);
+                }
+
+                property = newProperty;
+            }
+
+            /* shaderShadow was briefly a float; migrate float keyframes back to boolean */
+            if (key.equals("shaderShadow") && property.getFactory() == KeyframeFactories.FLOAT)
+            {
+                KeyframeChannel newProperty = new KeyframeChannel(key, KeyframeFactories.BOOLEAN);
+
+                newProperty.setModel(true);
+
+                for (Object keyframe : property.getKeyframes())
+                {
+                    Keyframe kf = (Keyframe) keyframe;
+                    Object raw = kf.getValue();
+                    float f = raw instanceof Number ? ((Number) raw).floatValue() : 0F;
+
+                    newProperty.insert(kf.getTick(), f > 0.001F);
                 }
 
                 property = newProperty;

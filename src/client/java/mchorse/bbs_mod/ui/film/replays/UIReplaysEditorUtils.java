@@ -19,6 +19,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorKeyframeFactory;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIInverseKinematicsKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UILookAtKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
@@ -87,7 +88,7 @@ public class UIReplaysEditorUtils
 
     private static boolean isBonePickProperty(String propertyId)
     {
-        return propertyId.equals("pose") || propertyId.startsWith("pose_overlay") || propertyId.equals("look_at");
+        return propertyId.equals("pose") || propertyId.startsWith("pose_overlay") || propertyId.equals("look_at") || propertyId.equals("inverse_kinematics");
     }
 
     public static void pickFormProperty(UIContext context, UIKeyframeEditor editor, ICursor cursor, Form form, String bone)
@@ -165,6 +166,10 @@ public class UIReplaysEditorUtils
             else if (keyframeEditor.editor instanceof UILookAtKeyframeFactory)
             {
                 type = "look_at";
+            }
+            else if (keyframeEditor.editor instanceof UIInverseKinematicsKeyframeFactory)
+            {
+                type = "inverse_kinematics";
             }
         }
 
@@ -278,12 +283,20 @@ public class UIReplaysEditorUtils
             {
                 lookAtFactory.lookAtEditor.selectBone(bone);
             }
+            else if (keyframeEditor.editor instanceof UIInverseKinematicsKeyframeFactory ikFactory)
+            {
+                ikFactory.ikEditor.selectBone(bone);
+            }
 
             filmPanel.setCursor((int) closest.getTick());
         }
         else if (keyframeEditor.editor instanceof UILookAtKeyframeFactory lookAtFactory)
         {
             lookAtFactory.lookAtEditor.selectBone(bone);
+        }
+        else if (keyframeEditor.editor instanceof UIInverseKinematicsKeyframeFactory ikFactory)
+        {
+            ikFactory.ikEditor.selectBone(bone);
         }
     }
 

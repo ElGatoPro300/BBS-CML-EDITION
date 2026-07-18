@@ -22,6 +22,7 @@ import joptsimple.internal.Strings;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.irisshaders.iris.gl.uniform.UniformUpdateFrequency;
+import net.irisshaders.iris.gui.screen.ShaderPackScreen;
 import net.irisshaders.iris.shaderpack.LanguageMap;
 import net.irisshaders.iris.shaderpack.ShaderPack;
 import net.irisshaders.iris.shaderpack.option.menu.OptionMenuContainer;
@@ -250,6 +251,35 @@ public class IrisUtils
         }
     }
 
+    public static void reloadShaders()
+    {
+        try
+        {
+            if (isShaderPackEnabled())
+            {
+                Iris.reload();
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public static void openShaderPackScreen()
+    {
+        try
+        {
+            MinecraftClient client = MinecraftClient.getInstance();
+
+            client.execute(() -> client.setScreen(new ShaderPackScreen(client.currentScreen)));
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public static boolean isShadowPass()
     {
         return IrisApi.getInstance().isRenderingShadowPass();
@@ -316,6 +346,15 @@ public class IrisUtils
     {
         for (ShaderCurves.ShaderVariable value : variableMap.values())
         {
+            if (ShaderCurves.SUN_PATH_ROTATION.equals(value.name))
+            {
+                /* Negated vs sky matrix so Complementary light stays opposite the sun disc. */
+                list.add(new FloatCachedUniform(value.uniformName, UniformUpdateFrequency.PER_FRAME, () ->
+                    mchorse.bbs_mod.client.SunPathRotation.getLightYawDegrees()));
+
+                continue;
+            }
+
             if (value.integer)
             {
                 list.add(new IntCachedUniform(value.uniformName, UniformUpdateFrequency.PER_FRAME, () -> (int) value.getValue()));

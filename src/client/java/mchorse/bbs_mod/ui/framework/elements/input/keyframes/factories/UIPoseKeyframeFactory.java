@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -102,18 +103,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
         boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
         boolean pickLimbTexture = BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get();
-        UIElement textureRow;
-
-        this.poseEditor.textureBend.minW(UIPoseEditor.TEXTURE_BEND_MIN_WIDTH);
-
-        if (pickLimbTexture)
-        {
-            textureRow = UI.row(this.poseEditor.pickTexture, this.poseEditor.textureBend);
-        }
-        else
-        {
-            textureRow = this.poseEditor.pickTexture;
-        }
+        UIElement textureRow = pickLimbTexture ? this.poseEditor.pickTexture : null;
 
         if (this.getFlex().getW() > 240)
         {
@@ -130,9 +120,13 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
             UIElement right = UI.column(
                 UI.label(UIKeys.FORMS_EDITOR_BONE),
-                groupsRow,
-                textureRow
+                groupsRow
             );
+
+            if (textureRow != null)
+            {
+                right.add(textureRow);
+            }
 
             this.poseEditor.add(UI.row(left, right));
         }
@@ -141,8 +135,15 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
             this.poseEditor.add(
                 UI.label(UIKeys.FORMS_EDITOR_BONE),
-                groupsRow,
-                textureRow,
+                groupsRow
+            );
+
+            if (textureRow != null)
+            {
+                this.poseEditor.add(textureRow);
+            }
+
+            this.poseEditor.add(
                 UI.label(UIKeys.POSE_CONTEXT_FIX),
                 this.poseEditor.fix,
                 this.poseEditor.transform,
@@ -222,7 +223,8 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected float getGizmoTranslationScale()
         {
-            return 2.5F;
+            /* BOBJ bones translate in blocks; cubic groups use model pixels (/16). */
+            return ModelFormRenderer.isBobjModel(this.model) ? 1F : 16F;
         }
 
         private String getGroup(PoseTransform transform)
@@ -256,12 +258,46 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         {
             /* Same ring / translate sign tuning as UIModelPoseEditor; film drag prepare clears
              * trackball euler flips when using the arcball sphere. */
-            return new UIPoseTransforms()
-                .enableHotkeys()
-                .translationScale(2.5F)
-                .poseModelGizmoTuning()
-                .invertModelPoseTrackballXZ()
-                .invertModelPoseTrackballDragY();
+            UIPoseTransforms editor = new UIPoseTransforms();
+
+            editor.enableHotkeys();
+            editor.translationScale(this.getGizmoTranslationScale());
+
+            if (ModelFormRenderer.isBobjModel(this.model))
+            {
+                editor.bobjPoseGizmoTuning();
+            }
+            else
+            {
+                editor.poseModelGizmoTuning();
+                editor.invertModelPoseTrackballXZ();
+                editor.invertModelPoseTrackballDragY();
+            }
+
+            return editor;
+        }
+
+        @Override
+        public void fillGroups(IModel model, java.util.Map<String, String> flippedParts, boolean reset)
+        {
+            super.fillGroups(model, flippedParts, reset);
+
+            if (this.transform != null)
+            {
+                boolean bobj = ModelFormRenderer.isBobjModel(model);
+
+                this.transform.translationScale(bobj ? 1F : 16F);
+                this.transform.setAxisProjectedTranslation(bobj);
+
+                if (bobj)
+                {
+                    this.transform.configurePoseRingTuning(true);
+                }
+                else
+                {
+                    this.transform.configurePoseRingTuning(false);
+                }
+            }
         }
 
         @Override
@@ -322,7 +358,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         {
             apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) ->
             {
-                poseT.paintColor.a = value;
+                poseT.paintColor.a = PaintSettings.clampIntensity(value);
                 poseT.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseT.paintColor.a);
             });
         }
@@ -358,7 +394,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected void setTextureBlend(PoseTransform transform, float value)
         {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.textureBlend = value);
+            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.textureBlend = 1F);
         }
     }
 

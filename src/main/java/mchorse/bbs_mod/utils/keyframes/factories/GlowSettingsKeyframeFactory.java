@@ -74,6 +74,7 @@ public class GlowSettingsKeyframeFactory implements IKeyframeFactory<GlowSetting
         this.i.width = (float) interpolation.interpolate(IInterp.context.set(preAValue.width, aValue.width, bValue.width, postBValue.width, x));
         this.i.height = (float) interpolation.interpolate(IInterp.context.set(preAValue.height, aValue.height, bValue.height, postBValue.height, x));
         this.i.sync = x >= 0.5F ? bValue.sync : aValue.sync;
+        this.i.paintOnly = x >= 0.5F ? bValue.paintOnly : aValue.paintOnly;
 
         return this.i;
     }
@@ -96,6 +97,7 @@ public class GlowSettingsKeyframeFactory implements IKeyframeFactory<GlowSetting
         this.i.width = (float) interpolation.interpolate(IInterp.context.set(preAValue.width, aValue.width, bValue.width, postBValue.width, x));
         this.i.height = (float) interpolation.interpolate(IInterp.context.set(preAValue.height, aValue.height, bValue.height, postBValue.height, x));
         this.i.sync = x >= 0.5F ? bValue.sync : aValue.sync;
+        this.i.paintOnly = x >= 0.5F ? bValue.paintOnly : aValue.paintOnly;
 
         return this.i;
     }

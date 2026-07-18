@@ -31,6 +31,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.KeyframeType;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
@@ -283,6 +284,11 @@ public class UIKeyframes extends UIElement
         this.keys().register(Keys.KEYFRAMES_SPREAD, this::spreadKeyframes).category(category);
         this.keys().register(Keys.KEYFRAMES_ADJUST_VALUES, this::adjustValues).category(category);
 
+        Supplier<Boolean> poseLimbActive = this::hasOpenPoseLimbTracks;
+
+        this.keys().register(Keys.POSE_LIMB_KEYFRAME, () -> UITransformKeyframeFactory.keyframeOpenPoseLimbs(this, this.getPlayheadTick(), false)).inside().category(UIKeys.POSE_LIMB_KEYS_CATEGORY).active(poseLimbActive);
+        this.keys().register(Keys.POSE_LIMB_KEYFRAME_DEFAULT, () -> UITransformKeyframeFactory.keyframeOpenPoseLimbs(this, this.getPlayheadTick(), true)).inside().category(UIKeys.POSE_LIMB_KEYS_CATEGORY).active(poseLimbActive);
+
         this.sidebarResizer = new UIDraggable((context) ->
         {
             int width = context.mouseX - this.area.x;
@@ -432,6 +438,24 @@ public class UIKeyframes extends UIElement
     public UIKeyframeDopeSheet getDopeSheet()
     {
         return this.dopeSheet;
+    }
+
+    protected float getPlayheadTick()
+    {
+        return 0F;
+    }
+
+    protected boolean hasOpenPoseLimbTracks()
+    {
+        for (UIKeyframeSheet sheet : this.currentGraph.getSheets())
+        {
+            if (!sheet.groupHeader && UITransformKeyframeFactory.isPoseLimbTrack(sheet))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected void selectNextKeyframe(int direction)
@@ -702,6 +726,11 @@ public class UIKeyframes extends UIElement
     public boolean isModifyingKeyframes()
     {
         return !this.scaling;
+    }
+
+    public boolean isDraggingKeyframes()
+    {
+        return this.dragging > 0;
     }
 
     public boolean hasSelectedKeyframes()
@@ -1575,6 +1604,11 @@ public class UIKeyframes extends UIElement
 
     public void submitKeyframes()
     {
+        if (this.cache == null)
+        {
+            return;
+        }
+
         /* Cache selection indices */
         Map<UIKeyframeSheet, Pair<List<Integer>, List<Integer>>> selection = new HashMap<>();
 

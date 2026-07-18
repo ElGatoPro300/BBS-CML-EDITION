@@ -193,9 +193,73 @@ public class UICinematicClip extends UIClip<CinematicClip>
             shLightLeak.level = 1;
             shLightLeak.groupKey = key;
             view.addSheet(shLightLeak);
+
+            this.addHeatGroup(view, key);
         }
 
         this.keyframes.view.getGraph().clearSelection();
+    }
+
+    private void addHeatGroup(UIKeyframes view, String parentKey)
+    {
+        String heatKey = "heat";
+        boolean expanded = !this.collapsed.getOrDefault(heatKey, false);
+
+        UIKeyframeSheet header = UIKeyframeSheet.groupHeader(
+            "__cinematic__" + heatKey,
+            UIKeys.CAMERA_CLIPS_CHANNEL_HEAT_DISTORTION,
+            0xffff6633,
+            heatKey,
+            expanded,
+            () ->
+            {
+                this.collapsed.put(heatKey, !this.collapsed.getOrDefault(heatKey, false));
+                this.rebuildChannels();
+            }
+        );
+
+        header.level = 1;
+        header.groupKey = parentKey;
+        view.addSheet(header);
+
+        if (expanded)
+        {
+            UIKeyframeSheet shStrength = new UIKeyframeSheet(
+                "heat_strength",
+                UIKeys.CAMERA_CLIPS_CHANNEL_HEAT_STRENGTH,
+                0xffff4422,
+                false,
+                this.clip.heatStrength,
+                null
+            );
+            shStrength.level = 2;
+            shStrength.groupKey = heatKey;
+            view.addSheet(shStrength);
+
+            UIKeyframeSheet shSpeed = new UIKeyframeSheet(
+                "heat_speed",
+                UIKeys.CAMERA_CLIPS_CHANNEL_HEAT_SPEED,
+                0xffff8844,
+                false,
+                this.clip.heatSpeed,
+                null
+            );
+            shSpeed.level = 2;
+            shSpeed.groupKey = heatKey;
+            view.addSheet(shSpeed);
+
+            UIKeyframeSheet shScale = new UIKeyframeSheet(
+                "heat_scale",
+                UIKeys.CAMERA_CLIPS_CHANNEL_HEAT_SCALE,
+                0xffffaa66,
+                false,
+                this.clip.heatScale,
+                null
+            );
+            shScale.level = 2;
+            shScale.groupKey = heatKey;
+            view.addSheet(shScale);
+        }
     }
 
     @Override

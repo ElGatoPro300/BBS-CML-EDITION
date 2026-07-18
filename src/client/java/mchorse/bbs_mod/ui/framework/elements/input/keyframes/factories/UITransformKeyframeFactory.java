@@ -1,20 +1,31 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
+import mchorse.bbs_mod.film.replays.Replay;
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
+import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
+import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 
@@ -47,8 +58,20 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
-            this.transform.translationScale(2.5F);
-            this.transform.poseLimbGizmoTuning();
+            boolean bobj = isBobjPoseLimbContext(editor, sheet);
+
+            /* Cubic groups store translate in model pixels (/16 on the render stack).
+             * BOBJ bones apply PoseTransform.translate directly in blocks. */
+            this.transform.translationScale(bobj ? 1F : 16F);
+
+            if (bobj)
+            {
+                this.transform.bobjPoseLimbGizmoTuning();
+            }
+            else
+            {
+                this.transform.poseLimbGizmoTuning();
+            }
             this.fix = new UITrackpad((v) ->
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.fix = MathUtils.clamp(v.floatValue(), 0F, 1F));
@@ -74,7 +97,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> this.setPaintIntensity(poseT, value.floatValue()));
             });
-            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
             this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
 
             this.glowingColor = new UIColor((c) ->
@@ -116,7 +139,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         }
         else
         {
-            this.transform.translationScale(1F / 3F);
+            this.transform.translationScale(1F);
             this.scroll.add(this.transform);
         }
     }
@@ -153,7 +176,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
     private void setPaintIntensity(PoseTransform poseTransform, float value)
     {
-        poseTransform.paintColor.a = value;
+        poseTransform.paintColor.a = PaintSettings.clampIntensity(value);
         poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
     }
 
@@ -181,6 +204,84 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         String propertyId = StringUtils.fileName(propertyPath);
 
         return propertyId.equals("pose") || propertyId.startsWith("pose_overlay");
+    }
+
+    /**
+     * Limb sheets keep {@code sheet.property == null} (path is {@code pose:bone}, not a
+     * Transform value on the form). Resolve BOBJ from the sheet's form when present, else
+     * from the film replay root.
+     */
+    public static boolean isBobjPoseLimbContext(UIKeyframes editor, UIKeyframeSheet sheet)
+    {
+        Form form = sheet != null && sheet.property != null ? FormUtils.getForm(sheet.property) : null;
+
+        if (!(form instanceof ModelForm) && editor != null)
+        {
+            UIFilmPanel panel = editor.getParent(UIFilmPanel.class);
+
+            if (panel != null && panel.replayEditor != null)
+            {
+                Replay replay = panel.replayEditor.getReplay();
+
+                if (replay != null)
+                {
+                    form = FormUtils.getRoot(replay.form.get());
+                }
+            }
+        }
+
+        return form instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+    }
+
+    public static void keyframeOpenPoseLimbs(UIKeyframes editor, float tick, boolean defaults)
+    {
+        IUIKeyframeGraph graph = editor.getGraph();
+        boolean inserted = false;
+
+        for (UIKeyframeSheet sheet : graph.getSheets())
+        {
+            if (sheet.groupHeader || !isPoseLimbTrack(sheet))
+            {
+                continue;
+            }
+
+            Object value;
+
+            if (defaults)
+            {
+                value = new PoseTransform();
+            }
+            else
+            {
+                KeyframeSegment<?> segment = sheet.channel.find(tick);
+                Object interpolated = segment == null ? null : segment.createInterpolated();
+
+                if (interpolated != null)
+                {
+                    value = interpolated;
+                }
+                else if (sheet.property != null)
+                {
+                    IKeyframeFactory factory = sheet.channel.getFactory();
+
+                    value = factory.copy(sheet.property.get());
+                }
+                else
+                {
+                    value = new PoseTransform();
+                }
+            }
+
+            sheet.channel.preNotify();
+            sheet.channel.insert(tick, value);
+            sheet.channel.postNotify();
+            inserted = true;
+        }
+
+        if (inserted)
+        {
+            UIUtils.playClick();
+        }
     }
 
     public UIPropTransform getTransform()

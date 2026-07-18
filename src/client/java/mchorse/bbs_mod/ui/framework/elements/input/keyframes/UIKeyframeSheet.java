@@ -25,6 +25,7 @@ public class UIKeyframeSheet
     public final KeyframeChannel channel;
     public final KeyframeSelection selection;
     public final BaseValueBasic property;
+    public Object defaultInsertValue;
 
     public boolean groupHeader;
     public boolean groupExpanded = true;
@@ -33,6 +34,9 @@ public class UIKeyframeSheet
     public String groupKey;
     public Runnable toggleGroup;
     public Runnable toggleExpanded;
+
+    /** Optional boolean sub-track rendered inside the same timeline row (e.g. repeat center). */
+    public UIKeyframeSheet companion;
 
     public UIKeyframeSheet(int color, boolean separator, KeyframeChannel channel, BaseValueBasic property)
     {

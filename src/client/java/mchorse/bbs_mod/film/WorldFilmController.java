@@ -10,7 +10,6 @@ import mchorse.bbs_mod.utils.clips.Clip;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import java.util.List;
-import java.util.Map;
 
 public class WorldFilmController extends BaseFilmController
 {
@@ -31,8 +30,34 @@ public class WorldFilmController extends BaseFilmController
         this.context.clips = film.camera;
     }
 
+    public CameraClipContext getCameraContext()
+    {
+        return this.context;
+    }
+
+    /**
+     * Applies camera clips (curves, audio triggers, etc.) into {@link #context}
+     * so world lighting can read curve data outside the film editor.
+     */
+    public void applyCameraClips(float transition)
+    {
+        int tick = Math.max(this.tick, 0);
+        float delta = this.paused ? 0F : transition;
+        List<Clip> clips = this.context.clips.getClips(tick);
+
+        this.context.clipData.clear();
+        this.context.setup(tick, delta);
+
+        for (Clip clip : clips)
+        {
+            this.context.apply(clip, this.position);
+        }
+
+        this.context.currentLayer = 0;
+    }
+
     @Override
-    public Map<String, Integer> getActors()
+    public java.util.Map<String, Integer> getActors()
     {
         return BBSModClient.getFilms().actors.get(this.film.getId());
     }
@@ -58,6 +83,16 @@ public class WorldFilmController extends BaseFilmController
         }
 
         super.update();
+
+        /* Keep curve data fresh for time-of-day / sun-path even before render. */
+        this.applyCameraClips(0F);
+    }
+
+    @Override
+    public void startRenderFrame(float transition)
+    {
+        super.startRenderFrame(transition);
+        this.applyCameraClips(transition);
     }
 
     @Override
@@ -65,26 +100,12 @@ public class WorldFilmController extends BaseFilmController
     {
         super.render(context);
 
-        int tick = Math.max(this.tick, 0);
-        List<Clip> clips = this.context.clips.getClips(tick);
-
-        if (clips.isEmpty())
-        {
-            return;
-        }
-
-        this.context.clipData.clear();
-        this.context.setup(tick, context.tickDelta());
-
-        for (Clip clip : clips)
-        {
-            this.context.apply(clip, this.position);
-        }
-
-        this.context.currentLayer = 0;
+        this.applyCameraClips(context.tickDelta());
 
         if (BBSSettings.recordingCameraPreview.get())
         {
+            int tick = Math.max(this.tick, 0);
+
             Recorder.renderCameraPreviewTimeline(this.context.clips, tick, context.tickDelta(), this.duration, this.position, context.camera(), context.matrixStack());
         }
 

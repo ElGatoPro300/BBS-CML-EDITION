@@ -3,8 +3,10 @@ package mchorse.bbs_mod.film;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.entities.IEntity;
+import mchorse.bbs_mod.forms.forms.BillboardForm;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.utils.interps.Lerps;
@@ -151,6 +153,27 @@ public class FormRenderDepth
         return enabled ? (double) form.renderDepth.get() : null;
     }
 
+    /**
+     * Sort key for translucent film layering. Missing / disabled render depth sorts as 0
+     * (same as body-part depth sort).
+     */
+    public static double resolveSortDepth(Form form, Frame frame)
+    {
+        if (form == null)
+        {
+            return 0D;
+        }
+
+        if (frame == null)
+        {
+            return form.renderDepthEnabled.get() ? (double) form.renderDepth.get() : 0D;
+        }
+
+        Double depth = getEnabledDepth(form, getSourceForm(frame.sourceRootForm, form));
+
+        return depth == null ? 0D : depth;
+    }
+
     public static float getFade(Form form, Form sourceForm, double distanceSq, List<Occluder> occluders)
     {
         Double depth = getEnabledDepth(form, sourceForm);
@@ -186,6 +209,41 @@ public class FormRenderDepth
         }
 
         return 0F;
+    }
+
+    /**
+     * True when a render-depth occluder can force this form into the deferred Iris queue.
+     * Only Shape/Billboard panels count — never character meshes. A low-alpha ModelForm
+     * ({@code #1b}) must not yank opaque neighbors off Iris (that flattened lighting/shadows
+     * on the yellow dummy). Panels still share the deferred queue for render depth.
+     */
+    public static boolean needsDeferredDepthOcclusion(Form form, double distanceSq, List<Occluder> occluders)
+    {
+        if (form == null || occluders == null || occluders.isEmpty())
+        {
+            return false;
+        }
+
+        for (Occluder occluder : occluders)
+        {
+            if (occluder.form == form || !countsAsDeferredDepthOccluder(occluder.form))
+            {
+                continue;
+            }
+
+            /* Closer panel, or same-entity body-part (shared distance). */
+            if (occluder.distanceSq <= distanceSq + 0.0001D)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean countsAsDeferredDepthOccluder(Form form)
+    {
+        return form instanceof ShapeForm || form instanceof BillboardForm;
     }
 
     public static double getEntityDistanceSq(IEntity entity, Camera camera, float transition)

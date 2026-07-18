@@ -19,50 +19,71 @@ public final class GizmoMatrixUtils
 
     /**
      * Bone gizmo basis for film pose keyframes ({@link BaseFilmController#renderAxes}).
-     * Non-local mode uses the bone pivot matrix; local mode keeps the posed rotation with pivot translation.
+     * Non-local mode uses the bone pivot matrix; local mode keeps the posed rotation with pivot translation
+     * for cubic models. BOBJ translates before rotating in the bone frame, so local mode must use the
+     * origin (pre-pose-rotation) basis — otherwise the visible arrows diverge from the direction
+     * {@code PoseTransform.translate} actually moves the bone.
      */
     public static Matrix4f resolveFilmPoseBoneMatrix(MatrixCacheEntry entry, boolean local)
+    {
+        return resolveFilmPoseBoneMatrix(entry, local, false);
+    }
+
+    public static Matrix4f resolveFilmPoseBoneMatrix(MatrixCacheEntry entry, boolean local, boolean bobj)
     {
         if (entry == null)
         {
             return null;
         }
 
-        if (local)
+        if (!local)
         {
-            Matrix4f localMatrix = entry.matrix();
-            Matrix4f originMatrix = entry.origin();
+            Matrix4f matrix = entry.origin();
 
-            if (localMatrix != null && originMatrix != null)
+            if (matrix == null)
             {
-                Matrix4f matrix = new Matrix4f(localMatrix);
-
-                matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
-
-                return matrix;
+                matrix = entry.matrix();
             }
 
-            if (localMatrix != null)
-            {
-                return new Matrix4f(localMatrix);
-            }
+            return matrix == null ? null : new Matrix4f(matrix);
+        }
 
+        Matrix4f localMatrix = entry.matrix();
+        Matrix4f originMatrix = entry.origin();
+
+        /* BOBJ: translate is applied before rotate in BOBJBone.applyTransformations, so the
+         * local gizmo basis must match originMat (parent × relBone × T), not orderedBone.mat
+         * which already includes pose R/S. */
+        if (bobj)
+        {
             if (originMatrix != null)
             {
                 return new Matrix4f(originMatrix);
             }
 
-            return null;
+            return localMatrix == null ? null : new Matrix4f(localMatrix);
         }
 
-        Matrix4f matrix = entry.origin();
-
-        if (matrix == null)
+        if (localMatrix != null && originMatrix != null)
         {
-            matrix = entry.matrix();
+            Matrix4f matrix = new Matrix4f(localMatrix);
+
+            matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
+
+            return matrix;
         }
 
-        return matrix == null ? null : new Matrix4f(matrix);
+        if (localMatrix != null)
+        {
+            return new Matrix4f(localMatrix);
+        }
+
+        if (originMatrix != null)
+        {
+            return new Matrix4f(originMatrix);
+        }
+
+        return null;
     }
 
     /**
