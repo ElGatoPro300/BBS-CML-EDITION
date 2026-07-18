@@ -67,12 +67,24 @@ public class ImageClip extends CameraClip
 
     public ImageClip()
     {
+        /* Order mirrors SubtitleClip for shared tracks so COLORS[i] matches:
+         * x/y, size≈width, anchorX/Y, color, textShadow≈opacity, windowX/Y. */
         this.channels = new KeyframeChannel[]
         {
-            this.textureTrack, this.offsetX, this.offsetY, this.rotation,
-            this.x, this.y, this.width, this.height,
-            this.anchorX, this.anchorY, this.windowX, this.windowY, this.opacity,
-            this.color
+            this.textureTrack,
+            this.x,
+            this.y,
+            this.width,
+            this.anchorX,
+            this.anchorY,
+            this.color,
+            this.opacity,
+            this.windowX,
+            this.windowY,
+            this.height,
+            this.offsetX,
+            this.offsetY,
+            this.rotation
         };
 
         this.add(this.texture);
