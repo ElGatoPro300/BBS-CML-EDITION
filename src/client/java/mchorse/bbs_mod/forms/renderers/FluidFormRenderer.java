@@ -70,9 +70,7 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
         stack.scale(scale, scale, scale);
 
         /* Shading fix for UI */
-        Vector3f normalScale = new Vector3f();
-        stack.peek().getNormalMatrix().getScale(normalScale);
-        stack.peek().getNormalMatrix().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
+        MatrixStackUtils.invertUiNormalY(stack);
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();

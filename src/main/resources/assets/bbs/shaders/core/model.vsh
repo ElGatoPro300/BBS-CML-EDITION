@@ -35,7 +35,9 @@ void main()
 {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
     vertexDistance = fog_distance(Position, FogShape);
-    vec3 fixNormal = normalize(NormalMat * Normal);
+    vec3 n = NormalMat * Normal;
+    float nLen2 = dot(n, n);
+    vec3 fixNormal = nLen2 > 1.0e-8 ? n * inversesqrt(nLen2) : vec3(0.0, 0.0, 1.0);
     rawVertexColor = Color;
     vertexColor = minecraft_mix_light(Light0_Direction, Light1_Direction, fixNormal, Color);
     lightMapColor = texelFetch(Sampler2, UV2 / 16, 0);

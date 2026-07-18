@@ -140,7 +140,11 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             modelMatrix.scale(scale);
 
             context.stack.peek().getNormalMatrix().identity();
-            context.stack.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
+            context.stack.peek().getNormalMatrix().scale(
+                MatrixStackUtils.safeNormalScaleReciprocal(scale.x),
+                MatrixStackUtils.safeNormalScaleReciprocal(scale.y),
+                MatrixStackUtils.safeNormalScaleReciprocal(scale.z)
+            );
         }
 
         TextRenderer renderer = MinecraftClient.getInstance().textRenderer;

@@ -140,6 +140,7 @@ public class UIKeys
     public static final IKey CAMERA_PANELS_CURVES_SUN_ROTATION = L10n.lang("bbs.ui.camera.panels.curves.sun_rotation");
     public static final IKey CAMERA_PANELS_CURVES_SUN_PATH_ROTATION = L10n.lang("bbs.ui.camera.panels.curves.sun_path_rotation");
     public static final IKey CAMERA_PANELS_CURVES_WEATHER = L10n.lang("bbs.ui.camera.panels.curves.weather");
+    public static final IKey CAMERA_PANELS_CURVES_SHADER_SHADOW_OPACITY = L10n.lang("bbs.ui.camera.panels.curves.shader_shadow_opacity");
     public static final IKey CAMERA_PANELS_CURVE_ADD = L10n.lang("bbs.ui.camera.panels.curve.add");
     public static final IKey CAMERA_PANELS_CURVE_REMOVE = L10n.lang("bbs.ui.camera.panels.curve.remove");
     public static final IKey CAMERA_PANELS_DETERMINISTIC = L10n.lang("bbs.ui.camera.panels.deterministic");

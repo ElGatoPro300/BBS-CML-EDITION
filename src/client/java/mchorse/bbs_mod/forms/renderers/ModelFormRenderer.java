@@ -418,8 +418,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             /* Render body parts */
             stack.push();
-            stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-            stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+            MatrixStackUtils.invertUiNormalY(stack);
 
             this.renderBodyParts(new FormRenderingContext()
                 .set(FormRenderType.ENTITY, this.entity, stack, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
@@ -469,8 +468,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (ui)
         {
-            newStack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-            newStack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+            MatrixStackUtils.invertUiNormalY(newStack);
         }
 
         Matrix4f baseTransform = ui ? null : new Matrix4f((world != null ? world : stack).peek().getPositionMatrix());

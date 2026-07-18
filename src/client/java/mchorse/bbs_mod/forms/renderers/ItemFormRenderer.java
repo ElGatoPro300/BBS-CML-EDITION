@@ -68,8 +68,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         MatrixStackUtils.multiply(matrices, uiMatrix);
         matrices.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
-        matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-        matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+        MatrixStackUtils.invertUiNormalY(matrices);
 
         Color set = Color.white();
 

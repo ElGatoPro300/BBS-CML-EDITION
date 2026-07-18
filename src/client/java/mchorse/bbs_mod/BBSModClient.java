@@ -550,6 +550,8 @@ public class BBSModClient implements ClientModInitializer
 
         BBSSettings.complementaryOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
         BBSSettings.bslOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
+        BBSSettings.shaderShadowOpacity.postCallback((v, f) ->
+            mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.syncShadowOpacityDefault());
 
         if (BBSSettings.worldGammaPercent != null)
         {

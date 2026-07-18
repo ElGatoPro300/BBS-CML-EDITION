@@ -26,6 +26,7 @@ public class ShaderCurves
     public static final String SUN_ROTATION = "sun_rotation";
     public static final String SUN_PATH_ROTATION = "sun_path_rotation";
     public static final String WEATHER = "weather";
+    public static final String SHADER_SHADOW_OPACITY = "shader_shadow_opacity";
 
     public static final String UNIFORM_IDENTIFIER = "bbs_";
 
@@ -54,7 +55,9 @@ public class ShaderCurves
     }
 
     public static void finishLoading()
-    {}
+    {
+        ShaderOpacityPatch.ensureShadowOpacityVariable();
+    }
 
     public static String processSource(String source)
     {

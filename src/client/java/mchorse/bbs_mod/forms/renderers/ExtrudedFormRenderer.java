@@ -66,8 +66,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         stack.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
         /* Shading fix */
-        stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-        stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+        MatrixStackUtils.invertUiNormalY(stack);
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
@@ -154,7 +153,11 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                     matrices.peek().getNormalMatrix().set(camera.view);
                 }
 
-                matrices.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
+                matrices.peek().getNormalMatrix().scale(
+                    MatrixStackUtils.safeNormalScaleReciprocal(scale.x),
+                    MatrixStackUtils.safeNormalScaleReciprocal(scale.y),
+                    MatrixStackUtils.safeNormalScaleReciprocal(scale.z)
+                );
             }
 
             Color color = Colors.COLOR.set(overlayColor, true);

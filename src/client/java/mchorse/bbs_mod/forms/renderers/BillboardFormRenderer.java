@@ -109,12 +109,9 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
     @Override
     public void render3D(FormRenderingContext context)
     {
+        /* Do not force shading under Iris — camera-facing normals + pack/BBS lighting make
+         * the billboard pulse bright/dark when the orbit camera moves. Respect form.shading. */
         boolean shading = this.form.shading.get();
-
-        if (BBSRendering.isIrisShadersEnabled())
-        {
-            shading = true;
-        }
 
         VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
         Supplier<ShaderProgram> shader = this.getShader(context,
@@ -269,14 +266,14 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
             modelMatrix.scale(scale);
 
+            /* Keep identity normals. Baking camera.view into the normal matrix made Iris/BBS
+             * lighting track the orbit camera and pulse the billboard bright/dark. */
             matrices.peek().getNormalMatrix().identity();
-
-            if (camera != null && !modelRenderer)
-            {
-                matrices.peek().getNormalMatrix().set(camera.view);
-            }
-
-            matrices.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
+            matrices.peek().getNormalMatrix().scale(
+                MatrixStackUtils.safeNormalScaleReciprocal(scale.x),
+                MatrixStackUtils.safeNormalScaleReciprocal(scale.y),
+                MatrixStackUtils.safeNormalScaleReciprocal(scale.z)
+            );
         }
 
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
@@ -294,16 +291,20 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
         RenderSystem.disableCull();
 
-        /* Under Iris, translucent billboards wash fog — defer BBS redraw. Never stamp opaque
-         * Iris solid for render-depth (renderDepthEnabled defaults true and would keep
-         * billboards visible at low opacity). */
-        boolean deferTranslucent = !modelRenderer
-            && BBSRendering.needsIrisTranslucentFlatDeferral(color.a);
+        /* Under Iris, billboards must defer to a BBS redraw — live entity_translucent often
+         * washes or discards them. needsIrisTranslucentFlatDeferral skips fully opaque (#ff);
+         * with the Complementary/BSL opacity patch that live opaque path also vanishes, so
+         * defer every world billboard while the patch is active. */
+        boolean opacityPatch = ShaderOpacityPatch.isActive();
+        boolean shadowPass = BBSRendering.isIrisShadowPass()
+            || (deferContext != null && deferContext.isShadowPass);
+        boolean deferTranslucent = !modelRenderer && !shadowPass
+            && (BBSRendering.needsIrisTranslucentFlatDeferral(color.a)
+                || (opacityPatch && BBSRendering.isIrisWorldModelPass()));
 
         if (deferTranslucent)
         {
             Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(matrix));
-            Matrix3f normalMatrix = new Matrix3f(matrices.peek().getNormalMatrix());
             Color colorSnapshot = color.copy();
             Quad localQuad = new Quad();
             Quad localUvQuad = new Quad();
@@ -320,9 +321,19 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean emitGlowSnapshot = glowIntensity > 0F && !glowSettings.resolvePaintOnly();
-            /* Like no-shader depthMask(true): keep depth write below #1d when render-depth is on. */
             boolean depthWrite = this.form.renderDepthEnabled.get();
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, deferContext == null ? null : deferContext.renderDepthFrame);
+            double distanceSq = 0D;
+            /* Iris entity_translucent (opacity-patched): pack lighting/shadows, soft alpha.
+             * Identity normals avoid orbit flicker; real light — never fullbright. */
+            VertexFormat deferredFormat = VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL;
+            Supplier<ShaderProgram> deferredShader = GameRenderer::getRenderTypeEntityTranslucentProgram;
+
+            if (deferContext != null && deferContext.entity != null && deferContext.camera != null)
+            {
+                distanceSq = FormRenderDepth.getEntityDistanceSq(deferContext.entity, deferContext.camera, transition);
+            }
+
             Runnable deferredDraw = () ->
             {
                 Texture deferredTexture = texture;
@@ -345,7 +356,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                 MatrixStack overlayStack = new MatrixStack();
 
                 overlayStack.peek().getPositionMatrix().set(positionMatrix);
-                overlayStack.peek().getNormalMatrix().set(normalMatrix);
+                overlayStack.peek().getNormalMatrix().identity();
+
+                gameRenderer.getLightmapTextureManager().enable();
+                gameRenderer.getOverlayTexture().setupOverlayColor();
 
                 boolean savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
 
@@ -355,9 +369,9 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                 try
                 {
                     this.drawBillboardFaces(
-                        VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL,
+                        deferredFormat,
                         deferredTexture,
-                        BBSShaders::getModel,
+                        deferredShader,
                         overlayStack,
                         colorSnapshot,
                         localQuad,
@@ -373,7 +387,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                     {
                         this.renderGlowOverlay(
                             deferredTexture,
-                            BBSShaders::getModel,
+                            GameRenderer::getPositionTexColorProgram,
                             overlayStack,
                             glowSettingsSnapshot,
                             legacyGlowSnapshot,
@@ -395,9 +409,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                 }
             };
 
-            if (ShaderOpacityPatch.shouldJoinPostDeferredQueue(color.a))
+            if (opacityPatch)
             {
-                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, depthWrite, deferredDraw);
+                /* Same sorted post-deferred queue as models — render depth low→high, before VL. */
+                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, deferredDraw);
             }
             else
             {
@@ -406,7 +421,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         }
         else
         {
-            /* Live path — depthMask true like no-shader. */
+            /* Live path — opaque / no-shader. */
             if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
             {
                 if (BBSRendering.needsBbsModelForLowOpacity(color.a))

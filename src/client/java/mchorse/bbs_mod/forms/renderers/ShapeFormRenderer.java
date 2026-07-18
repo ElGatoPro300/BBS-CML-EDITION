@@ -75,9 +75,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(20));
 
         /* Shading fix for UI */
-        Vector3f normalScale = new Vector3f();
-        stack.peek().getNormalMatrix().getScale(normalScale);
-        stack.peek().getNormalMatrix().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
+        MatrixStackUtils.invertUiNormalY(stack);
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
@@ -209,10 +207,14 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.scale(this.form.sizeX.get(), this.form.sizeY.get(), this.form.sizeZ.get());
 
         ShapeForm.ShapeType type = this.form.type.get();
-        /* Under Iris, translucent flats wash fog/sky — redraw with BBS after composite.
-         * Do not stamp opaque Iris solid for render-depth here: renderDepthEnabled defaults
-         * true, and a visible a=1 stamp makes low opacity look bright / never invisible. */
-        boolean deferTranslucent = BBSRendering.needsIrisTranslucentFlatDeferral(c.a);
+        boolean opacityPatch = ShaderOpacityPatch.isActive();
+        boolean shadowPass = BBSRendering.isIrisShadowPass();
+        /* Under Iris, flats must defer — live path washes them. Opaque (#ff) is skipped by
+         * needsIrisTranslucentFlatDeferral; with the opacity patch that live opaque path also
+         * vanishes, so defer every world shape while the patch is active. */
+        boolean deferTranslucent = !shadowPass
+            && (BBSRendering.needsIrisTranslucentFlatDeferral(c.a)
+                || (opacityPatch && BBSRendering.isIrisWorldModelPass()));
 
         if (deferTranslucent)
         {
@@ -228,11 +230,15 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean lighting = this.form.lighting.get();
-            /* Like no-shader depthMask(true): render-depth flats must keep writing depth at
-             * any opacity (including below #1d). Gating on TRANSLUCENT_ALPHA_DISCARD_REF made
-             * Iris deferred occlusion die right after that alpha. */
             boolean depthWrite = this.form.renderDepthEnabled.get();
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
+            double distanceSq = 0D;
+
+            if (renderContext != null && renderContext.entity != null && renderContext.camera != null)
+            {
+                distanceSq = FormRenderDepth.getEntityDistanceSq(renderContext.entity, renderContext.camera, renderContext.getTransition());
+            }
+
             Runnable deferredDraw = () ->
             {
                 MatrixStack overlayStack = new MatrixStack();
@@ -257,9 +263,9 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
                 );
             };
 
-            if (ShaderOpacityPatch.shouldJoinPostDeferredQueue(c.a))
+            if (opacityPatch)
             {
-                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, depthWrite, deferredDraw);
+                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, deferredDraw);
             }
             else
             {

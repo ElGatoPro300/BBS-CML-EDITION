@@ -30,6 +30,7 @@ public class IrisMixin
     {
         ShaderCurves.reset();
         ShaderOpacityPatch.setLoadingPackName(name);
+        ShaderOpacityPatch.ensureShadowOpacityVariable();
     }
 
     @Inject(method = "setShadersDisabled", at = @At("HEAD"), remap = false, require = 0)

@@ -310,8 +310,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         /* UI preview uses fixed diffuse lights; world rendering relied on vanilla block lighting before repeat. */
         if (ui && !picking)
         {
-            stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-            stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+            MatrixStackUtils.invertUiNormalY(stack);
         }
 
         MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), stack, consumers, light, overlay);
