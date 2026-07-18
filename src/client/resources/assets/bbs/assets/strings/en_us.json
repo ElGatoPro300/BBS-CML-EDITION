@@ -379,6 +379,8 @@
     "bbs.config.shader_curves.enabled-comment": "Whether shader curves are enabled",
     "bbs.config.shader_curves.complementary_opacity_fix": "Complementary opacity fix",
     "bbs.config.shader_curves.complementary_opacity_fix-comment": "When Complementary is loaded: keep form opacity/lighting on the Iris path, but do not let translucent forms punch clouds/fog (no depth write + translucentMult/separateEntityDraws). Reloads shaders when toggled.",
+    "bbs.config.shader_curves.bsl_opacity_fix": "BSL opacity fix",
+    "bbs.config.shader_curves.bsl_opacity_fix-comment": "When BSL is loaded: keep form opacity/lighting on the Iris path, but do not let translucent forms punch clouds/fog (alphaTest + separateEntityDraws + post-deferred queue). Reloads shaders when toggled.",
     "bbs.config.shader_curves.title": "Shader curves",
     "bbs.config.shader_curves.tooltip": "Options related to shader curves",
     "bbs.config.title": "CML settings",

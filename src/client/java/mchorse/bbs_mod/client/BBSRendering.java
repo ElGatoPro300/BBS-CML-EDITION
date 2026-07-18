@@ -811,10 +811,10 @@ public class BBSRendering
      * pack lighting/shadows stay on every model (changing one form's alpha must not flatten
      * the rest of the scene).
      * <p>
-     * With the Complementary opacity patch, mid/low opacity also stays on Iris (same look /
-     * lighting). Cloud/fog holes are avoided by queuing those draws until after Iris deferred
-     * ({@link mchorse.bbs_mod.utils.iris.ShaderOpacityPatch#shouldDelayUntilPostDeferred(float)}),
-     * not by disabling depth writes.
+     * With the Complementary/BSL opacity patch, mid/low opacity also stays on Iris (same look /
+     * lighting). Cloud/fog holes are avoided by suppressing depth writes on translucent live
+     * draws ({@link mchorse.bbs_mod.utils.iris.ShaderOpacityPatch#shouldSuppressDepthWrite(float)}),
+     * not by moving them past deferred (that stole pack shading and ground shadows).
      */
     public static final float TRANSLUCENT_ALPHA_DISCARD_REF = 28F / 255F;
 

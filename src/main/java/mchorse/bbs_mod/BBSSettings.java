@@ -206,6 +206,7 @@ public class BBSSettings
 
     public static ValueBoolean shaderCurvesEnabled;
     public static ValueBoolean complementaryOpacityFix;
+    public static ValueBoolean bslOpacityFix;
 
     public static ValueBoolean audioWaveformVisible;
     public static ValueInt audioWaveformDensity;
@@ -712,6 +713,7 @@ public class BBSSettings
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
         complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", false);
+        bslOpacityFix = builder.getBoolean("bsl_opacity_fix", false);
 
         builder.category("fluid_simulation");
         fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);

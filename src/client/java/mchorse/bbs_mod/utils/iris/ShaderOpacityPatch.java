@@ -25,10 +25,10 @@ import java.util.regex.Pattern;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 
 /**
- * Runtime Complementary opacity fix. Keeps translucent BBS forms on the Iris lighting path
- * (same Complementary look) but draws meaningfully translucent ones after deferred so VL
- * clouds/fog are already in the color buffer — entity depth no longer punches sky holes.
- * Post-deferred draws are sorted by render depth (low → high) so film layering still works.
+ * Runtime opacity fix for Complementary / BSL. Keeps translucent BBS forms on the Iris
+ * lighting path (pack shading + shadow maps). VL cloud/fog holes are avoided by suppressing
+ * depth writes on translucent live draws rather than moving them past deferred (which stole
+ * shading and ground shadows). Opaque film render-depth can still use a post-deferred queue.
  */
 public class ShaderOpacityPatch
 {
@@ -53,6 +53,7 @@ public class ShaderOpacityPatch
     private static boolean flushingPostDeferred;
     private static boolean flushingDepthWrite = true;
     private static boolean forceLiveDepthWrite;
+    private static boolean suppressLiveDepthWrite;
 
     private static String loadingPackName = "";
 
@@ -93,25 +94,45 @@ public class ShaderOpacityPatch
         return name != null && name.toLowerCase(Locale.ROOT).contains("complementary");
     }
 
+    public static boolean isBslPack(String name)
+    {
+        return name != null && name.toLowerCase(Locale.ROOT).contains("bsl");
+    }
+
     public static boolean isActive()
     {
-        if (BBSSettings.complementaryOpacityFix == null || !BBSSettings.complementaryOpacityFix.get())
+        String pack = resolvePackName();
+
+        if (pack.isEmpty())
         {
             return false;
         }
 
-        if (isComplementaryPack(loadingPackName))
+        if (BBSSettings.complementaryOpacityFix != null && BBSSettings.complementaryOpacityFix.get()
+            && isComplementaryPack(pack))
         {
             return true;
         }
 
+        return BBSSettings.bslOpacityFix != null && BBSSettings.bslOpacityFix.get() && isBslPack(pack);
+    }
+
+    private static String resolvePackName()
+    {
+        if (loadingPackName != null && !loadingPackName.isEmpty())
+        {
+            return loadingPackName;
+        }
+
         try
         {
-            return isComplementaryPack(net.irisshaders.iris.Iris.getCurrentPackName());
+            String current = net.irisshaders.iris.Iris.getCurrentPackName();
+
+            return current == null ? "" : current;
         }
         catch (Throwable t)
         {
-            return false;
+            return "";
         }
     }
 
@@ -123,6 +144,11 @@ public class ShaderOpacityPatch
     public static void setForceLiveDepthWrite(boolean force)
     {
         forceLiveDepthWrite = force;
+    }
+
+    public static void setSuppressLiveDepthWrite(boolean suppress)
+    {
+        suppressLiveDepthWrite = suppress;
     }
 
     public static void reassertPostDeferredDepthState()
@@ -139,6 +165,12 @@ public class ShaderOpacityPatch
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
             RenderSystem.depthMask(true);
+        }
+        else if (suppressLiveDepthWrite)
+        {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+            RenderSystem.depthMask(false);
         }
     }
 
@@ -163,10 +195,10 @@ public class ShaderOpacityPatch
     }
 
     /**
-     * Queue forms until after deferred so VL clouds composite first. Translucent forms always
-     * join; near-opaque / opaque also join when a film {@code renderDepthFrame} is active so
-     * they share one depth-sorted pass with translucents (otherwise the opaque live gbuffer
-     * depth never occludes post-deferred ghosts).
+     * Queue forms until after deferred so VL clouds composite first. Only used for opaque
+     * film {@code renderDepthFrame} stacking now — translucent forms stay on the live Iris
+     * path (pack lighting + shadow maps) with {@link #shouldSuppressDepthWrite(float)} so
+     * they do not punch VL depth holes. Never delay during the shadow pass.
      */
     public static boolean shouldDelayUntilPostDeferred(float alpha)
     {
@@ -186,19 +218,48 @@ public class ShaderOpacityPatch
             {
                 return false;
             }
+
+            /* Casters must hit the shadow map live — post-deferred never writes shadows. */
+            if (mchorse.bbs_mod.client.BBSRendering.isIrisShadowPass())
+            {
+                return false;
+            }
         }
         catch (Throwable t)
         {
             return false;
         }
 
+        /* Translucent: keep Iris lighting/shading live; suppress depth write instead. */
         if (alpha < 0.95F)
         {
-            return true;
+            return false;
         }
 
-        /* Opaque film actors must share the post-deferred depth queue for render depth. */
+        /* Opaque film actors still share the post-deferred depth queue for render depth. */
         return filmRenderDepth;
+    }
+
+    /**
+     * Translucent live Iris draws must not stamp depth before VL clouds composite
+     * ({@code z0 > 0.56} hole punch), but still need the entity/gbuffer lighting pass.
+     */
+    public static boolean shouldSuppressDepthWrite(float alpha)
+    {
+        if (!isActive() || flushingPostDeferred || alpha <= 0.001F || alpha >= 0.95F)
+        {
+            return false;
+        }
+
+        try
+        {
+            return mchorse.bbs_mod.client.BBSRendering.isIrisShadersEnabled()
+                && !mchorse.bbs_mod.client.BBSRendering.isIrisShadowPass();
+        }
+        catch (Throwable t)
+        {
+            return false;
+        }
     }
 
     public static boolean shouldJoinPostDeferredQueue(float alpha)
@@ -321,7 +382,7 @@ public class ShaderOpacityPatch
     }
 
     /**
-     * Complementary deferred can leave the live depth buffer unusable for occlusion. Iris
+     * Complementary/BSL deferred can leave the live depth buffer unusable for occlusion. Iris
      * snapshots opaque depth into {@code depthtex1} at {@code beginTranslucents}; copy it back
      * so translucent BBS forms depth-test against models/terrain in front (render depth).
      */

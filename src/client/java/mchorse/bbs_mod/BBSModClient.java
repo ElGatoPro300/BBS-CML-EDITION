@@ -549,6 +549,7 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
 
         BBSSettings.complementaryOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
+        BBSSettings.bslOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
 
         if (BBSSettings.worldGammaPercent != null)
         {

@@ -367,6 +367,8 @@
     "bbs.config.shader_curves.enabled-comment": "اینکه آیا منحنی‌های شیدر فعال هستند",
     "bbs.config.shader_curves.complementary_opacity_fix": "رفع اوپسیتی Complementary",
     "bbs.config.shader_curves.complementary_opacity_fix-comment": "وقتی Complementary لود است: اوپسیتی و نور فرم روی مسیر Iris می‌ماند، ولی فرم translucent ابر/مه را سوراخ نمی‌کند (بدون depth write + translucentMult/separateEntityDraws). با تغییر، شیدرها reload می‌شوند.",
+    "bbs.config.shader_curves.bsl_opacity_fix": "رفع اوپسیتی BSL",
+    "bbs.config.shader_curves.bsl_opacity_fix-comment": "وقتی BSL لود است: اوپسیتی و نور فرم روی مسیر Iris می‌ماند، ولی فرم translucent ابر/مه را سوراخ نمی‌کند (alphaTest + separateEntityDraws + صف post-deferred). با تغییر، شیدرها reload می‌شوند.",
     "bbs.config.shader_curves.title": "منحنی‌های شیدر",
     "bbs.config.shader_curves.tooltip": "گزینه‌های مربوط به منحنی‌های شیدر",
     "bbs.config.title": "تنظیمات CML",

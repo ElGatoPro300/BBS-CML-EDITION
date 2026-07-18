@@ -767,11 +767,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             if (drawIrisLive)
             {
-                /* Complementary VL clouds composite with if (z0 > 0.56). Drawing translucent
-                 * BBS forms before deferred stamps entity depth and punches sky holes. Queue
-                 * until after beginTranslucents so clouds land first; keep depth writes so
-                 * render-depth / stacking stay correct. Opaque film forms join the same queue
-                 * so they share depth with translucents. */
+                /* Complementary VL clouds use depth ({@code z0 > 0.56}). Translucent forms stay
+                 * on the live Iris lighting path (shading + shadow maps) and only suppress
+                 * depth writes so they do not punch sky holes. Opaque film render-depth still
+                 * joins the post-deferred queue. */
                 boolean filmRenderDepth = renderContext != null && renderContext.renderDepthFrame != null;
 
                 if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, filmRenderDepth))
@@ -869,15 +868,26 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
                     }
 
-                    /* Iris entity_translucent often leaves depthMask false — near-opaque live
-                     * draws must stamp depth so post-deferred translucents can be occluded. */
+                    /* Translucent + opacity patch: depthMask false avoids VL holes while
+                     * keeping Iris shading. Near-opaque: force depth so film stacking works. */
+                    boolean suppressDepth = ShaderOpacityPatch.shouldSuppressDepthWrite(opacityAlpha);
                     boolean forceDepth = ShaderOpacityPatch.isActive() && opacityAlpha >= 0.95F;
+                    boolean savedDepthMask = false;
 
-                    if (forceDepth)
+                    if (suppressDepth || forceDepth)
                     {
-                        ShaderOpacityPatch.setForceLiveDepthWrite(true);
+                        savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
                         RenderSystem.enableDepthTest();
-                        RenderSystem.depthMask(true);
+                        RenderSystem.depthMask(!suppressDepth);
+
+                        if (forceDepth)
+                        {
+                            ShaderOpacityPatch.setForceLiveDepthWrite(true);
+                        }
+                        else
+                        {
+                            ShaderOpacityPatch.setSuppressLiveDepthWrite(true);
+                        }
                     }
 
                     try
@@ -889,6 +899,16 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         if (forceDepth)
                         {
                             ShaderOpacityPatch.setForceLiveDepthWrite(false);
+                        }
+
+                        if (suppressDepth)
+                        {
+                            ShaderOpacityPatch.setSuppressLiveDepthWrite(false);
+                        }
+
+                        if (suppressDepth || forceDepth)
+                        {
+                            RenderSystem.depthMask(savedDepthMask);
                         }
                     }
                 }
