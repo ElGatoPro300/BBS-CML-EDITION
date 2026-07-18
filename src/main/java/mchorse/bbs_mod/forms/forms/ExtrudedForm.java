@@ -9,7 +9,7 @@ import mchorse.bbs_mod.utils.colors.Color;
 public class ExtrudedForm extends Form
 {
     public final ValueLink texture = new ValueLink("texture", null);
-    public final ValueColor color = new ValueColor("color", Color.white());
+    public final ValueColor color = new ValueColor("color", new Color(1F, 1F, 1F, 0F));
     public final ValueBoolean billboard = new ValueBoolean("billboard", false);
     public final ValueBoolean shading = new ValueBoolean("shading", true);
 

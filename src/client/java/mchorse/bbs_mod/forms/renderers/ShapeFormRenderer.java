@@ -163,7 +163,14 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             BBSModClient.getTextures().bindTexture(ParticleScheme.DEFAULT_TEXTURE);
         }
 
-        Color finalColor = this.resolveAppearanceColor(new Color(this.form.color.get().r, this.form.color.get().g, this.form.color.get().b, this.form.color.get().a));
+        Color finalColor = this.resolveAppearanceColor(this.form.color.get().copyWithBlendIntensity());
+
+        this.form.applyFormOpacity(finalColor);
+
+        if (finalColor.a <= 0.001F && !BBSRendering.isIrisShadowPass())
+        {
+            return;
+        }
 
         if (!this.evaluator.irisAttributeNodes.isEmpty())
         {
@@ -230,7 +237,10 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean lighting = this.form.lighting.get();
-            boolean depthWrite = this.form.renderDepthEnabled.get();
+            boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(c.a);
+            boolean depthWrite = afterFluids
+                ? ShaderOpacityPatch.shouldWriteDepthForOpacity(c.a)
+                : this.form.renderDepthEnabled.get();
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
             double distanceSq = 0D;
 
@@ -265,7 +275,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
             if (opacityPatch)
             {
-                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, deferredDraw);
+                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, afterFluids, deferredDraw);
             }
             else
             {

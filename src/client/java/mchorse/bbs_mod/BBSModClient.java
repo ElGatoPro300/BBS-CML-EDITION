@@ -99,6 +99,7 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
@@ -683,6 +684,13 @@ public class BBSModClient implements ClientModInitializer
                     stack.pop();
                 }
             }
+        });
+
+        /* Soft-opacity forms wait until water/lava/portals are drawn; flush here (not inside
+         * renderLayer) so WorldRenderer's pose stack stays balanced. */
+        WorldRenderEvents.AFTER_TRANSLUCENT.register((context) ->
+        {
+            ShaderOpacityPatch.onAfterTranslucentTerrain();
         });
 
         WorldRenderEvents.LAST.register((context) ->

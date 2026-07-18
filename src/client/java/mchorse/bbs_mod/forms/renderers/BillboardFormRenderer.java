@@ -217,9 +217,15 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         MatrixStack.Entry entry = matrices.peek();
 
-        color.mul(this.form.color.get());
+        color.mul(this.form.color.get().copyWithBlendIntensity());
+        this.form.applyFormOpacity(color);
         color.a *= alphaFactor;
-            FormColorBlend.finishShadowOpacity(color, deferContext != null && deferContext.isShadowPass);
+        FormColorBlend.finishShadowOpacity(color, deferContext != null && deferContext.isShadowPass);
+
+        if (color.a <= 0.001F && (deferContext == null || !deferContext.isShadowPass) && !BBSRendering.isIrisShadowPass())
+        {
+            return;
+        }
 
         /* Main pass: negative paint only; positive paint is drawn in a separate overlay pass */
         PaintSettings paintSettings = this.form.paintSettings.get();
@@ -321,7 +327,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean emitGlowSnapshot = glowIntensity > 0F && !glowSettings.resolvePaintOnly();
-            boolean depthWrite = this.form.renderDepthEnabled.get();
+            boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(color.a);
+            boolean depthWrite = afterFluids
+                ? ShaderOpacityPatch.shouldWriteDepthForOpacity(color.a)
+                : this.form.renderDepthEnabled.get();
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, deferContext == null ? null : deferContext.renderDepthFrame);
             double distanceSq = 0D;
             /* Iris entity_translucent (opacity-patched): pack lighting/shadows, soft alpha.
@@ -412,7 +421,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             if (opacityPatch)
             {
                 /* Same sorted post-deferred queue as models — render depth low→high, before VL. */
-                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, deferredDraw);
+                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, afterFluids, deferredDraw);
             }
             else
             {

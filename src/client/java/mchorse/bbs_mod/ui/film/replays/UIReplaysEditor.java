@@ -201,7 +201,8 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         COLORS.put("pose_overlay", Colors.ORANGE);
         COLORS.put("transform", Colors.GREEN);
         COLORS.put("transform_overlay", 0xaaff00);
-        COLORS.put("color", Colors.INACTIVE);
+        COLORS.put("color", Colors.RED);
+        COLORS.put("opacity", 0xFF88AACC);
         COLORS.put("paint_color", Colors.INACTIVE);
         COLORS.put("paint", Colors.INACTIVE);
         COLORS.put("glow", Colors.YELLOW);
@@ -271,6 +272,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         ICONS.put("pose", Icons.POSE);
         ICONS.put("transform", Icons.ALL_DIRECTIONS);
         ICONS.put("color", Icons.BUCKET);
+        ICONS.put("opacity", Icons.VISIBLE);
         ICONS.put("paint_color", Icons.BUCKET);
         ICONS.put("paint", Icons.BUCKET);
         ICONS.put("glow", Icons.LIGHT);
@@ -1442,8 +1444,8 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "death_time", "using_item", "item_use_time", "fire", "particles", "active_hand", "fall", "sneaking", "riding", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "render", "lighting", "render_depth", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "look_at", "inverse_kinematics", "illusion", "illusion_transform", "color", "paint", "paint_color", "glow", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
-    private static final Set<String> HIDDEN_MODEL_PROPERTIES = Set.of("glowing_color", "glow_settings", "glow_intensity", "paint_color");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "render", "lighting", "render_depth", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "look_at", "inverse_kinematics", "illusion", "illusion_transform", "color", "opacity", "paint", "paint_color", "glow", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final Set<String> HIDDEN_MODEL_PROPERTIES = Set.of("glowing_color", "glow_settings", "glow_intensity", "paint_color", "paint");
 
     private static boolean isFormItemUseTimeTrack(UIKeyframeSheet sheet)
     {
@@ -1687,6 +1689,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return UIKeys.FILM_REPLAY_TRACK_COLOR;
         }
 
+        if (trackName.equals("opacity"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_OPACITY;
+        }
+
         if (trackName.equals("render_depth"))
         {
             return UIKeys.FORMS_EDITORS_GENERAL_RENDER_DEPTH;
@@ -1908,6 +1915,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             properties.add("visible");
             properties.add("render");
             properties.add("color");
+            properties.add("opacity");
             properties.add("transform");
             properties.add("transform_overlay");
 
@@ -1916,7 +1924,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 properties.add("transform_overlay" + i);
             }
 
-            properties.add("paint");
             properties.add("glow");
 
             this.replay.properties.getOrCreate(DUMMY_FORM, "render");
@@ -2087,8 +2094,9 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 if (name.equals("biome_id")) return 62;
                 if (name.equals("structure_light")) return 63;
                 if (name.equals("color")) return 64;
-                if (name.equals("paint_color") || name.equals("paint")) return 65;
-                if (name.equals("glow") || name.equals("glow_settings")) return 66;
+                if (name.equals("opacity")) return 65;
+                if (name.equals("paint_color") || name.equals("paint")) return 66;
+                if (name.equals("glow") || name.equals("glow_settings")) return 67;
                 if (name.equals("texture")) return 68;
                 if (name.equals("pbr_normal_intensity")) return 69;
                 if (name.equals("pbr_specular_intensity")) return 70;

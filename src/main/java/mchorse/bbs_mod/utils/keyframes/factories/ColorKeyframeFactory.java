@@ -54,7 +54,8 @@ public class ColorKeyframeFactory implements IKeyframeFactory<Color>
     @Override
     public Color createEmpty()
     {
-        return new Color().set(Colors.WHITE);
+        /* Form Color track stores blend intensity in alpha; default 0 = no tint. */
+        return new Color(1F, 1F, 1F, 0F);
     }
 
     @Override

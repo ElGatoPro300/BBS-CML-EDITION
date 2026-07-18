@@ -238,119 +238,122 @@ public abstract class BaseFilmController
 
         stack.push();
 
-        if (relative)
+        try
         {
-            if (!context.isShadowPass)
+            if (relative)
             {
-                stack.peek().getPositionMatrix().identity();
-                stack.peek().getNormalMatrix().identity();
+                if (!context.isShadowPass)
+                {
+                    stack.peek().getPositionMatrix().identity();
+                    stack.peek().getNormalMatrix().identity();
+                }
+
+                if (context.map == null)
+                {
+                    stack.multiply(camera.getRotation());
+                }
+            }
+
+            MatrixStackUtils.multiply(stack, target);
+
+            ModelFormRenderer lookAtRenderer = relative ? null : applyLookAtPose(context, form, position);
+
+            if (context.isShadowPass)
+            {
+                if (context.shadowOpacity <= 0.001F || (context.shadowRadiusX <= 0F && context.shadowRadiusZ <= 0F))
+                {
+                    return;
+                }
+
+                PaintSettings paint = form.paintSettings.get();
+                Color legacyPaint = form.paintColor.get();
+                float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
+
+                /* Paint's effectiveShaderShadow() returns SHADER_SHADOW_FIX_BUG (0.005) when paint
+                 * is active — that value is only a Complementary workaround flag, not caster alpha.
+                 * Under ShaderOpacityPatch, shadow.glsl dither-discards by vertex alpha, so scaling
+                 * by 0.005 would erase painted model shadows. Keep replay/form opacity only. */
+                if (paint.resolveIntensity(legacyPaint) != 0F
+                    && !mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.isActive())
+                {
+                    shadowAlpha *= paint.effectiveShaderShadow(legacyPaint);
+                }
+
+                formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
+
+                if (context.shadowOffsetX != 0F || context.shadowOffsetY != 0F || context.shadowOffsetZ != 0F)
+                {
+                    stack.translate(context.shadowOffsetX, context.shadowOffsetY, context.shadowOffsetZ);
+                }
+
+                /* Independent X/Z scale from default radius 0.5 — stretch wide or long under Iris. */
+                float scaleX = Math.max(0.001F, context.shadowRadiusX / 0.5F);
+                float scaleZ = Math.max(0.001F, context.shadowRadiusZ / 0.5F);
+
+                if (Math.abs(scaleX - 1F) > 0.001F || Math.abs(scaleZ - 1F) > 0.001F)
+                {
+                    stack.scale(scaleX, 1F, scaleZ);
+                }
+            }
+
+            FormUtilsClient.render(form, formContext);
+
+            if (!context.isShadowPass && context.map == null && entity.getFireTicks() > 0)
+            {
+                MorphFireRenderer.render(stack, context.consumers, entity, form, transition, camera, relative);
             }
 
             if (context.map == null)
             {
-                stack.multiply(camera.getRotation());
-            }
-        }
-
-        MatrixStackUtils.multiply(stack, target);
-
-        ModelFormRenderer lookAtRenderer = relative ? null : applyLookAtPose(context, form, position);
-
-        if (context.isShadowPass)
-        {
-            if (context.shadowOpacity <= 0.001F || (context.shadowRadiusX <= 0F && context.shadowRadiusZ <= 0F))
-            {
-                stack.pop();
-
-                return;
+                renderIllusions(context, form, formContext, stack);
             }
 
-            PaintSettings paint = form.paintSettings.get();
-            Color legacyPaint = form.paintColor.get();
-            float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
-
-            /* Paint's effectiveShaderShadow() returns SHADER_SHADOW_FIX_BUG (0.005) when paint
-             * is active — that value is only a Complementary workaround flag, not caster alpha.
-             * Under ShaderOpacityPatch, shadow.glsl dither-discards by vertex alpha, so scaling
-             * by 0.005 would erase painted model shadows. Keep replay/form opacity only. */
-            if (paint.resolveIntensity(legacyPaint) != 0F
-                && !mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.isActive())
+            if (lookAtRenderer != null)
             {
-                shadowAlpha *= paint.effectiveShaderShadow(legacyPaint);
+                lookAtRenderer.setLookAtPose(null);
             }
 
-            formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
-
-            if (context.shadowOffsetX != 0F || context.shadowOffsetY != 0F || context.shadowOffsetZ != 0F)
+            if (UIBaseMenu.renderAxes)
             {
-                stack.translate(context.shadowOffsetX, context.shadowOffsetY, context.shadowOffsetZ);
-            }
-
-            /* Independent X/Z scale from default radius 0.5 — stretch wide or long under Iris. */
-            float scaleX = Math.max(0.001F, context.shadowRadiusX / 0.5F);
-            float scaleZ = Math.max(0.001F, context.shadowRadiusZ / 0.5F);
-
-            if (Math.abs(scaleX - 1F) > 0.001F || Math.abs(scaleZ - 1F) > 0.001F)
-            {
-                stack.scale(scaleX, 1F, scaleZ);
-            }
-        }
-
-        FormUtilsClient.render(form, formContext);
-
-        if (!context.isShadowPass && context.map == null && entity.getFireTicks() > 0)
-        {
-            MorphFireRenderer.render(stack, context.consumers, entity, form, transition, camera, relative);
-        }
-
-        if (context.map == null)
-        {
-            renderIllusions(context, form, formContext, stack);
-        }
-
-        if (lookAtRenderer != null)
-        {
-            lookAtRenderer.setLookAtPose(null);
-        }
-
-        if (UIBaseMenu.renderAxes)
-        {
-            if (context.bone != null && !context.local)
-            {
-                Form root = FormUtils.getRoot(form);
-                MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
-                MatrixCacheEntry entry = map.get(context.bone);
-
-                Matrix4f matrix = entry.origin();
-
-                if (matrix == null)
+                if (context.bone != null && !context.local)
                 {
-                    matrix = entry.matrix();
-                }
+                    Form root = FormUtils.getRoot(form);
+                    MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
+                    MatrixCacheEntry entry = map.get(context.bone);
 
-                if (matrix != null)
-                {
-                    stack.push();
-                    MatrixStackUtils.multiply(stack, matrix);
+                    Matrix4f matrix = entry.origin();
 
-                    if (context.map == null)
+                    if (matrix == null)
                     {
-                        BaseFilmController.renderGizmo(stack, null);
-                    }
-                    else
-                    {
-                        BaseFilmController.renderGizmo(stack, context.map);
+                        matrix = entry.matrix();
                     }
 
-                    RenderSystem.enableDepthTest();
-                    stack.pop();
-                }
-            }
-            if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
-            if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
-        }
+                    if (matrix != null)
+                    {
+                        stack.push();
+                        MatrixStackUtils.multiply(stack, matrix);
 
-        stack.pop();
+                        if (context.map == null)
+                        {
+                            BaseFilmController.renderGizmo(stack, null);
+                        }
+                        else
+                        {
+                            BaseFilmController.renderGizmo(stack, context.map);
+                        }
+
+                        RenderSystem.enableDepthTest();
+                        stack.pop();
+                    }
+                }
+                if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
+                if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
+            }
+        }
+        finally
+        {
+            stack.pop();
+        }
 
         /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map
          * and per-replay opacity is applied in the Iris shadow pass above. */
@@ -581,16 +584,23 @@ public abstract class BaseFilmController
                 int a = Math.round(((baseColor >>> 24) & 0xFF) * mainAlpha);
 
                 stack.push();
-                stack.translate(x, y, z);
 
-                if (partial != null)
+                try
                 {
-                    MatrixStackUtils.multiply(stack, partial.createMatrix());
-                }
+                    stack.translate(x, y, z);
 
-                formContext.color((a << 24) | (baseColor & Colors.RGB));
-                FormUtilsClient.render(form, formContext);
-                stack.pop();
+                    if (partial != null)
+                    {
+                        MatrixStackUtils.multiply(stack, partial.createMatrix());
+                    }
+
+                    formContext.color((a << 24) | (baseColor & Colors.RGB));
+                    FormUtilsClient.render(form, formContext);
+                }
+                finally
+                {
+                    stack.pop();
+                }
             }
 
             if (distortFactor > 0F)
@@ -745,16 +755,23 @@ public abstract class BaseFilmController
             float stretch = 1F + random.nextFloat() * (0.5F + distortFactor);
 
             stack.push();
-            stack.translate(x + jx, y + yPos * (1F - squash), z + jz);
 
-            if (partial != null)
+            try
             {
-                MatrixStackUtils.multiply(stack, partial.createMatrix());
-            }
+                stack.translate(x + jx, y + yPos * (1F - squash), z + jz);
 
-            stack.scale(stretch, squash, stretch);
-            FormUtilsClient.render(form, formContext);
-            stack.pop();
+                if (partial != null)
+                {
+                    MatrixStackUtils.multiply(stack, partial.createMatrix());
+                }
+
+                stack.scale(stretch, squash, stretch);
+                FormUtilsClient.render(form, formContext);
+            }
+            finally
+            {
+                stack.pop();
+            }
         }
     }
 
@@ -2182,19 +2199,7 @@ public abstract class BaseFilmController
 
     private boolean isSemiTransparent(Form form)
     {
-        if (form == null)
-        {
-            return false;
-        }
-
-        BaseValue colorValue = form.get("color");
-
-        if (colorValue instanceof ValueColor valueColor)
-        {
-            return valueColor.get().a < 0.999F;
-        }
-
-        return false;
+        return FormRenderDepth.isSemiTransparent(form);
     }
 
     protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity, int index)
@@ -2216,16 +2221,19 @@ public abstract class BaseFilmController
 
             filmContext.stack.push();
 
-            if (!this.applyGroupProperties(replay, filmContext))
+            try
+            {
+                if (!this.applyGroupProperties(replay, filmContext))
+                {
+                    return;
+                }
+
+                renderEntity(filmContext);
+            }
+            finally
             {
                 filmContext.stack.pop();
-
-                return;
             }
-
-            renderEntity(filmContext);
-
-            filmContext.stack.pop();
         }
     }
 

@@ -715,8 +715,8 @@ public class BBSSettings
 
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
-        complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", false);
-        bslOpacityFix = builder.getBoolean("bsl_opacity_fix", false);
+        complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", true);
+        bslOpacityFix = builder.getBoolean("bsl_opacity_fix", true);
         shaderShadowOpacity = builder.getFloat("shader_shadow_opacity", 1F, 0F, 1F);
 
         builder.category("fluid_simulation");

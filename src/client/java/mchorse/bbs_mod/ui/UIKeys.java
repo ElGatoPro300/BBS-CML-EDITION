@@ -281,6 +281,9 @@ public class UIKeys
     public static final IKey COLOR_CONTEXT_FAVORITES_REMOVE = L10n.lang("bbs.ui.color.context.favorites.remove");
     public static final IKey COLOR_FAVORITE = L10n.lang("bbs.ui.color.favorite");
     public static final IKey COLOR_RECENT = L10n.lang("bbs.ui.color.recent");
+    public static final IKey COLOR_MODE_RGB = L10n.lang("bbs.ui.color.mode.rgb");
+    public static final IKey COLOR_MODE_HSV = L10n.lang("bbs.ui.color.mode.hsv");
+    public static final IKey COLOR_MODE_HEX = L10n.lang("bbs.ui.color.mode.hex");
     public static final IKey CONFIG_TITLE = L10n.lang("bbs.ui.config.title");
     public static final IKey CONFIG_APPLY = L10n.lang("bbs.ui.config.apply");
     public static final IKey CONFIG_CANCEL = L10n.lang("bbs.ui.config.cancel");
@@ -659,6 +662,10 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_GENERAL = L10n.lang("bbs.ui.forms.editors.general");
     public static final IKey FORMS_EDITOR_GIZMO_TOOLBAR_HINT = L10n.lang("bbs.ui.forms.editor.gizmo_toolbar.hint");
     public static final IKey FORMS_EDITORS_PAINT_COLOR = L10n.lang("bbs.ui.forms.editors.paint_color");
+    public static final IKey FORMS_EDITORS_BLEND_COLOR = L10n.lang("bbs.ui.forms.editors.blend_color");
+    public static final IKey FORMS_EDITORS_BLEND_INTENSITY = L10n.lang("bbs.ui.forms.editors.blend_intensity");
+    public static final IKey FORMS_EDITORS_COLOR_TRANSFORM = L10n.lang("bbs.ui.forms.editors.color_transform");
+    public static final IKey FORMS_EDITORS_COLOR_TRANSFORM_HIDE = L10n.lang("bbs.ui.forms.editors.color_transform_hide");
     public static final IKey FORMS_EDITORS_PAINT_INTENSITY = L10n.lang("bbs.ui.forms.editors.paint_intensity");
     public static final IKey FORMS_EDITORS_PAINT_SHAPE = L10n.lang("bbs.ui.forms.editors.paint_shape");
     public static final IKey FORMS_EDITORS_PAINT_SHAPE_BOX = L10n.lang("bbs.ui.forms.editors.paint_shape_box");
@@ -869,6 +876,8 @@ public class UIKeys
     public static final IKey FILM_REPLAY_TRACK_TRANSFORM = L10n.lang("bbs.ui.film.replay.track.transform");
     public static final IKey FILM_REPLAY_TRACK_ANCHOR = L10n.lang("bbs.ui.film.replay.track.anchor");
     public static final IKey FILM_REPLAY_TRACK_COLOR = L10n.lang("bbs.ui.film.replay.track.color");
+    public static final IKey FILM_REPLAY_TRACK_OPACITY = L10n.lang("bbs.ui.film.replay.track.opacity");
+    public static final IKey FILM_REPLAY_OPACITY_NO_SHADING = L10n.lang("bbs.ui.film.replay.opacity.no_shading");
     public static final IKey FILM_REPLAY_TRACK_TEXTURE = L10n.lang("bbs.ui.film.replay.track.texture");
     public static final IKey FILM_REPLAY_TRACK_MODEL = L10n.lang("bbs.ui.film.replay.track.model");
     public static final IKey FILM_REPLAY_TRACK_ACTIONS = L10n.lang("bbs.ui.film.replay.track.actions");

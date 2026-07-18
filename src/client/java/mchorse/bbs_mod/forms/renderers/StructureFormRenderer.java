@@ -252,7 +252,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             this.lastLightIntensity = currentLightIntensityUi;
         }
 
-        Color tint = this.form.color.get().copy();
+        Color tint = this.form.color.get().copyWithBlendIntensity();
+
+        this.form.applyFormOpacity(tint);
         GlowSettings glowSettings = this.form.glowSettings.get();
         Color legacyGlow = this.form.glowingColor.get();
         float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
@@ -447,32 +449,42 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         context.stack.push();
 
-        /* Apply structure scale */
-        context.stack.scale(this.form.scaleX.get(), this.form.scaleY.get(), this.form.scaleZ.get());
-
-        boolean optimize = true;
-        boolean picking = context.isPicking();
-
-        IModelVAO vao = this.getStructureVao();
-
-        StructureLightSettings sl = this.form.structureLight.getRuntimeValue();
-        boolean currentEmitLight = (sl != null) ? sl.enabled : this.form.emitLight.get();
-        int currentLightIntensity = (sl != null) ? sl.intensity : this.form.lightIntensity.get();
-
-        if (currentEmitLight != this.lastEmitLight || currentLightIntensity != this.lastLightIntensity)
+        try
         {
-            this.vaoDirty = true;
-            this.lastEmitLight = currentEmitLight;
-            this.lastLightIntensity = currentLightIntensity;
-        }
+            /* Apply structure scale */
+            context.stack.scale(this.form.scaleX.get(), this.form.scaleY.get(), this.form.scaleZ.get());
 
-        if (optimize && (vao == null || this.vaoDirty))
-        {
-            this.buildStructureVAO();
-            vao = this.getStructureVao();
-        }
+            boolean optimize = true;
+            boolean picking = context.isPicking();
 
-        Color tint3D = this.form.color.get().copy();
+            IModelVAO vao = this.getStructureVao();
+
+            StructureLightSettings sl = this.form.structureLight.getRuntimeValue();
+            boolean currentEmitLight = (sl != null) ? sl.enabled : this.form.emitLight.get();
+            int currentLightIntensity = (sl != null) ? sl.intensity : this.form.lightIntensity.get();
+
+            if (currentEmitLight != this.lastEmitLight || currentLightIntensity != this.lastLightIntensity)
+            {
+                this.vaoDirty = true;
+                this.lastEmitLight = currentEmitLight;
+                this.lastLightIntensity = currentLightIntensity;
+            }
+
+            if (optimize && (vao == null || this.vaoDirty))
+            {
+                this.buildStructureVAO();
+                vao = this.getStructureVao();
+            }
+
+            Color tint3D = this.form.color.get().copyWithBlendIntensity();
+
+            this.form.applyFormOpacity(tint3D);
+
+            if (tint3D.a <= 0.001F && !picking)
+            {
+                return;
+            }
+
         GlowSettings glowSettings = this.form.glowSettings.get();
         Color legacyGlow = this.form.glowingColor.get();
         float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
@@ -685,8 +697,12 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             RenderSystem.depthFunc(GL11.GL_LEQUAL);
         }
 
-        CustomVertexConsumerProvider.clearRunnables();
-        context.stack.pop();
+            CustomVertexConsumerProvider.clearRunnables();
+        }
+        finally
+        {
+            context.stack.pop();
+        }
     }
 
     private static class RenderInfo
@@ -865,7 +881,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             /* of the structure, so alpha is applied even to solid/cutout geometry. */
             /* In shaders mode (useEntityLayers=true) use the translucent entity variant WITH CULL */
             /* to preserve culling and avoid double faces with packs. */
-            globalAlpha = this.form.color.get().a;
+            globalAlpha = this.form.getFormOpacity();
 
             if (globalAlpha < 0.999F)
             {
@@ -946,7 +962,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                         /* Apply global tint/alpha and force translucent layer on cutout layers */
                         /* so Block Entities also respect opacity. */
                         beProvider = FormUtilsClient.getProvider();
-                        beProvider.setSubstitute(BBSRendering.getColorConsumer(this.form.color.get()));
+                        beProvider.setSubstitute(BBSRendering.getColorConsumer(this.resolveStructureBlendColor()));
 
                         try
                         {
@@ -1005,7 +1021,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 : RenderLayer.getTranslucentMovingBlock();
 
             /* If global alpha exists, prefer translucent entity layer in shaders to ensure smooth fade */
-            globalAlphaAnim = this.form.color.get().a;
+            globalAlphaAnim = this.form.getFormOpacity();
 
             if (globalAlphaAnim < 0.999F)
             {
@@ -1081,7 +1097,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
             /* If there is global opacity (<1), force translucent layer so alpha */
             /* applies to materials originally cutout/cull and they don't "disappear". */
-            globalAlpha = this.form.color.get().a;
+            globalAlpha = this.form.getFormOpacity();
 
             if (globalAlpha < 0.999F)
             {
@@ -1103,6 +1119,15 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         RenderSystem.disableBlend();
         /* Reset global color state (Sodium/Iris) to avoid UI tinting */
         RecolorVertexConsumer.newColor = null;
+    }
+
+    private Color resolveStructureBlendColor()
+    {
+        Color tint = this.form.color.get().copyWithBlendIntensity();
+
+        this.form.applyFormOpacity(tint);
+
+        return tint;
     }
 
     private Function<VertexConsumer, VertexConsumer> getMainConsumer(Color color, Color resolvedPaint)
@@ -1519,7 +1544,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                     /* Apply global tint always to Block Entities, isolating the provider. */
                     beProvider = FormUtilsClient.getProvider();
-                    beProvider.setSubstitute(BBSRendering.getColorConsumer(this.form.color.get()));
+                    beProvider.setSubstitute(BBSRendering.getColorConsumer(this.resolveStructureBlendColor()));
 
                     try
                     {
@@ -1675,7 +1700,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         try
         {
-            Function<VertexConsumer, VertexConsumer> captureRecolor = BBSRendering.getColorConsumer(this.form.color.get());
+            Function<VertexConsumer, VertexConsumer> captureRecolor = BBSRendering.getColorConsumer(this.resolveStructureBlendColor());
 
             this.renderStructureCulledWorld(captureContext, captureStack, provider, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, useEntityLayers, captureRecolor, false, false);
         }
@@ -1742,7 +1767,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         try
         {
-            Function<VertexConsumer, VertexConsumer> captureRecolor = BBSRendering.getColorConsumer(this.form.color.get());
+            Function<VertexConsumer, VertexConsumer> captureRecolor = BBSRendering.getColorConsumer(this.resolveStructureBlendColor());
 
             this.renderStructureCulledWorld(captureContext, captureStack, provider, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, useEntityLayers, captureRecolor, false, false);
         }

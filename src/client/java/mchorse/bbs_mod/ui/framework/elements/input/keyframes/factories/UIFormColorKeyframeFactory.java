@@ -1,0 +1,379 @@
+package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
+
+import mchorse.bbs_mod.film.replays.FormProperties;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragEndEvent;
+import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragStartEvent;
+import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UIEffectTransformCollapse;
+import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.keyframes.Keyframe;
+import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
+import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
+
+import java.util.List;
+import java.util.function.Consumer;
+
+/**
+ * Film Color track: Blend Color (RGB + intensity + Transform) and Paint Color (RGB + intensity + Transform).
+ */
+public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
+{
+    private UIColor blendColor;
+    private UITrackpad blendIntensity;
+    private UIEffectTransformCollapse blendTransform;
+    private UIColor paintColor;
+    private UITrackpad paintIntensity;
+    private UIEffectTransformCollapse paintTransform;
+    private UIToggle spectrum;
+
+    public UIFormColorKeyframeFactory(Keyframe<Color> keyframe, UIKeyframes editor)
+    {
+        super(keyframe, editor);
+
+        this.blendColor = new UIColor((c) -> this.applyColorEdit((color) ->
+        {
+            Color value = Color.rgb(c);
+            float intensity = color.a;
+
+            color.set(value.r, value.g, value.b, intensity);
+        }));
+        this.blendColor.setColor(keyframe.getValue().getRGBColor());
+
+        this.blendIntensity = new UITrackpad((value) -> this.applyColorEdit((color) ->
+            color.a = MathUtils.clamp(value.floatValue(), 0F, 1F)));
+        this.blendIntensity.limit(0F, 1F).values(0.1D, 0.05D, 0.2D);
+        this.blendIntensity.tooltip(UIKeys.FORMS_EDITORS_BLEND_INTENSITY);
+        this.wireUndo(this.blendIntensity);
+
+        this.blendTransform = new UIEffectTransformCollapse((apply) -> this.applyColorEdit((color) ->
+        {
+            if (color.transform == null)
+            {
+                color.transform = new EffectTransform();
+            }
+
+            apply.accept(color.transform);
+        }));
+        this.blendTransform.registerUndo(editor);
+
+        this.paintColor = new UIColor((c) -> this.applyPaintEdit((settings) -> this.setPaintColor(settings, c)));
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+
+        this.paintIntensity = new UITrackpad((value) -> this.applyPaintEdit((settings) ->
+            settings.intensity = PaintSettings.clampIntensity(value.floatValue())));
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
+        this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+
+        this.paintTransform = new UIEffectTransformCollapse((apply) -> this.applyPaintEdit((settings) ->
+        {
+            if (settings.transform == null)
+            {
+                settings.transform = new EffectTransform();
+            }
+
+            apply.accept(settings.transform);
+        }));
+        /* Paint lives on a hidden channel (not a timeline sheet); undo via color-sheet
+         * cache/submit would not capture paint and was snapping the intensity bar back. */
+
+        this.spectrum = new UIToggle(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM, (b) -> this.setSpectrum(b.getValue()));
+        this.spectrum.tooltip(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM_TOOLTIP);
+        this.spectrum.setValue(keyframe.isSpectrum());
+
+        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_BLEND_COLOR).marginTop(4));
+        this.scroll.add(this.blendColor);
+        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_BLEND_INTENSITY), this.blendIntensity);
+        this.scroll.add(this.blendTransform);
+        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR).marginTop(4));
+        this.scroll.add(this.paintColor);
+        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY), this.paintIntensity);
+        this.scroll.add(this.paintTransform);
+        this.scroll.add(this.spectrum.marginTop(8));
+
+        this.update();
+    }
+
+    private void wireUndo(UITrackpad trackpad)
+    {
+        trackpad.getEvents().register(UITrackpadDragStartEvent.class, (e) -> this.editor.cacheKeyframes());
+        trackpad.getEvents().register(UITrackpadDragEndEvent.class, (e) -> this.editor.submitKeyframes());
+    }
+
+    @Override
+    public void update()
+    {
+        super.update();
+
+        this.syncLiveColorKeyframe();
+
+        Color value = this.getOrCreateColor(this.keyframe.getValue());
+        PaintSettings paint = this.getPaintSettingsAtTick(this.keyframe.getTick());
+
+        this.blendColor.setColor(value.getRGBColor());
+        this.blendIntensity.setValue(MathUtils.clamp(value.a, 0F, 1F));
+        this.blendTransform.setEffectTransform(value.transform);
+        this.paintColor.setColor(new Color().set(paint.r, paint.g, paint.b, 1F).getRGBColor());
+        this.paintIntensity.setValue(paint.intensity);
+        this.paintTransform.setEffectTransform(paint.transform);
+        this.spectrum.setValue(this.keyframe.isSpectrum());
+    }
+
+    /**
+     * {@link UIKeyframes#submitKeyframes()} replaces channel keyframe instances. Keep
+     * {@link #keyframe} pointed at the live selected color keyframe so Blend intensity
+     * is not read back from an orphaned copy (which made Paint edits appear to revert it).
+     */
+    @SuppressWarnings("unchecked")
+    private void syncLiveColorKeyframe()
+    {
+        if (this.editor == null || this.keyframe == null)
+        {
+            return;
+        }
+
+        UIKeyframeSheet colorSheet = null;
+
+        for (UIKeyframeSheet sheet : this.editor.getGraph().getSheets())
+        {
+            if (sheet.channel.getFactory() == KeyframeFactories.COLOR && "color".equals(sheet.id))
+            {
+                colorSheet = sheet;
+
+                break;
+            }
+        }
+
+        if (colorSheet == null)
+        {
+            return;
+        }
+
+        List selected = colorSheet.selection.getSelected();
+
+        if (!selected.isEmpty())
+        {
+            this.keyframe = (Keyframe<Color>) selected.get(0);
+
+            return;
+        }
+
+        float tick = this.keyframe.getTick();
+
+        for (Object kfObj : colorSheet.channel.getKeyframes())
+        {
+            Keyframe<?> kf = (Keyframe<?>) kfObj;
+
+            if (Math.abs(kf.getTick() - tick) < 0.001F && kf.getValue() instanceof Color)
+            {
+                this.keyframe = (Keyframe<Color>) kf;
+
+                return;
+            }
+        }
+    }
+
+    private Color getOrCreateColor(Color color)
+    {
+        if (color == null)
+        {
+            color = Color.white();
+        }
+
+        if (color.transform == null)
+        {
+            color.transform = new EffectTransform();
+        }
+
+        return color;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyColorEdit(Consumer<Color> editor)
+    {
+        this.syncLiveColorKeyframe();
+
+        boolean[] applied = {false};
+
+        UIReplaysEditorUtils.forEachSelectedKeyframe(this.editor, this.keyframe, (selected) ->
+        {
+            applied[0] = true;
+            this.keyframe = (Keyframe<Color>) (Keyframe<?>) selected;
+
+            Color color = this.getOrCreateColor((Color) selected.getValue());
+
+            selected.preNotify();
+            editor.accept(color);
+            selected.postNotify();
+        });
+
+        if (!applied[0])
+        {
+            Color color = this.getOrCreateColor(this.keyframe.getValue());
+
+            this.keyframe.preNotify();
+            editor.accept(color);
+            this.keyframe.postNotify();
+        }
+    }
+
+    private void applyPaintEdit(Consumer<PaintSettings> editor)
+    {
+        KeyframeChannel<PaintSettings> channel = this.resolvePaintChannel();
+
+        if (channel == null)
+        {
+            return;
+        }
+
+        this.syncLiveColorKeyframe();
+
+        float tick = this.keyframe.getTick();
+        PaintSettings base = this.getPaintSettingsAt(channel, tick);
+        int index = channel.insert(tick, base);
+        Keyframe<PaintSettings> paintKeyframe = channel.get(index);
+
+        if (paintKeyframe == null)
+        {
+            paintKeyframe = this.findPaintKeyframe(channel, tick);
+        }
+
+        if (paintKeyframe == null)
+        {
+            return;
+        }
+
+        paintKeyframe.preNotify();
+        editor.accept(this.getOrCreatePaint(paintKeyframe.getValue()));
+        paintKeyframe.getValue().applyAutoShaderShadow();
+        paintKeyframe.postNotify();
+
+        this.refreshPaintFields(paintKeyframe.getValue());
+    }
+
+    private void refreshPaintFields(PaintSettings paint)
+    {
+        PaintSettings value = this.getOrCreatePaint(paint);
+
+        this.paintColor.setColor(new Color().set(value.r, value.g, value.b, 1F).getRGBColor());
+        this.paintIntensity.setValue(value.intensity);
+        this.paintTransform.setEffectTransform(value.transform);
+    }
+
+    private PaintSettings getPaintSettingsAtTick(float tick)
+    {
+        KeyframeChannel<PaintSettings> channel = this.resolvePaintChannel();
+
+        if (channel == null)
+        {
+            return new PaintSettings();
+        }
+
+        return this.getPaintSettingsAt(channel, tick);
+    }
+
+    private PaintSettings getPaintSettingsAt(KeyframeChannel<PaintSettings> channel, float tick)
+    {
+        PaintSettings settings = channel.interpolate(tick);
+
+        if (settings == null)
+        {
+            settings = new PaintSettings();
+        }
+        else
+        {
+            settings = settings.copy();
+        }
+
+        return this.getOrCreatePaint(settings);
+    }
+
+    private PaintSettings getOrCreatePaint(PaintSettings settings)
+    {
+        if (settings == null)
+        {
+            return new PaintSettings();
+        }
+
+        if (settings.transform == null)
+        {
+            settings.transform = new EffectTransform();
+        }
+
+        return settings;
+    }
+
+    @SuppressWarnings("unchecked")
+    private KeyframeChannel<PaintSettings> resolvePaintChannel()
+    {
+        UIReplaysEditor replays = this.editor.getParent(UIReplaysEditor.class);
+
+        if (replays == null || replays.getReplay() == null)
+        {
+            return null;
+        }
+
+        Form form = replays.getReplay().form.get();
+        FormProperties properties = replays.getReplay().properties;
+        KeyframeChannel channel = properties.getOrCreate(form, "paint");
+
+        if (channel != null && channel.getFactory() == KeyframeFactories.PAINT_SETTINGS)
+        {
+            return (KeyframeChannel<PaintSettings>) channel;
+        }
+
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Keyframe<PaintSettings> findPaintKeyframe(KeyframeChannel<PaintSettings> channel, float tick)
+    {
+        for (Object kfObj : channel.getKeyframes())
+        {
+            Keyframe<?> kf = (Keyframe<?>) kfObj;
+
+            if (Math.abs(kf.getTick() - tick) < 0.001F && kf.getValue() instanceof PaintSettings)
+            {
+                return (Keyframe<PaintSettings>) kf;
+            }
+        }
+
+        return null;
+    }
+
+    private void setPaintColor(PaintSettings settings, int c)
+    {
+        Color color = new Color().set(c);
+
+        settings.r = color.r;
+        settings.g = color.g;
+        settings.b = color.b;
+    }
+
+    private void setSpectrum(boolean value)
+    {
+        boolean[] applied = {false};
+
+        UIReplaysEditorUtils.forEachSelectedKeyframe(this.editor, this.keyframe, (selected) ->
+        {
+            applied[0] = true;
+            selected.setSpectrum(value);
+        });
+
+        if (!applied[0])
+        {
+            this.keyframe.setSpectrum(value);
+        }
+    }
+}

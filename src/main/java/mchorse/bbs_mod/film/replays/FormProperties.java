@@ -274,9 +274,14 @@ public class FormProperties extends ValueGroup
                 this.applyIllusionTextureBlend(form, segment);
             }
 
-            if ("color".equals(id))
+            if ("opacity".equals(id))
             {
                 form.noshadingOpacity.setRuntimeValue(segment.getClosest().isNoshadingOpacity());
+            }
+            else if ("color".equals(id) && segment.getClosest().isNoshadingOpacity())
+            {
+                /* Legacy films stored noshading on Color keyframes before Opacity presets. */
+                form.noshadingOpacity.setRuntimeValue(true);
             }
 
             if (blend < 1F)
@@ -305,7 +310,7 @@ public class FormProperties extends ValueGroup
                 form.illusionTextureBlend = null;
             }
 
-            if ("color".equals(id))
+            if ("opacity".equals(id))
             {
                 form.noshadingOpacity.setRuntimeValue(null);
             }
@@ -819,6 +824,46 @@ public class FormProperties extends ValueGroup
                 }
 
                 this.remove(paintColorChannel);
+            }
+        }
+        catch (Throwable ignored) {}
+
+        /* Migration: color.a -> opacity channel (Blend Color keeps RGB on color) */
+        try
+        {
+            KeyframeChannel<?> opacityAny = this.properties.get("opacity");
+            KeyframeChannel<?> colorAny = this.properties.get("color");
+
+            if (opacityAny == null && colorAny != null && colorAny.getFactory() == KeyframeFactories.COLOR)
+            {
+                @SuppressWarnings("unchecked")
+                KeyframeChannel<Color> colorChannel = (KeyframeChannel<Color>) colorAny;
+                KeyframeChannel<Float> opacity = new KeyframeChannel<>("opacity", KeyframeFactories.FLOAT);
+
+                opacity.setModel(true);
+
+                boolean migrated = false;
+
+                for (Object kfObj : colorChannel.getKeyframes())
+                {
+                    Keyframe<?> kf = (Keyframe<?>) kfObj;
+                    Object v = kf.getValue();
+
+                    if (v instanceof Color color)
+                    {
+                        float a = color.a;
+
+                        opacity.insert(kf.getTick(), a);
+                        color.a = 1F;
+                        migrated = true;
+                    }
+                }
+
+                if (migrated)
+                {
+                    this.properties.put("opacity", opacity);
+                    this.add(opacity);
+                }
             }
         }
         catch (Throwable ignored) {}

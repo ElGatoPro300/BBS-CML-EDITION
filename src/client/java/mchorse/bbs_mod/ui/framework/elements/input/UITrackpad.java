@@ -67,6 +67,7 @@ public class UITrackpad extends UIBaseTextbox
 
     public boolean relative;
     public boolean allowCanceling = true;
+    public boolean fitFormat = true;
     public IKey forcedLabel;
 
     /* Value dragging fields */
@@ -232,6 +233,16 @@ public class UITrackpad extends UIBaseTextbox
     public UITrackpad forcedLabel(IKey label)
     {
         this.forcedLabel = label;
+
+        return this;
+    }
+
+    /**
+     * Show the full formatted value; skip scientific / compact shortening when the field is narrow.
+     */
+    public UITrackpad plainFormat()
+    {
+        this.fitFormat = false;
 
         return this;
     }
@@ -746,7 +757,9 @@ public class UITrackpad extends UIBaseTextbox
             int textLeft = this.area.x + (showMinusArrow ? this.minusOne.w + 4 : 2);
             int textRight = this.area.ex() - (showPlusArrow ? this.plusOne.w + 4 : 2);
             int availableTextWidth = Math.max(1, textRight - textLeft);
-            String raw = this.forcedLabel != null ? this.forcedLabel.get() : this.formatToFit(font, this.value, availableTextWidth);
+            String raw = this.forcedLabel != null
+                ? this.forcedLabel.get()
+                : (this.fitFormat ? this.formatToFit(font, this.value, availableTextWidth) : format(this.value));
             String label = this.truncateToWidth(font, raw, availableTextWidth);
 
             int lx = textLeft + Math.max(0, (availableTextWidth - font.getWidth(label)) / 2);

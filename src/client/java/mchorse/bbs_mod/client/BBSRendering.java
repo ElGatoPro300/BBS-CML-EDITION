@@ -818,8 +818,9 @@ public class BBSRendering
     /**
      * True when Iris would discard/mis-composite very low form opacity; queue a BBS redraw
      * after compositing. Slight opacity (e.g. {@code #e7}/{@code #fc}) stays on Iris.
-     * When the Complementary opacity patch is active, only near-zero alpha is deferred so
-     * pack lighting stays on the Iris path.
+     * When the Complementary/BSL opacity patch is active, never take this BBS handoff —
+     * translucency stays on Iris and is flushed post-deferred after VL clouds (smooth
+     * fade through {@code #1c}/28 with lighting and render depth intact).
      */
     public static boolean needsIrisTranslucentModelDeferral(float alpha)
     {
@@ -828,20 +829,28 @@ public class BBSRendering
             return false;
         }
 
-        float ref = ShaderOpacityPatch.isActive()
-            ? ShaderOpacityPatch.LOW_ALPHA_TEST_REF
-            : TRANSLUCENT_ALPHA_DISCARD_REF;
+        if (ShaderOpacityPatch.isActive())
+        {
+            return false;
+        }
 
-        return alpha < ref;
+        return alpha < TRANSLUCENT_ALPHA_DISCARD_REF;
     }
 
     /**
-     * Opt-in paint flag: use the clean deferred opacity path at any translucent alpha
-     * (same compositing as post-{@code #1b}) without forcing neighbors off Iris lighting.
+     * Opt-in: clean deferred (BBS / no pack shading) opacity path at any translucent
+     * alpha without yanking neighbors off Iris lighting. Still applies when the
+     * Complementary/BSL opacity patch is active — that patch keeps normal opacity on
+     * Iris; No shading explicitly opts this form into the flat unlit redraw instead.
      */
     public static boolean needsIrisNoshadingOpacityDeferral(float alpha, boolean noshadingOpacity)
     {
-        return noshadingOpacity && isIrisWorldModelPass() && !isIrisShadowPass() && alpha > 0.001F && alpha < 0.999F;
+        if (!noshadingOpacity || !isIrisWorldModelPass() || isIrisShadowPass())
+        {
+            return false;
+        }
+
+        return alpha > 0.001F && alpha < 0.999F;
     }
 
     /**

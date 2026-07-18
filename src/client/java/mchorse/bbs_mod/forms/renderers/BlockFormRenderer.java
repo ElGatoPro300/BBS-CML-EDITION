@@ -72,7 +72,8 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         Color set = Color.white();
 
-        set.mul(this.form.color.get());
+        set.mul(this.form.color.get().copyWithBlendIntensity());
+        this.form.applyFormOpacity(set);
 
         GlowSettings glowSettings = this.form.glowSettings.get();
         Color legacyGlow = this.form.glowingColor.get();
@@ -122,66 +123,77 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         context.stack.push();
 
-        if (context.isPicking())
+        try
         {
-            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+            if (context.isPicking())
             {
-                this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
-            });
+                CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+                {
+                    this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                    RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
+                });
 
-            light = 0;
-        }
-        else
-        {
-            CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+                light = 0;
+            }
+            else
             {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-            });
+                CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+                {
+                    RenderSystem.enableBlend();
+                    RenderSystem.defaultBlendFunc();
+                });
+            }
+
+            color.set(context.color);
+            color.mul(this.form.color.get().copyWithBlendIntensity());
+            this.form.applyFormOpacity(color);
+
+            if (color.a <= 0.001F && !context.isShadowPass && !context.isPicking())
+            {
+                return;
+            }
+
+            GlowSettings glowSettings = this.form.glowSettings.get();
+            Color legacyGlow = this.form.glowingColor.get();
+            float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
+            boolean positiveGlow = !context.isPicking() && glowIntensity > 0F;
+
+            if (glowIntensity < 0F)
+            {
+                FormColorBlend.blendFormGlowBrighten(color, glowSettings, legacyGlow);
+            }
+
+            PaintSettings paintSettings = this.form.paintSettings.get();
+            Color legacyPaint = this.form.paintColor.get();
+            Color resolvedPaint = FormColorBlend.resolvePaintColor(paintSettings, legacyPaint);
+            boolean positivePaint = !context.isPicking() && FormColorBlend.hasPositivePaint(paintSettings, legacyPaint);
+
+            consumers.setSubstitute(this.getBlockMainConsumer(color, resolvedPaint));
+            this.renderRepeatedBlocks(context, context.stack, consumers, light, context.overlay, context.isPicking(), false, false, false);
+
+            consumers.draw();
+            consumers.setSubstitute(null);
+
+            if (positivePaint)
+            {
+                this.submitDeferredBlockPaintOverlay(context, context.stack, resolvedPaint, color.a, context.overlay, paintSettings.transform, glowSettings, legacyGlow, glowIntensity, false);
+            }
+
+            if (positiveGlow && !glowSettings.resolvePaintOnly())
+            {
+                this.renderGlowOverlay(context, context.stack, consumers, glowSettings, legacyGlow, glowIntensity, color.a, context.overlay, false);
+            }
+            else
+            {
+                CustomVertexConsumerProvider.clearRunnables();
+            }
+
+            RenderSystem.defaultBlendFunc();
         }
-
-        color.set(context.color);
-        color.mul(this.form.color.get());
-
-        GlowSettings glowSettings = this.form.glowSettings.get();
-        Color legacyGlow = this.form.glowingColor.get();
-        float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
-        boolean positiveGlow = !context.isPicking() && glowIntensity > 0F;
-
-        if (glowIntensity < 0F)
+        finally
         {
-            FormColorBlend.blendFormGlowBrighten(color, glowSettings, legacyGlow);
+            context.stack.pop();
         }
-
-        PaintSettings paintSettings = this.form.paintSettings.get();
-        Color legacyPaint = this.form.paintColor.get();
-        Color resolvedPaint = FormColorBlend.resolvePaintColor(paintSettings, legacyPaint);
-        boolean positivePaint = !context.isPicking() && FormColorBlend.hasPositivePaint(paintSettings, legacyPaint);
-
-        consumers.setSubstitute(this.getBlockMainConsumer(color, resolvedPaint));
-        this.renderRepeatedBlocks(context, context.stack, consumers, light, context.overlay, context.isPicking(), false, false, false);
-
-        consumers.draw();
-        consumers.setSubstitute(null);
-
-        if (positivePaint)
-        {
-            this.submitDeferredBlockPaintOverlay(context, context.stack, resolvedPaint, color.a, context.overlay, paintSettings.transform, glowSettings, legacyGlow, glowIntensity, false);
-        }
-
-        if (positiveGlow && !glowSettings.resolvePaintOnly())
-        {
-            this.renderGlowOverlay(context, context.stack, consumers, glowSettings, legacyGlow, glowIntensity, color.a, context.overlay, false);
-        }
-        else
-        {
-            CustomVertexConsumerProvider.clearRunnables();
-        }
-
-        RenderSystem.defaultBlendFunc();
-
-        context.stack.pop();
 
         RenderSystem.enableDepthTest();
     }

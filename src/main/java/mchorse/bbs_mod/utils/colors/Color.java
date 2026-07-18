@@ -124,6 +124,30 @@ public class Color
         return this;
     }
 
+    /**
+     * Treats {@link #a} as blend tint strength (0 = no tint / white, 1 = full RGB).
+     * Writes lerped RGB in place and sets alpha to 1 so form opacity stays independent.
+     */
+    public Color applyBlendIntensity()
+    {
+        float intensity = MathUtils.clamp(this.a, 0F, 1F);
+
+        this.r = Lerps.lerp(1F, this.r, intensity);
+        this.g = Lerps.lerp(1F, this.g, intensity);
+        this.b = Lerps.lerp(1F, this.b, intensity);
+        this.a = 1F;
+
+        return this;
+    }
+
+    /**
+     * Copy with {@link #applyBlendIntensity()} applied. Safe for rendering without mutating storage.
+     */
+    public Color copyWithBlendIntensity()
+    {
+        return this.copy().applyBlendIntensity();
+    }
+
     public boolean hasActiveTransform()
     {
         return this.transform != null && this.transform.isActive();

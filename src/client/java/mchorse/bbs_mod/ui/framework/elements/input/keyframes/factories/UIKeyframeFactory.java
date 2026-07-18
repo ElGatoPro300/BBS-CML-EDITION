@@ -143,6 +143,27 @@ public abstract class UIKeyframeFactory <T> extends UIElement
 
                 return new UIBossBarColorKeyframeFactory(colorKeyframe, editor);
             }
+
+            if (sheet != null && "color".equals(sheet.id))
+            {
+                @SuppressWarnings("unchecked")
+                Keyframe<Color> colorKeyframe = (Keyframe<Color>) keyframe;
+
+                return new UIFormColorKeyframeFactory(colorKeyframe, editor);
+            }
+        }
+
+        if (keyframe.getFactory() == KeyframeFactories.FLOAT && editor != null)
+        {
+            UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
+
+            if (sheet != null && "opacity".equals(sheet.id))
+            {
+                @SuppressWarnings("unchecked")
+                Keyframe<Float> opacityKeyframe = (Keyframe<Float>) keyframe;
+
+                return new UIOpacityKeyframeFactory(opacityKeyframe, editor);
+            }
         }
 
         IUIKeyframeFactoryFactory<T> factory = FACTORIES.get(keyframe.getFactory());

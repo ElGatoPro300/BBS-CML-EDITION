@@ -167,38 +167,44 @@ public abstract class FormRenderer <T extends Form>
         {
             context.world.push();
         }
-        this.applyTransforms(context.stack, false, context.getTransition());
-        if (context.world != null)
+
+        try
         {
-            this.applyTransforms(context.world, false, context.getTransition());
+            this.applyTransforms(context.stack, false, context.getTransition());
+            if (context.world != null)
+            {
+                this.applyTransforms(context.world, false, context.getTransition());
+            }
+
+            float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
+            int u = context.light & '\uffff';
+            int v = context.light >> 16 & '\uffff';
+
+            u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
+            context.light = u | v << 16;
+
+            this.render3D(context);
+
+            if (isPicking)
+            {
+                this.updateStencilMap(context);
+            }
+
+            this.renderBodyParts(context);
         }
-
-        float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
-        int u = context.light & '\uffff';
-        int v = context.light >> 16 & '\uffff';
-
-        u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
-        context.light = u | v << 16;
-
-        this.render3D(context);
-
-        if (isPicking)
+        finally
         {
-            this.updateStencilMap(context);
+            context.stack.pop();
+            if (context.world != null)
+            {
+                context.world.pop();
+            }
+
+            context.light = light;
+            context.color = savedColor;
+
+            this.form.unapplyStates();
         }
-
-        this.renderBodyParts(context);
-
-        context.stack.pop();
-        if (context.world != null)
-        {
-            context.world.pop();
-        }
-
-        context.light = light;
-        context.color = savedColor;
-
-        this.form.unapplyStates();
     }
 
     protected void applyTransforms(MatrixStack stack, boolean origin, float transition)
@@ -345,22 +351,31 @@ public abstract class FormRenderer <T extends Form>
         if (part.getForm() != null)
         {
             context.stack.push();
+
             if (context.world != null)
             {
                 context.world.push();
             }
-            MatrixStackUtils.applyTransform(context.stack, part.transform.get());
-            if (context.world != null)
+
+            try
             {
-                MatrixStackUtils.applyTransform(context.world, part.transform.get());
+                MatrixStackUtils.applyTransform(context.stack, part.transform.get());
+
+                if (context.world != null)
+                {
+                    MatrixStackUtils.applyTransform(context.world, part.transform.get());
+                }
+
+                FormUtilsClient.render(part.getForm(), context);
             }
-
-            FormUtilsClient.render(part.getForm(), context);
-
-            context.stack.pop();
-            if (context.world != null)
+            finally
             {
-                context.world.pop();
+                context.stack.pop();
+
+                if (context.world != null)
+                {
+                    context.world.pop();
+                }
             }
         }
 

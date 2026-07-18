@@ -31,6 +31,7 @@ import mchorse.bbs_mod.settings.values.misc.ValuePaintSettings;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -69,6 +70,12 @@ public abstract class Form extends ValueGroup
      * other models' pack shading.
      */
     public final ValueBoolean noshadingOpacity = new ValueBoolean("noshading_opacity", false);
+
+    /**
+     * Form display opacity (film Opacity track). Multiplied with {@code color.a} when rendering.
+     * Blend Color keeps RGB on {@code color}; this float owns soft fades independently.
+     */
+    public final ValueFloat opacity = new ValueFloat("opacity", 1F, 0F, 1F);
 
     /* FS-style paint overlay: paintSettings controls color and intensity; paintColor is kept for backward compatibility */
     public final ValueColor paintColor = new ValueColor("paint_color", new Color().set(1F, 1F, 1F, 0F));
@@ -162,6 +169,7 @@ public abstract class Form extends ValueGroup
         this.add(this.inverseKinematics);
         this.add(this.shaderShadow);
         this.add(this.noshadingOpacity);
+        this.add(this.opacity);
         this.add(this.paintColor);
         this.add(this.paintSettings);
         this.add(this.glowingColor);
@@ -524,7 +532,45 @@ public abstract class Form extends ValueGroup
 
             /* Compatibility with state triggers */
             FormUtils.readOldStateTriggers(this, map);
+
+            /* Split legacy color.a into opacity when the form had no opacity field yet. */
+            if (!map.has("opacity"))
+            {
+                BaseValue colorValue = this.get("color");
+
+                if (colorValue instanceof ValueColor valueColor)
+                {
+                    Color color = valueColor.get().copy();
+
+                    if (color.a < 0.999F)
+                    {
+                        this.opacity.set(MathUtils.clamp(color.a, 0F, 1F));
+                        color.a = 1F;
+                        valueColor.set(color);
+                    }
+                }
+            }
         }
+    }
+
+    public float getFormOpacity()
+    {
+        return MathUtils.clamp(this.opacity.get(), 0F, 1F);
+    }
+
+    /**
+     * Multiplies {@code color.a} by the Opacity track. Blend Color stores tint strength in
+     * {@code color.a}; call {@link Color#applyBlendIntensity()} first so RGB is resolved and
+     * opacity stays independent.
+     */
+    public void applyFormOpacity(Color color)
+    {
+        if (color == null)
+        {
+            return;
+        }
+
+        color.a = MathUtils.clamp(color.a * this.getFormOpacity(), 0F, 1F);
     }
 
     @Override

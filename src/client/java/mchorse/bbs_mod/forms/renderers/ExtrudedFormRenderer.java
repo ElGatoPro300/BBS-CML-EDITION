@@ -162,10 +162,16 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             Color color = Colors.COLOR.set(overlayColor, true);
             GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-            Color formColor = this.form.color.get();
+            Color formColor = this.form.color.get().copyWithBlendIntensity();
 
             color.mul(formColor);
+            this.form.applyFormOpacity(color);
             FormColorBlend.finishShadowOpacity(color, BBSRendering.isIrisShadowPass());
+
+            if (color.a <= 0.001F && !BBSRendering.isIrisShadowPass())
+            {
+                return;
+            }
 
             GlowSettings glow = this.form.glowSettings.get();
             Color legacyGlow = this.form.glowingColor.get();
@@ -333,8 +339,10 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, renderContext != null && renderContext.renderDepthFrame != null))
             {
-                /* Entity-local matrices only — submitPostDeferredForm restores camera ModelView. */
-                Matrix4f positionMatrix = new Matrix4f(matrices.peek().getPositionMatrix());
+                boolean irisCamera = BBSRendering.isIrisWorldModelPass() && !bbsModelShader;
+                Matrix4f positionMatrix = irisCamera
+                    ? new Matrix4f(matrices.peek().getPositionMatrix())
+                    : ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(matrices.peek().getPositionMatrix()));
                 Matrix3f normalMatrix = new Matrix3f(matrices.peek().getNormalMatrix());
                 Color colorSnapshot = color.copy();
                 Color paintSnapshot = paintColor.copy();
@@ -349,15 +357,15 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 Color resolvedGlowSnapshot = resolvedGlow.copy();
                 Color legacyGlowSnapshot = legacyGlow.copy();
                 Link textureSnapshot = texture;
-                Supplier<ShaderProgram> shaderSnapshot = renderShader;
+                Supplier<ShaderProgram> shaderSnapshot = irisCamera ? renderShader : BBSShaders::getModel;
                 int overlayLight = light;
                 int overlayOverlay = overlay;
                 EffectTransform paintTransformQueued = paintTransformSnapshot;
                 Vector3f paintMaskHalfQueued = paintMaskHalfSnapshot;
                 double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
-                boolean depthWrite = true;
-
-                ShaderOpacityPatch.submitPostDeferredForm(sortDepth, 0D, depthWrite, () ->
+                boolean depthWrite = ShaderOpacityPatch.shouldWriteDepthForOpacity(opacityAlpha);
+                boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(opacityAlpha);
+                Runnable deferredDraw = () ->
                 {
                     MatrixStack overlayStack = new MatrixStack();
 
@@ -493,7 +501,16 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                         ModelVAORenderer.clearGlowing();
                         ModelVAORenderer.clearTextureBlend();
                     }
-                });
+                };
+
+                if (irisCamera)
+                {
+                    ShaderOpacityPatch.submitPostDeferredForm(sortDepth, 0D, depthWrite, afterFluids, deferredDraw);
+                }
+                else
+                {
+                    ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, 0D, depthWrite, afterFluids, deferredDraw);
+                }
 
                 ModelVAORenderer.clearPaintEffectTransform();
                 ModelVAORenderer.clearPaint();
@@ -501,6 +518,27 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             }
             else
             {
+            boolean forceDepth = ShaderOpacityPatch.shouldForceLiveDepthWrite(opacityAlpha);
+            boolean suppressDepth = ShaderOpacityPatch.shouldSuppressDepthWrite(opacityAlpha);
+            boolean savedDepthMask = false;
+
+            if (forceDepth || suppressDepth)
+            {
+                savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+                RenderSystem.enableDepthTest();
+
+                if (forceDepth)
+                {
+                    ShaderOpacityPatch.setForceLiveDepthWrite(true);
+                    RenderSystem.depthMask(true);
+                }
+                else
+                {
+                    ShaderOpacityPatch.setSuppressLiveDepthWrite(true);
+                    RenderSystem.depthMask(false);
+                }
+            }
+
             if (stripMainPassGlow)
             {
                 GlowSettings glowOff = glow.copy();
@@ -511,17 +549,6 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             else if (hasGlow)
             {
                 ModelVAORenderer.setGlow(glow, resolvedGlow.r, resolvedGlow.g, resolvedGlow.b, legacyGlow);
-            }
-
-            boolean forceDepth = ShaderOpacityPatch.shouldForceLiveDepthWrite(opacityAlpha);
-            boolean savedDepthMask = false;
-
-            if (forceDepth)
-            {
-                savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
-                ShaderOpacityPatch.setForceLiveDepthWrite(true);
-                RenderSystem.enableDepthTest();
-                RenderSystem.depthMask(true);
             }
 
             try
@@ -694,6 +721,11 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 if (forceDepth)
                 {
                     ShaderOpacityPatch.setForceLiveDepthWrite(false);
+                    RenderSystem.depthMask(savedDepthMask);
+                }
+                else if (suppressDepth)
+                {
+                    ShaderOpacityPatch.setSuppressLiveDepthWrite(false);
                     RenderSystem.depthMask(savedDepthMask);
                 }
             }

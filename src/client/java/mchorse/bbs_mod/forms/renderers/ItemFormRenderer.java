@@ -72,7 +72,8 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         Color set = Color.white();
 
-        set.mul(this.form.color.get());
+        set.mul(this.form.color.get().copyWithBlendIntensity());
+        this.form.applyFormOpacity(set);
 
         GlowSettings glowSettings = this.form.glowSettings.get();
         Color legacyGlow = this.form.glowingColor.get();
@@ -125,13 +126,35 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         ModelTransformationMode mode = this.getRenderMode(useDroppedMode);
 
         context.stack.push();
-        this.applyDroppedAnimation(context, useDroppedMode);
 
-        boolean deferFlush = ItemBodyPartBatch.isDeferringFlush();
-
-        if (!deferFlush)
+        try
         {
-            if (context.isPicking())
+            this.applyDroppedAnimation(context, useDroppedMode);
+
+            boolean deferFlush = ItemBodyPartBatch.isDeferringFlush();
+
+            if (!deferFlush)
+            {
+                if (context.isPicking())
+                {
+                    CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+                    {
+                        this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                        RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
+                    });
+
+                    light = 0;
+                }
+                else
+                {
+                    CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+                    {
+                        RenderSystem.enableBlend();
+                        RenderSystem.defaultBlendFunc();
+                    });
+                }
+            }
+            else if (context.isPicking())
             {
                 CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
                 {
@@ -141,89 +164,79 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
                 light = 0;
             }
-            else
+
+            BlockFormRenderer.color.set(context.color);
+            BlockFormRenderer.color.mul(this.form.color.get().copyWithBlendIntensity());
+            this.form.applyFormOpacity(BlockFormRenderer.color);
+
+            if (BlockFormRenderer.color.a <= 0.001F && !context.isShadowPass && !context.isPicking())
             {
-                CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-                {
-                    RenderSystem.enableBlend();
-                    RenderSystem.defaultBlendFunc();
-                });
+                return;
             }
-        }
-        else if (context.isPicking())
-        {
-            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+
+            GlowSettings glowSettings = this.form.glowSettings.get();
+            Color legacyGlow = this.form.glowingColor.get();
+            float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
+            boolean positiveGlow = !context.isPicking() && glowIntensity > 0F;
+
+            if (glowIntensity < 0F)
             {
-                this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
-            });
+                FormColorBlend.blendFormGlowBrighten(BlockFormRenderer.color, glowSettings, legacyGlow);
+            }
 
-            light = 0;
+            PaintSettings paintSettings = this.form.paintSettings.get();
+            Color legacyPaint = this.form.paintColor.get();
+            Color resolvedPaint = FormColorBlend.resolvePaintColor(paintSettings, legacyPaint);
+            boolean positivePaint = !context.isPicking() && FormColorBlend.hasPositivePaint(paintSettings, legacyPaint);
+
+            consumers.setSubstitute(this.getMainConsumer(BlockFormRenderer.color, resolvedPaint));
+
+            ItemStack itemStack = this.form.stack.get();
+            double usingItemValue = this.form.usingItem.get();
+            double itemUseTimeValue = this.form.itemUseTime.get();
+            LivingEntity itemEntity = null;
+
+            if (usingItemValue > 0D || itemUseTimeValue > 0D)
+            {
+                StubEntity stub = new StubEntity(context.entity.getWorld());
+
+                stub.setUsingItem(usingItemValue > 0D);
+                stub.setItemUseTimeLeft((int) itemUseTimeValue);
+                stub.setEquipmentStack(EquipmentSlot.MAINHAND, itemStack);
+                itemEntity = ItemUseRenderState.prepareProxy(context.entity.getWorld(), stub, EquipmentSlot.MAINHAND, itemStack);
+            }
+
+            boolean leftHand = mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND;
+
+            this.renderItem(context, context.stack, consumers, light, context.overlay, mode, leftHand, itemEntity);
+
+            if (!deferFlush)
+            {
+                consumers.draw();
+            }
+
+            consumers.setSubstitute(null);
+
+            if (positivePaint)
+            {
+                this.submitDeferredItemPaintOverlay(context, context.stack, resolvedPaint, BlockFormRenderer.color.a, context.overlay, mode, leftHand, itemEntity, paintSettings.transform, glowSettings, legacyGlow, glowIntensity, false);
+            }
+
+            if (positiveGlow && !glowSettings.resolvePaintOnly())
+            {
+                this.renderGlowOverlay(context, context.stack, consumers, glowSettings, legacyGlow, glowIntensity, BlockFormRenderer.color.a, context.overlay, false, mode, itemEntity, leftHand);
+            }
+            else if (!deferFlush)
+            {
+                CustomVertexConsumerProvider.clearRunnables();
+            }
+
+            RenderSystem.defaultBlendFunc();
         }
-
-        BlockFormRenderer.color.set(context.color);
-        BlockFormRenderer.color.mul(this.form.color.get());
-
-        GlowSettings glowSettings = this.form.glowSettings.get();
-        Color legacyGlow = this.form.glowingColor.get();
-        float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
-        boolean positiveGlow = !context.isPicking() && glowIntensity > 0F;
-
-        if (glowIntensity < 0F)
+        finally
         {
-            FormColorBlend.blendFormGlowBrighten(BlockFormRenderer.color, glowSettings, legacyGlow);
+            context.stack.pop();
         }
-
-        PaintSettings paintSettings = this.form.paintSettings.get();
-        Color legacyPaint = this.form.paintColor.get();
-        Color resolvedPaint = FormColorBlend.resolvePaintColor(paintSettings, legacyPaint);
-        boolean positivePaint = !context.isPicking() && FormColorBlend.hasPositivePaint(paintSettings, legacyPaint);
-
-        consumers.setSubstitute(this.getMainConsumer(BlockFormRenderer.color, resolvedPaint));
-
-        ItemStack itemStack = this.form.stack.get();
-        double usingItemValue = this.form.usingItem.get();
-        double itemUseTimeValue = this.form.itemUseTime.get();
-        LivingEntity itemEntity = null;
-
-        if (usingItemValue > 0D || itemUseTimeValue > 0D)
-        {
-            StubEntity stub = new StubEntity(context.entity.getWorld());
-
-            stub.setUsingItem(usingItemValue > 0D);
-            stub.setItemUseTimeLeft((int) itemUseTimeValue);
-            stub.setEquipmentStack(EquipmentSlot.MAINHAND, itemStack);
-            itemEntity = ItemUseRenderState.prepareProxy(context.entity.getWorld(), stub, EquipmentSlot.MAINHAND, itemStack);
-        }
-
-        boolean leftHand = mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND;
-
-        this.renderItem(context, context.stack, consumers, light, context.overlay, mode, leftHand, itemEntity);
-
-        if (!deferFlush)
-        {
-            consumers.draw();
-        }
-
-        consumers.setSubstitute(null);
-
-        if (positivePaint)
-        {
-            this.submitDeferredItemPaintOverlay(context, context.stack, resolvedPaint, BlockFormRenderer.color.a, context.overlay, mode, leftHand, itemEntity, paintSettings.transform, glowSettings, legacyGlow, glowIntensity, false);
-        }
-
-        if (positiveGlow && !glowSettings.resolvePaintOnly())
-        {
-            this.renderGlowOverlay(context, context.stack, consumers, glowSettings, legacyGlow, glowIntensity, BlockFormRenderer.color.a, context.overlay, false, mode, itemEntity, leftHand);
-        }
-        else if (!deferFlush)
-        {
-            CustomVertexConsumerProvider.clearRunnables();
-        }
-
-        RenderSystem.defaultBlendFunc();
-
-        context.stack.pop();
 
         RenderSystem.enableDepthTest();
     }
