@@ -21,8 +21,8 @@ public class ImageOverlay
 
     public int x;
     public int y;
-    public int width;
-    public int height;
+    public float width;
+    public float height;
     public float anchorX;
     public float anchorY;
     public float windowX;
@@ -45,7 +45,7 @@ public class ImageOverlay
         this.textureBlend = textureBlend;
     }
 
-    public void updateLayout(int x, int y, int width, int height, float anchorX, float anchorY, float windowX, float windowY, float opacity)
+    public void updateLayout(int x, int y, float width, float height, float anchorX, float anchorY, float windowX, float windowY, float opacity)
     {
         this.x = x;
         this.y = y;

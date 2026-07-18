@@ -153,8 +153,8 @@ public class ImageClip extends CameraClip
         this.overlay.updateLayout(
             (int) Math.round(this.valueDouble(this.x, this.uniform.x, t, 0D)),
             (int) Math.round(this.valueDouble(this.y, this.uniform.y, t, 0D)),
-            (int) Math.round(this.valueDouble(this.width, this.uniform.width, t, 100D)),
-            (int) Math.round(this.valueDouble(this.height, this.uniform.height, t, 100D)),
+            (float) this.valueDouble(this.width, this.uniform.width, t, 100D),
+            (float) this.valueDouble(this.height, this.uniform.height, t, 100D),
             (float) this.valueDouble(this.anchorX, this.uniform.anchorX, t, 0.5D),
             (float) this.valueDouble(this.anchorY, this.uniform.anchorY, t, 0.5D),
             (float) this.valueDouble(this.windowX, this.uniform.windowX, t, 0.5D),
