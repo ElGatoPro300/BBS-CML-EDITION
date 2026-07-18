@@ -52,13 +52,9 @@ public class ScreenNodeEvaluator extends ShapeGraphEvaluator
             }
             else if (node instanceof VignetteEffectNode)
             {
-                effect.vignetteStrength = (float) (this.getInput(node.id, 0, 0, 0, 0, time) * factor);
-                /* Unconnected smoothness used to become 0, which makes the color-grade
-                 * shader's smoothstep(1,1,dist) produce zero alpha (invisible vignette).
-                 * Default 0.5 matches ColorGradeRenderer / VignetteClip empty-channel feel. */
-                effect.vignetteSmoothness = this.hasInput(node.id, 1)
-                    ? (float) this.getInput(node.id, 1, 0, 0, 0, time) : 0.5F;
-                effect.vignetteColor = this.hasInput(node.id, 2)
+                effect.vignetteStrength   = (float) (this.getInput(node.id, 0, 0, 0, 0, time) * factor);
+                effect.vignetteSmoothness = (float) this.getInput(node.id, 1, 0, 0, 0, time);
+                effect.vignetteColor      = this.hasInput(node.id, 2)
                     ? (int) this.getInput(node.id, 2, 0, 0, 0, time) : Colors.A100;
             }
             else if (node instanceof GrainEffectNode)
