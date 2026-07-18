@@ -80,6 +80,7 @@ public class ModelVAORenderer
     private static final Matrix4f paintEffectInverse = new Matrix4f();
     private static final Vector3f paintMaskHalf = new Vector3f(EffectTransformMath.MODEL_MASK_HALF_BASE);
     private static final Matrix4f overlayFormRootInverse = new Matrix4f();
+    private static float paintMaskShape;
     private static boolean paintEffectActive;
     private static boolean paintMaskBottomAnchored = true;
     private static boolean suppressShapeKeyMainPassGlow;
@@ -730,6 +731,7 @@ public class ModelVAORenderer
 
         EffectTransformMath.buildInverseMatrix(transform, paintEffectInverse);
         paintEffectActive = EffectTransformMath.isTransformActive(transform);
+        paintMaskShape = transform == null || transform.shape == null ? 0F : transform.shape.id;
 
         if (maskHalf != null)
         {
@@ -749,6 +751,7 @@ public class ModelVAORenderer
         paintEffectInverse.identity();
         paintEffectActive = false;
         paintMaskBottomAnchored = true;
+        paintMaskShape = 0F;
         paintMaskHalf.set(EffectTransformMath.MODEL_MASK_HALF_BASE, EffectTransformMath.MODEL_MASK_HALF_BASE * EffectTransformMath.MODEL_MASK_Y_BIAS, EffectTransformMath.MODEL_MASK_HALF_BASE);
     }
 
@@ -889,6 +892,13 @@ public class ModelVAORenderer
         if (paintMaskBottomAnchoredUniform != null)
         {
             paintMaskBottomAnchoredUniform.set(paintMaskBottomAnchored ? 1F : 0F);
+        }
+
+        GlUniform paintMaskShapeUniform = shader.getUniform("PaintMaskShape");
+
+        if (paintMaskShapeUniform != null)
+        {
+            paintMaskShapeUniform.set(paintMaskShape);
         }
 
         /* After Iris composite, RenderSystem fog is often collapsed (FogEnd≈1) or left as

@@ -1,9 +1,11 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
+import mchorse.bbs_mod.forms.forms.utils.PaintMaskShape;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIEffectKeyframeTransform;
@@ -12,6 +14,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragEndEvent;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragStartEvent;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
@@ -19,6 +22,7 @@ import java.util.function.Consumer;
 
 public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSettings>
 {
+    private UIIcons shapeIcons;
     private UIEffectKeyframeTransform transform;
     private UIColor paintColor;
     private UITrackpad intensity;
@@ -27,6 +31,20 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
     public UIPaintSettingsKeyframeFactory(Keyframe<PaintSettings> keyframe, UIKeyframes editor)
     {
         super(keyframe, editor);
+
+        this.shapeIcons = new UIIcons((b) -> this.applyPaintEdit((settings) ->
+        {
+            if (settings.transform == null)
+            {
+                settings.transform = new EffectTransform();
+            }
+
+            settings.transform.shape = PaintMaskShape.fromId(b.getValue());
+        }));
+        this.shapeIcons.add(Icons.SQUARE, UIKeys.FORMS_EDITORS_PAINT_SHAPE_BOX);
+        this.shapeIcons.add(Icons.CIRCLE, UIKeys.FORMS_EDITORS_PAINT_SHAPE_CIRCLE);
+        this.shapeIcons.add(Icons.TRIANGLE, UIKeys.FORMS_EDITORS_PAINT_SHAPE_TRIANGLE);
+        this.shapeIcons.h(20);
 
         this.transform = new UIEffectKeyframeTransform((apply) -> this.applyPaintEdit((settings) -> apply.accept(settings.transform)));
         this.transform.registerUndo(editor);
@@ -43,6 +61,7 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
         this.spectrum.tooltip(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM_TOOLTIP);
         this.spectrum.setValue(keyframe.isSpectrum());
 
+        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_SHAPE), this.shapeIcons);
         this.scroll.add(this.transform);
         this.scroll.add(UI.row(UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR), this.paintColor).marginTop(8));
         this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY), this.intensity);
@@ -63,8 +82,10 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
         super.update();
 
         PaintSettings value = this.getOrCreateSettings(this.keyframe.getValue());
+        EffectTransform effect = value.transform == null ? new EffectTransform() : value.transform;
 
-        this.transform.setEffectTransform(value.transform);
+        this.shapeIcons.setValue(effect.shape == null ? 0 : effect.shape.id);
+        this.transform.setEffectTransform(effect);
         this.paintColor.setColor(new Color().set(value.r, value.g, value.b, 1F).getRGBColor());
         this.intensity.setValue(value.intensity);
         this.spectrum.setValue(this.keyframe.isSpectrum());

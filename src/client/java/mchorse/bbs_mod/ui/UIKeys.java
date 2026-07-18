@@ -660,6 +660,10 @@ public class UIKeys
     public static final IKey FORMS_EDITOR_GIZMO_TOOLBAR_HINT = L10n.lang("bbs.ui.forms.editor.gizmo_toolbar.hint");
     public static final IKey FORMS_EDITORS_PAINT_COLOR = L10n.lang("bbs.ui.forms.editors.paint_color");
     public static final IKey FORMS_EDITORS_PAINT_INTENSITY = L10n.lang("bbs.ui.forms.editors.paint_intensity");
+    public static final IKey FORMS_EDITORS_PAINT_SHAPE = L10n.lang("bbs.ui.forms.editors.paint_shape");
+    public static final IKey FORMS_EDITORS_PAINT_SHAPE_BOX = L10n.lang("bbs.ui.forms.editors.paint_shape_box");
+    public static final IKey FORMS_EDITORS_PAINT_SHAPE_CIRCLE = L10n.lang("bbs.ui.forms.editors.paint_shape_circle");
+    public static final IKey FORMS_EDITORS_PAINT_SHAPE_TRIANGLE = L10n.lang("bbs.ui.forms.editors.paint_shape_triangle");
     public static final IKey FORMS_EDITORS_COLOR_NOSHADING_OPACITY = L10n.lang("bbs.ui.forms.editors.color_noshading_opacity");
     public static final IKey FORMS_EDITORS_COLOR_NOSHADING_OPACITY_TOOLTIP = L10n.lang("bbs.ui.forms.editors.color_noshading_opacity-tooltip");
     public static final IKey FORMS_EDITORS_PAINT_SYNC = L10n.lang("bbs.ui.forms.editors.paint_sync");
