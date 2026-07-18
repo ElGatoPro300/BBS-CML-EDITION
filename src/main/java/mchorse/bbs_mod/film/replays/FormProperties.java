@@ -175,6 +175,7 @@ public class FormProperties extends ValueGroup
                         poseTransform.scale.mul(1F + (transform.scale.x - 1F) * blend, 1F + (transform.scale.y - 1F) * blend, 1F + (transform.scale.z - 1F) * blend);
                         poseTransform.rotate.add(transform.rotate.x * blend, transform.rotate.y * blend, transform.rotate.z * blend);
                         poseTransform.rotate2.add(transform.rotate2.x * blend, transform.rotate2.y * blend, transform.rotate2.z * blend);
+                        poseTransform.pivot.add(transform.pivot.x * blend, transform.pivot.y * blend, transform.pivot.z * blend);
                     }
                     else
                     {
@@ -182,6 +183,7 @@ public class FormProperties extends ValueGroup
                         poseTransform.scale.mul(transform.scale);
                         poseTransform.rotate.add(transform.rotate);
                         poseTransform.rotate2.add(transform.rotate2);
+                        poseTransform.pivot.add(transform.pivot);
                     }
 
                     PoseTransform sourcePose = null;
