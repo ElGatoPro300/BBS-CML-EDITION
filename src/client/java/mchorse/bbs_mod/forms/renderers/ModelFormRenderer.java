@@ -391,7 +391,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Link texture = link == null ? model.texture : link;
             Color color = Color.white();
 
-            color.mul(this.form.color.get());
+            if (this.shouldBakeFormColor(model))
+            {
+                color.mul(this.form.color.get());
+            }
 
             float scale = this.form.uiScale.get() * model.uiScale;
 
@@ -500,8 +503,20 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (stencilMap != null)
         {
+            Color stencilFormColor = this.form.color.get();
+            boolean stencilColorTransformActive = this.canApplyColorTransformMask(model);
+
             try
             {
+                if (stencilColorTransformActive)
+                {
+                    Vector3f colorMaskHalf = new Vector3f();
+
+                    EffectTransformMath.resolveModelMaskHalfExtents(stencilFormColor.transform, colorMaskHalf);
+                    ModelVAORenderer.setColorEffectTransform(new Matrix4f(), stencilFormColor.transform, colorMaskHalf);
+                    ModelVAORenderer.setFormColorTint(stencilFormColor.r, stencilFormColor.g, stencilFormColor.b, stencilFormColor.a);
+                }
+
                 ModelVAORenderer.clearPaint();
                 ModelVAORenderer.clearGlowing();
                 this.renderModelGeometry(newStack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);
@@ -509,6 +524,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             finally
             {
                 this.clearPBRTextureIntensity();
+                ModelVAORenderer.clearColorEffectTransform();
+                ModelVAORenderer.clearFormColorTint();
                 ModelVAORenderer.clearPaint();
                 ModelVAORenderer.clearGlowing();
             }
@@ -545,9 +562,15 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
 
+        boolean shadowPass = renderContext != null && renderContext.isShadowPass;
         boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
         boolean paintActive = this.hasAnyPaint(model);
         boolean bbsModelShader = this.usesBbsModelShader(model);
+        Color formColor = this.form.color.get();
+        /* Iris entity shaders have no ColorEffect uniforms — redraw with the BBS model shader
+         * after composite (same strategy as low-alpha / paint overlay). */
+        boolean colorTransformWanted = this.canApplyColorTransformMask(model);
+        boolean colorTransformDefer = !ui && !shadowPass && colorTransformWanted && BBSRendering.isIrisWorldModelPass();
         boolean hasGlow = this.hasAnyGlow(model);
         boolean syncedGlow = hasGlow && glow.resolveSync();
         boolean paintOnlyGlow = glow.resolvePaintOnly();
@@ -555,7 +578,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Do not gate on supportsBbsModelShaderEffects — Iris entity_translucent discards
          * below alphaTestRef (~0.1); deferred BBS redraw is Iris-only (no-shader models keep
          * the normal BBS path so mesh depth / shading stay correct). */
-        boolean shadowPass = renderContext != null && renderContext.isShadowPass;
         /* Positive glow stays on the Iris entity pass for pack emission/bloom. Occlusion
          * uses deferred queue only when another occluder (panel / other entity) is in front —
          * not when this form alone is slightly translucent (that stole Iris lighting at #fa). */
@@ -575,7 +597,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean noshadingOpacityDefer = !ui && !shadowPass
             && BBSRendering.needsIrisNoshadingOpacityDeferral(opacityAlpha, this.form.noshadingOpacity.get());
         boolean opacityDefer = lowAlphaDefer || noshadingOpacityDefer;
-        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer;
+        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer || colorTransformDefer;
+        boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel);
         boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
         boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
         /* Low-alpha Iris redraw: albedo deferred; additive overlay if somehow deferred with glow. */
@@ -626,15 +649,31 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
          * be baked into FormRootInverse or paint masks break in the orbit editor. */
         Matrix4f formRootInverse = new Matrix4f();
         Vector3f paintMaskHalf = new Vector3f();
+        Vector3f colorMaskHalf = new Vector3f();
 
         EffectTransformMath.resolveModelMaskHalfExtents(paint.transform, paintMaskHalf);
+        EffectTransformMath.resolveModelMaskHalfExtents(formColor.transform, colorMaskHalf);
 
         EffectTransform paintTransformSnapshot = paint.transform.copy();
         Vector3f paintMaskHalfSnapshot = new Vector3f(paintMaskHalf);
+        EffectTransform colorTransformSnapshot = formColor.transform.copy();
+        Vector3f colorMaskHalfSnapshot = new Vector3f(colorMaskHalf);
+        Color formColorSnapshot = formColor.copy();
 
         if (paintActive && (bbsModelShader || deferTranslucentModel))
         {
             ModelVAORenderer.setPaintEffectTransform(formRootInverse, paint.transform, paintMaskHalf);
+        }
+
+        if (colorTransformActive)
+        {
+            ModelVAORenderer.setColorEffectTransform(formRootInverse, formColor.transform, colorMaskHalf);
+            ModelVAORenderer.setFormColorTint(formColor.r, formColor.g, formColor.b, formColor.a);
+        }
+        else
+        {
+            ModelVAORenderer.clearColorEffectTransform();
+            ModelVAORenderer.clearFormColorTint();
         }
 
         try
@@ -684,6 +723,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                         try
                         {
+                            if (colorTransformActive)
+                            {
+                                ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
+                                ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
+                            }
+
                             if (paintActiveSnapshot)
                             {
                                 ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformSnapshot, paintMaskHalfSnapshot);
@@ -718,6 +763,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         }
                         finally
                         {
+                            ModelVAORenderer.clearColorEffectTransform();
+                            ModelVAORenderer.clearFormColorTint();
                             ModelVAORenderer.clearPaintEffectTransform();
                             ModelVAORenderer.clearPaint();
                             ModelVAORenderer.clearGlowing();
@@ -732,6 +779,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                             try
                             {
+                                if (colorTransformActive)
+                                {
+                                    ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
+                                    ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
+                                }
+
                                 MatrixStack overlayStack = new MatrixStack();
 
                                 overlayStack.peek().getPositionMatrix().set(positionMatrix);
@@ -741,6 +794,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                             }
                             finally
                             {
+                                ModelVAORenderer.clearColorEffectTransform();
+                                ModelVAORenderer.clearFormColorTint();
                                 ModelVAORenderer.clearPaint();
                                 ModelVAORenderer.clearGlowing();
                             }
@@ -765,9 +820,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             if (drawIrisLive)
             {
-                /* Complementary VL: only very low alpha goes post-deferred. Mid/near-opaque
-                 * stay on live Iris with depth writes so shading and ground shadows remain
-                 * (depthMask false at #f2 flattened Complementary lighting). */
+                /* Complementary VL: any translucency (e.g. #e9) goes post-deferred after
+                 * clouds so soft fades never get sky holes or clouds drawn over the mesh.
+                 * Near-opaque stays live with depth for Complementary shading. */
                 boolean filmRenderDepth = renderContext != null && renderContext.renderDepthFrame != null;
 
                 if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, filmRenderDepth))
@@ -812,6 +867,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                         try
                         {
+                            if (colorTransformActive)
+                            {
+                                ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
+                                ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
+                            }
+
                             if (paintActiveSnapshot)
                             {
                                 ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformQueued, paintMaskHalfQueued);
@@ -844,6 +905,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         }
                         finally
                         {
+                            ModelVAORenderer.clearColorEffectTransform();
+                            ModelVAORenderer.clearFormColorTint();
                             ModelVAORenderer.clearPaintEffectTransform();
                             ModelVAORenderer.clearPaint();
                             ModelVAORenderer.clearGlowing();
@@ -865,8 +928,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
                     }
 
-                    /* Iris entity_translucent often leaves depthMask false — near-opaque
-                     * (#f2+) must stamp depth for Complementary lighting / film stacking. */
+                    /* Live near-opaque only. Translucents were queued post-deferred above.
+                     * depthMask true so Complementary lighting / film stacking keep depth. */
                     boolean forceDepth = ShaderOpacityPatch.shouldForceLiveDepthWrite(opacityAlpha);
                     boolean savedDepthMask = false;
 
@@ -915,6 +978,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                     try
                     {
+                        if (colorTransformActive)
+                        {
+                            ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
+                            ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
+                        }
+
                         ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformSnapshot, paintMaskHalfSnapshot);
 
                         MatrixStack overlayStack = new MatrixStack();
@@ -940,6 +1009,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     }
                     finally
                     {
+                        ModelVAORenderer.clearColorEffectTransform();
+                        ModelVAORenderer.clearFormColorTint();
                         ModelVAORenderer.clearPaintEffectTransform();
                         ModelVAORenderer.clearPaint();
                         ModelVAORenderer.clearGlowing();
@@ -954,6 +1025,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                         try
                         {
+                            if (colorTransformActive)
+                            {
+                                ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
+                                ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
+                            }
+
                             MatrixStack overlayStack = new MatrixStack();
 
                             overlayStack.peek().getPositionMatrix().set(positionMatrix);
@@ -963,6 +1040,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         }
                         finally
                         {
+                            ModelVAORenderer.clearColorEffectTransform();
+                            ModelVAORenderer.clearFormColorTint();
                             ModelVAORenderer.clearPaint();
                             ModelVAORenderer.clearGlowing();
                         }
@@ -991,6 +1070,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                     try
                     {
+                        if (colorTransformActive)
+                        {
+                            ModelVAORenderer.setColorEffectTransform(new Matrix4f().identity(), colorTransformSnapshot, colorMaskHalfSnapshot);
+                            ModelVAORenderer.setFormColorTint(formColorSnapshot.r, formColorSnapshot.g, formColorSnapshot.b, formColorSnapshot.a);
+                        }
+
                         MatrixStack overlayStack = new MatrixStack();
 
                         overlayStack.peek().getPositionMatrix().set(positionMatrix);
@@ -1000,6 +1085,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     }
                     finally
                     {
+                        ModelVAORenderer.clearColorEffectTransform();
+                        ModelVAORenderer.clearFormColorTint();
                         ModelVAORenderer.clearPaint();
                         ModelVAORenderer.clearGlowing();
                     }
@@ -1009,6 +1096,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         finally
         {
             this.clearPBRTextureIntensity();
+            ModelVAORenderer.clearColorEffectTransform();
+            ModelVAORenderer.clearFormColorTint();
             ModelVAORenderer.clearPaintEffectTransform();
             ModelVAORenderer.clearPaint();
             ModelVAORenderer.clearGlowing();
@@ -1491,6 +1580,25 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     }
 
     /**
+     * Spatial color masks need the BBS model shader ({@code ColorEffect*} uniforms). Iris
+     * entity programs cannot apply them, so those draws are deferred to a BBS redraw.
+     */
+    private boolean canApplyColorTransformMask(ModelInstance model)
+    {
+        return model != null
+            && model.supportsBbsModelShaderEffects()
+            && this.form.color.get().hasActiveTransform();
+    }
+
+    /**
+     * Bake form color into vertex tint only when no spatial mask will be applied in-shader.
+     */
+    private boolean shouldBakeFormColor(ModelInstance model)
+    {
+        return !this.canApplyColorTransformMask(model);
+    }
+
+    /**
      * Whether glow intensity is active on the whole form or any bone.
      */
     private boolean hasAnyGlow(ModelInstance model)
@@ -1667,7 +1775,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Link texture = link == null ? model.texture : link;
             Color color = Color.white();
 
-            color.mul(this.form.color.get());
+            if (this.shouldBakeFormColor(model))
+            {
+                color.mul(this.form.color.get());
+            }
 
             for (ModelGroup group : model.getModel().getAllGroups())
             {
@@ -1738,7 +1849,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             Color color = new Color().set(context.color, true);
 
-            color.mul(this.form.color.get());
+            if (this.shouldBakeFormColor(model))
+            {
+                color.mul(this.form.color.get());
+            }
             model.model.resetPose();
 
             this.animator.applyActions(context.entity, model, context.getTransition());
@@ -1793,7 +1907,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         Color color = new Color().set(context.color, true);
 
-        color.mul(this.form.color.get());
+        if (this.shouldBakeFormColor(model))
+        {
+            color.mul(this.form.color.get());
+        }
         FormColorBlend.finishShadowOpacity(color, context.isShadowPass);
 
         if (texture != null)

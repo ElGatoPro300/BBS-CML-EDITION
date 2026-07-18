@@ -22,6 +22,13 @@ uniform float PaintEffectActive;
 uniform vec3 PaintMaskHalf;
 uniform float PaintMaskBottomAnchored;
 uniform float PaintMaskShape;
+uniform mat4 ColorEffectInverse;
+uniform float ColorEffectActive;
+uniform vec3 ColorMaskHalf;
+uniform float ColorMaskBottomAnchored;
+uniform float ColorMaskShape;
+uniform vec4 FormColorTint;
+uniform float ColorTintMasked;
 
 in float vertexDistance;
 in vec4 vertexColor;
@@ -195,11 +202,25 @@ void main()
         discard;
     }
 
-    /* Paint strength must not change geometry alpha; only texture + vertex tint define opacity. */
-    float modelAlpha = texSample.a * rawVertexColor.a * ColorModulator.a;
-
     vec4 color = texSample;
-    color *= vertexColor * ColorModulator;
+    vec4 formTint = vec4(1.0);
+
+    if (ColorTintMasked > 0.5)
+    {
+        float cmask = bbsPaintEffectMask(formRootPos, ColorEffectInverse, ColorEffectActive, ColorMaskHalf, ColorMaskBottomAnchored, ColorMaskShape);
+
+        formTint.rgb = mix(vec3(1.0), FormColorTint.rgb, cmask);
+        formTint.a = mix(1.0, FormColorTint.a, cmask);
+        color *= vertexColor * formTint * ColorModulator;
+    }
+    else
+    {
+        color *= vertexColor * ColorModulator;
+    }
+
+    /* Paint strength must not change geometry alpha; only texture + vertex tint define opacity. */
+    float modelAlpha = texSample.a * rawVertexColor.a * formTint.a * ColorModulator.a;
+
     color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
 
     float paintStrength = clamp(abs(PaintColor.a), 0.0, 1.0);

@@ -1,8 +1,11 @@
 package mchorse.bbs_mod.utils.colors;
 
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
+
+import java.util.Objects;
 
 public class Color
 {
@@ -10,6 +13,7 @@ public class Color
     public float g;
     public float b;
     public float a = 1F;
+    public EffectTransform transform = new EffectTransform();
 
     public static Color rgb(int rgb)
     {
@@ -115,8 +119,14 @@ public class Color
     public Color copy(Color color)
     {
         this.set(color.r, color.g, color.b, color.a);
+        this.transform = color.transform == null ? new EffectTransform() : color.transform.copy();
 
         return this;
+    }
+
+    public boolean hasActiveTransform()
+    {
+        return this.transform != null && this.transform.isActive();
     }
 
     public int getARGBColor()
@@ -170,6 +180,11 @@ public class Color
         this.g *= set.g;
         this.b *= set.b;
         this.a *= set.a;
+
+        if (set.hasActiveTransform())
+        {
+            this.transform = set.transform.copy();
+        }
     }
 
     @Override
@@ -179,10 +194,17 @@ public class Color
         {
             Color color = (Color) obj;
 
-            return color.getARGBColor() == this.getARGBColor();
+            return color.getARGBColor() == this.getARGBColor()
+                && Objects.equals(this.transform, color.transform);
         }
 
         return super.equals(obj);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(this.getARGBColor(), this.transform);
     }
 
     @Override

@@ -25,10 +25,11 @@ import java.util.regex.Pattern;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 
 /**
- * Runtime opacity fix for Complementary / BSL. Keeps mid/high-opacity BBS forms on the Iris
- * lighting path (pack shading + shadow maps + depth). Only very low alpha is deferred past
- * VL clouds. Never suppress live depth for near-opaque alphas — that flattened Complementary
- * shading (e.g. at {@code #f2}).
+ * Runtime opacity fix for Complementary / BSL. Translucent BBS forms are delayed until
+ * after Iris {@code beginTranslucents} (VL clouds/fog already composited) so soft fades
+ * never punch sky holes or let clouds draw over the mesh. Near-opaque ({@code #f2+}) stays
+ * on the live Iris path with depth writes so Complementary shading is not flattened.
+ * Fully opaque film {@code renderDepth} actors also use the post-deferred queue.
  */
 public class ShaderOpacityPatch
 {
@@ -57,6 +58,7 @@ public class ShaderOpacityPatch
     private static boolean flushingPostDeferred;
     private static boolean flushingDepthWrite = true;
     private static boolean forceLiveDepthWrite;
+    private static boolean suppressLiveDepthWrite;
 
     private static String loadingPackName = "";
 
@@ -149,6 +151,11 @@ public class ShaderOpacityPatch
         forceLiveDepthWrite = force;
     }
 
+    public static void setSuppressLiveDepthWrite(boolean suppress)
+    {
+        suppressLiveDepthWrite = suppress;
+    }
+
     public static void reassertPostDeferredDepthState()
     {
         if (flushingPostDeferred)
@@ -163,6 +170,12 @@ public class ShaderOpacityPatch
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
             RenderSystem.depthMask(true);
+        }
+        else if (suppressLiveDepthWrite)
+        {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+            RenderSystem.depthMask(false);
         }
     }
 
@@ -187,15 +200,16 @@ public class ShaderOpacityPatch
     }
 
     /**
-     * Below this, translucent forms may join the post-deferred queue to avoid VL sky holes.
-     * Above it they stay on the live Iris path so pack shading and ground shadows remain.
+     * Near-opaque floor. Below this, forms join the post-deferred queue (after VL clouds).
+     * At/above it they stay live with depth writes. {@code #f2} (≈0.949) sits just under
+     * this gate so slight translucency still waits for clouds; fully solid keeps live shading.
      */
-    public static final float POST_DEFERRED_TRANSLUCENT_ALPHA = 0.35F;
+    public static final float LIVE_DEPTH_WRITE_ALPHA = 0.95F;
 
     /**
-     * Queue forms until after deferred so VL clouds composite first. Only very translucent
-     * forms (or opaque film {@code renderDepthFrame}) join — mid/high opacity stays live for
-     * pack lighting and shadow maps. Never delay during the shadow pass.
+     * Queue translucent forms until after deferred/VL clouds so soft opacity never punches
+     * sky holes or lets clouds composite over the mesh. Near-opaque stays live for pack
+     * lighting. Opaque film {@code renderDepth} still joins. Never delay the shadow pass.
      */
     public static boolean shouldDelayUntilPostDeferred(float alpha)
     {
@@ -227,9 +241,8 @@ public class ShaderOpacityPatch
             return false;
         }
 
-        /* Very translucent only — mid/near-opaque (#f2 etc.) must stay live even in the film
-         * editor; delaying them when renderDepthFrame is set flattened Complementary shading. */
-        if (alpha < POST_DEFERRED_TRANSLUCENT_ALPHA)
+        /* Any visible translucency — including #e9 — must wait for clouds. */
+        if (alpha < LIVE_DEPTH_WRITE_ALPHA)
         {
             return true;
         }
@@ -243,11 +256,33 @@ public class ShaderOpacityPatch
         return shouldDelayUntilPostDeferred(alpha, true);
     }
 
+    /**
+     * Fallback only: if a translucent form somehow stays on the live path, do not stamp
+     * depth before VL clouds ({@code z0 > 0.56} hole punch). Prefer
+     * {@link #shouldDelayUntilPostDeferred} instead — suppress lets clouds draw over the mesh.
+     */
+    public static boolean shouldSuppressDepthWrite(float alpha)
+    {
+        if (!isActive() || flushingPostDeferred || alpha <= 0.001F || alpha >= LIVE_DEPTH_WRITE_ALPHA)
+        {
+            return false;
+        }
+
+        try
+        {
+            return mchorse.bbs_mod.client.BBSRendering.isIrisShadersEnabled()
+                && !mchorse.bbs_mod.client.BBSRendering.isIrisShadowPass();
+        }
+        catch (Throwable t)
+        {
+            return false;
+        }
+    }
+
     public static boolean shouldForceLiveDepthWrite(float alpha)
     {
-        /* Any live Iris draw under the opacity patch needs depth for Complementary shading.
-         * Only post-deferred very-low-alpha skips the live path entirely. */
-        return isActive() && alpha >= POST_DEFERRED_TRANSLUCENT_ALPHA;
+        /* Near-opaque live path only — translucents are post-deferred. */
+        return isActive() && alpha >= LIVE_DEPTH_WRITE_ALPHA;
     }
 
     /**
@@ -302,7 +337,8 @@ public class ShaderOpacityPatch
     public static void onBeginTranslucents()
     {
         postDeferredPhase = true;
-        /* Models + billboards/shapes in one sorted pass — before VL clouds, shared depth. */
+        /* After Iris beginTranslucents — VL clouds/fog already run; translucent BBS forms
+         * draw here with depth so they sit in front of clouds without sky holes. */
         flushPostDeferredForms();
     }
 
