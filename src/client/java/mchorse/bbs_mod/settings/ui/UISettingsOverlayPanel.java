@@ -328,6 +328,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             case "dc": return Icons.SKULL;
             case "shader_curves": return Icons.CURVES;
             case "fluid_simulation": return Icons.FILTER;
+            case "compatibility": return Icons.SAVE;
             case "audio": return Icons.SOUND;
             case "cdn": return Icons.USER;
             default: return Icons.SETTINGS;

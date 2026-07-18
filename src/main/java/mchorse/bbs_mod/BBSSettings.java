@@ -228,6 +228,8 @@ public class BBSSettings
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
 
+    public static ValueBoolean saveAsCompatible;
+
     public static ValueLink textureDefaultPath;
     public static ValueInt texturePickerItemSize;
 
@@ -238,6 +240,15 @@ public class BBSSettings
     public static ValueBoolean usingInMemoryClipboard;
     public static ValueBoolean discordPresence;
     public static ValueString discordApplicationId;
+
+    /**
+     * When enabled (default), films dual-write legacy-friendly data for fields
+     * that newer builds store as floats/doubles (e.g. subtitle lineHeight/maxWidth).
+     */
+    public static boolean isSaveAsCompatible()
+    {
+        return saveAsCompatible == null || saveAsCompatible.get();
+    }
 
     public static int primaryColor()
     {
@@ -721,6 +732,9 @@ public class BBSSettings
 
         builder.category("fluid_simulation");
         fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
+
+        builder.category("compatibility");
+        saveAsCompatible = builder.getBoolean("save_as_compatible", true);
 
         builder.category("audio");
         audioWaveformVisible = builder.getBoolean("waveform_visible", true);

@@ -13,6 +13,7 @@ import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.keyframes.CompatibleDoubleKeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
@@ -42,8 +43,8 @@ public class SubtitleClip extends CameraClip
     public final KeyframeChannel<Double> backgroundOffset = new KeyframeChannel<>("backgroundOffset", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> shadow = new KeyframeChannel<>("shadow", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Boolean> shadowOpaque = new KeyframeChannel<>("shadowOpaque", KeyframeFactories.BOOLEAN);
-    public final KeyframeChannel<Double> lineHeight = new KeyframeChannel<>("lineHeight", KeyframeFactories.DOUBLE);
-    public final KeyframeChannel<Double> maxWidth = new KeyframeChannel<>("maxWidth", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> lineHeight = new CompatibleDoubleKeyframeChannel("lineHeight");
+    public final KeyframeChannel<Double> maxWidth = new CompatibleDoubleKeyframeChannel("maxWidth");
     public final ValueBoolean useKeyframes = new ValueBoolean("use_keyframes", false);
     public final ValueBoolean uniformSeeded = new ValueBoolean("uniform_seeded", false);
     public final SubtitleUniform uniform = new SubtitleUniform("uniform");
