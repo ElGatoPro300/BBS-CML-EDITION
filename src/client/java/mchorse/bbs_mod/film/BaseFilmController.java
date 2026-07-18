@@ -21,6 +21,7 @@ import mchorse.bbs_mod.forms.forms.utils.Illusion;
 import mchorse.bbs_mod.forms.forms.utils.LookAt;
 import mchorse.bbs_mod.forms.forms.utils.LookAtBone;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.forms.utils.ShadowSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
@@ -257,14 +258,41 @@ public abstract class BaseFilmController
 
         if (context.isShadowPass)
         {
+            if (context.shadowOpacity <= 0.001F || (context.shadowRadiusX <= 0F && context.shadowRadiusZ <= 0F))
+            {
+                stack.pop();
+
+                return;
+            }
+
             PaintSettings paint = form.paintSettings.get();
             Color legacyPaint = form.paintColor.get();
+            float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
 
-            if (paint.resolveIntensity(legacyPaint) != 0F)
+            /* Paint's effectiveShaderShadow() returns SHADER_SHADOW_FIX_BUG (0.005) when paint
+             * is active — that value is only a Complementary workaround flag, not caster alpha.
+             * Under ShaderOpacityPatch, shadow.glsl dither-discards by vertex alpha, so scaling
+             * by 0.005 would erase painted model shadows. Keep replay/form opacity only. */
+            if (paint.resolveIntensity(legacyPaint) != 0F
+                && !mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.isActive())
             {
-                float shadowAlpha = Colors.getA(formContext.color) * paint.effectiveShaderShadow(legacyPaint);
+                shadowAlpha *= paint.effectiveShaderShadow(legacyPaint);
+            }
 
-                formContext.color(Colors.setA(formContext.color, shadowAlpha));
+            formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
+
+            if (context.shadowOffsetX != 0F || context.shadowOffsetY != 0F || context.shadowOffsetZ != 0F)
+            {
+                stack.translate(context.shadowOffsetX, context.shadowOffsetY, context.shadowOffsetZ);
+            }
+
+            /* Independent X/Z scale from default radius 0.5 — stretch wide or long under Iris. */
+            float scaleX = Math.max(0.001F, context.shadowRadiusX / 0.5F);
+            float scaleZ = Math.max(0.001F, context.shadowRadiusZ / 0.5F);
+
+            if (Math.abs(scaleX - 1F) > 0.001F || Math.abs(scaleZ - 1F) > 0.001F)
+            {
+                stack.scale(scaleX, 1F, scaleZ);
             }
         }
 
@@ -324,16 +352,23 @@ public abstract class BaseFilmController
 
         stack.pop();
 
-        if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.render.get())
+        /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map
+         * and per-replay opacity is applied in the Iris shadow pass above. */
+        if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.render.get()
+            && !context.isShadowPass && !mchorse.bbs_mod.utils.iris.IrisUtils.isShaderPackEnabled())
         {
             float shadowOpacity = MathUtils.clamp(opacity * context.shadowOpacity, 0F, 1F);
 
             if (shadowOpacity > 0F)
             {
-                stack.push();
-                stack.translate(position.x - cx, position.y - cy, position.z - cz);
+                double sx = position.x + context.shadowOffsetX;
+                double sy = position.y + context.shadowOffsetY;
+                double sz = position.z + context.shadowOffsetZ;
 
-                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, position.x, position.y, position.z, 0F, 0F, 0F, context.shadowRadius, shadowOpacity);
+                stack.push();
+                stack.translate(sx - cx, sy - cy, sz - cz);
+
+                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, sx, sy, sz, 0F, 0F, 0F, context.shadowRadius, shadowOpacity);
 
                 stack.pop();
             }
@@ -2490,31 +2525,60 @@ public abstract class BaseFilmController
     protected FilmControllerContext getFilmControllerContext(WorldRenderContext context, Replay replay, IEntity entity)
     {
         float tick = replay.getTick(this.getTick()) + this.getTransition(entity, context.tickCounter().getTickDelta(false));
-
-        float shadowSize = replay.shadowSize.get();
-        float shadowOpacity = replay.shadowOpacity.get();
-
-        if (!replay.keyframes.shadowSize.isEmpty())
-        {
-            shadowSize = replay.keyframes.shadowSize.interpolate(tick).floatValue();
-        }
-
-        if (!replay.keyframes.shadowOpacity.isEmpty())
-        {
-            shadowOpacity = replay.keyframes.shadowOpacity.interpolate(tick).floatValue();
-        }
-
-        shadowSize = Math.max(0F, shadowSize);
-        shadowOpacity = MathUtils.clamp(shadowOpacity, 0F, 1F);
+        ShadowSettings shadow = resolveShadowSettings(replay, tick);
 
         return FilmControllerContext.instance
             .setup(this.entities, entity, replay, context)
             .film(this.film)
             .propertyTick(tick)
             .filmTick(this.getTick())
-            .shadow(replay.shadow.get(), shadowSize, shadowOpacity)
+            .shadow(replay.shadow.get(), shadow)
             .nameTag(replay.nameTag.get())
             .relative(replay.relative.get());
+    }
+
+    /**
+     * Interpolated replay shadow settings at {@code tick} (includes keyframes).
+     * Always returns a fresh copy — factory interpolation reuses a shared instance.
+     */
+    public static ShadowSettings resolveShadowSettings(Replay replay, float tick)
+    {
+        ShadowSettings settings = new ShadowSettings(replay.shadowOpacity.get(), replay.shadowSize.get(), replay.shadowSizeZ.get());
+
+        settings.offsetX = replay.shadowOffsetX.get();
+        settings.offsetY = replay.shadowOffsetY.get();
+        settings.offsetZ = replay.shadowOffsetZ.get();
+
+        if (!replay.keyframes.shadow.isEmpty())
+        {
+            ShadowSettings interpolated = replay.keyframes.shadow.interpolate(tick);
+
+            if (interpolated != null)
+            {
+                settings = interpolated.copy();
+            }
+        }
+
+        settings.widthX = Math.max(0F, settings.widthX);
+        settings.widthZ = Math.max(0F, settings.widthZ);
+        settings.opacity = MathUtils.clamp(settings.opacity, 0F, 1F);
+
+        return settings;
+    }
+
+    public static float resolveShadowSize(Replay replay, float tick)
+    {
+        return resolveShadowSettings(replay, tick).widthX;
+    }
+
+    public static float resolveShadowSizeZ(Replay replay, float tick)
+    {
+        return resolveShadowSettings(replay, tick).widthZ;
+    }
+
+    public static float resolveShadowOpacity(Replay replay, float tick)
+    {
+        return resolveShadowSettings(replay, tick).opacity;
     }
 
     public void shutdown()

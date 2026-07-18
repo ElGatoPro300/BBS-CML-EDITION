@@ -4,6 +4,7 @@ import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.forms.utils.ShadowSettings;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -36,7 +37,12 @@ public class FilmControllerContext
     public float transition;
     public int color;
     public float shadowRadius;
+    public float shadowRadiusX;
+    public float shadowRadiusZ;
     public float shadowOpacity;
+    public float shadowOffsetX;
+    public float shadowOffsetY;
+    public float shadowOffsetZ;
 
     /* Tick (with sub-tick transition) at which the replay's form properties were applied
      * this frame; NaN when the render path doesn't know it (illusion delay needs it) */
@@ -70,7 +76,12 @@ public class FilmControllerContext
         this.filmTick = -1;
         this.map = null;
         this.shadowRadius = 0F;
+        this.shadowRadiusX = 0F;
+        this.shadowRadiusZ = 0F;
         this.shadowOpacity = 1F;
+        this.shadowOffsetX = 0F;
+        this.shadowOffsetY = 0F;
+        this.shadowOffsetZ = 0F;
         this.color = Colors.WHITE;
         this.bone = null;
         this.local = false;
@@ -163,26 +174,58 @@ public class FilmControllerContext
 
     public FilmControllerContext shadow(boolean shadow, float shadowRadius)
     {
-        this.shadowRadius = shadow ? shadowRadius : 0F;
-        this.shadowOpacity = 1F;
-
-        return this;
+        return this.shadow(shadow, shadowRadius, shadowRadius, 1F, 0F, 0F, 0F);
     }
 
     public FilmControllerContext shadow(boolean shadow, float shadowRadius, float shadowOpacity)
     {
-        this.shadowRadius = shadow ? shadowRadius : 0F;
-        this.shadowOpacity = shadow ? shadowOpacity : 0F;
+        return this.shadow(shadow, shadowRadius, shadowRadius, shadowOpacity, 0F, 0F, 0F);
+    }
+
+    public FilmControllerContext shadow(boolean shadow, float shadowRadiusX, float shadowRadiusZ, float shadowOpacity)
+    {
+        return this.shadow(shadow, shadowRadiusX, shadowRadiusZ, shadowOpacity, 0F, 0F, 0F);
+    }
+
+    public FilmControllerContext shadow(boolean shadow, ShadowSettings settings)
+    {
+        if (settings == null)
+        {
+            return this.shadow(shadow, 0.5F, 0.5F, 1F, 0F, 0F, 0F);
+        }
+
+        return this.shadow(shadow, settings.widthX, settings.widthZ, settings.opacity, settings.offsetX, settings.offsetY, settings.offsetZ);
+    }
+
+    public FilmControllerContext shadow(boolean shadow, float shadowRadiusX, float shadowRadiusZ, float shadowOpacity, float offsetX, float offsetY, float offsetZ)
+    {
+        if (shadow)
+        {
+            this.shadowRadiusX = Math.max(0F, shadowRadiusX);
+            this.shadowRadiusZ = Math.max(0F, shadowRadiusZ);
+            this.shadowRadius = Math.max(this.shadowRadiusX, this.shadowRadiusZ);
+            this.shadowOpacity = shadowOpacity;
+            this.shadowOffsetX = offsetX;
+            this.shadowOffsetY = offsetY;
+            this.shadowOffsetZ = offsetZ;
+        }
+        else
+        {
+            this.shadowRadiusX = 0F;
+            this.shadowRadiusZ = 0F;
+            this.shadowRadius = 0F;
+            this.shadowOpacity = 0F;
+            this.shadowOffsetX = 0F;
+            this.shadowOffsetY = 0F;
+            this.shadowOffsetZ = 0F;
+        }
 
         return this;
     }
 
     public FilmControllerContext shadow(float shadowRadius)
     {
-        this.shadowRadius = shadowRadius;
-        this.shadowOpacity = 1F;
-
-        return this;
+        return this.shadow(true, shadowRadius, shadowRadius, 1F, 0F, 0F, 0F);
     }
 
     public FilmControllerContext color(int overlayColor)

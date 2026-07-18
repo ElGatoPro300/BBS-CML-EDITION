@@ -523,7 +523,63 @@ public class ShaderOpacityPatch
 
         patched = LITERAL_POINT_ONE_COMPARE.matcher(patched).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
 
+        patched = processShadowCasterAlpha(patched);
+
         return processShadowOpacity(patched);
+    }
+
+    /**
+     * Complementary/BSL shadow map programs: multiply texture alpha by vertex color alpha
+     * and dither-discard so per-model replay {@code shadow_opacity} can lighten/darken
+     * individual casters (hard shadow maps are otherwise binary).
+     */
+    public static String processShadowCasterAlpha(String source)
+    {
+        if (!isActive() || source == null || source.isEmpty())
+        {
+            return source;
+        }
+
+        if (source.contains("BBS_SHADOW_CASTER_DITHER"))
+        {
+            return source;
+        }
+
+        /* Complementary shadow.glsl */
+        if (source.contains("DoNaturalShadowCalculation") && source.contains("gl_FragData[0] = color1;"))
+        {
+            String dither =
+                "/* BBS_SHADOW_CASTER_DITHER */\n"
+                    + "    color1.a *= glColor.a;\n"
+                    + "    if (color1.a < 0.999){\n"
+                    + "        float bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
+                    + "        if (bbsShadowDither > color1.a) discard;\n"
+                    + "    }\n";
+
+            return source.replace(
+                "    /* DRAWBUFFERS:0 */\n    gl_FragData[0] = color1; // Shadow Color",
+                dither + "    /* DRAWBUFFERS:0 */\n    gl_FragData[0] = color1; // Shadow Color"
+            );
+        }
+
+        /* BSL shadow.glsl */
+        if (source.contains("float premult = float(mat > 0.98") && source.contains("gl_FragData[0] = albedo;"))
+        {
+            String dither =
+                "\t/* BBS_SHADOW_CASTER_DITHER */\n"
+                    + "\talbedo.a *= color.a;\n"
+                    + "\tif (albedo.a < 0.999){\n"
+                    + "\t\tfloat bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
+                    + "\t\tif (bbsShadowDither > albedo.a) discard;\n"
+                    + "\t}\n";
+
+            if (source.contains("gl_FragData[0] = albedo;"))
+            {
+                return source.replace("\tgl_FragData[0] = albedo;", dither + "\tgl_FragData[0] = albedo;");
+            }
+        }
+
+        return source;
     }
 
     /**

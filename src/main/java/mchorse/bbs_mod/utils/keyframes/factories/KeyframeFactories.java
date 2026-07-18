@@ -30,6 +30,7 @@ public class KeyframeFactories
     public static final StructureLightSettingsKeyframeFactory STRUCTURE_LIGHT_SETTINGS = new StructureLightSettingsKeyframeFactory();
     public static final GlowSettingsKeyframeFactory GLOW_SETTINGS = new GlowSettingsKeyframeFactory();
     public static final PaintSettingsKeyframeFactory PAINT_SETTINGS = new PaintSettingsKeyframeFactory();
+    public static final ShadowSettingsKeyframeFactory SHADOW_SETTINGS = new ShadowSettingsKeyframeFactory();
     public static final ChromaSkyCurveSettingsKeyframeFactory CHROMA_SKY_SETTINGS = new ChromaSkyCurveSettingsKeyframeFactory();
 
     public static boolean isNumeric(IKeyframeFactory factory)
@@ -66,6 +67,8 @@ public class KeyframeFactories
         FACTORIES.put("glow", GLOW_SETTINGS);
         FACTORIES.put("paint_settings", PAINT_SETTINGS);
         FACTORIES.put("paint", PAINT_SETTINGS);
+        FACTORIES.put("shadow_settings", SHADOW_SETTINGS);
+        FACTORIES.put("shadow", SHADOW_SETTINGS);
         FACTORIES.put("chroma_sky_settings", CHROMA_SKY_SETTINGS);
     }
 }
