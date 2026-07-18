@@ -809,14 +809,9 @@ public class BBSRendering
     }
 
     /**
-     * Iris {@code entity_translucent} typically discards below ~0.1 ({@code alphaTestRef}).
-     * Character meshes defer to BBS only below this — keeping mid/high opacity on Iris so
-     * pack lighting/shadows stay on every model (changing one form's alpha must not flatten
-     * the rest of the scene).
-     * <p>
-     * With the Complementary/BSL opacity patch, mid/low opacity also stays on Iris (same look /
-     * lighting). Very low alpha may still draw after deferred to avoid VL cloud holes; near-opaque
-     * (e.g. {@code #f2}) keeps live depth writes so Complementary shading is not flattened.
+     * With the Complementary/BSL opacity patch, translucent opacities are redrawn after
+     * VL clouds (post-deferred) so soft fades never punch the sky or get clouds composited
+     * over the mesh. Near-opaque keeps the live Iris path with depth writes.
      */
     public static final float TRANSLUCENT_ALPHA_DISCARD_REF = 28F / 255F;
 

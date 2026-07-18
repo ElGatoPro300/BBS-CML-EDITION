@@ -27,6 +27,7 @@ public class EffectTransformInterpolation
         out.rotateX = (float) interpolation.interpolate(IInterp.context.set(preAValue.rotateX, aValue.rotateX, bValue.rotateX, postBValue.rotateX, x));
         out.rotateY = (float) interpolation.interpolate(IInterp.context.set(preAValue.rotateY, aValue.rotateY, bValue.rotateY, postBValue.rotateY, x));
         out.rotateZ = (float) interpolation.interpolate(IInterp.context.set(preAValue.rotateZ, aValue.rotateZ, bValue.rotateZ, postBValue.rotateZ, x));
+        out.shape = x < 0.5F ? aValue.shape : bValue.shape;
     }
 
     private static EffectTransform valueOrDefault(EffectTransform value)

@@ -7,7 +7,7 @@ import java.util.Objects;
 
 /**
  * Local transform for spatial paint masks. Offset moves the effect volume,
- * scale sizes it, and rotation tilts the mask in form-root space.
+ * scale sizes it, rotation tilts it, and {@link #shape} picks box / circle / triangle.
  */
 public class EffectTransform
 {
@@ -22,6 +22,7 @@ public class EffectTransform
     public float rotateX;
     public float rotateY;
     public float rotateZ;
+    public PaintMaskShape shape = PaintMaskShape.BOX;
 
     public EffectTransform()
     {}
@@ -39,12 +40,18 @@ public class EffectTransform
         copy.rotateX = this.rotateX;
         copy.rotateY = this.rotateY;
         copy.rotateZ = this.rotateZ;
+        copy.shape = this.shape;
 
         return copy;
     }
 
     public boolean isActive()
     {
+        if (this.shape != PaintMaskShape.BOX)
+        {
+            return true;
+        }
+
         return Math.abs(this.offsetX) > EPSILON
             || Math.abs(this.offsetY) > EPSILON
             || Math.abs(this.offsetZ) > EPSILON
@@ -72,6 +79,7 @@ public class EffectTransform
         this.rotateX = map.getFloat("rotateX");
         this.rotateY = map.getFloat("rotateY");
         this.rotateZ = map.getFloat("rotateZ");
+        this.shape = map.has("shape") ? PaintMaskShape.fromName(map.getString("shape")) : PaintMaskShape.BOX;
     }
 
     public BaseType toData()
@@ -87,6 +95,7 @@ public class EffectTransform
         map.putFloat("rotateX", this.rotateX);
         map.putFloat("rotateY", this.rotateY);
         map.putFloat("rotateZ", this.rotateZ);
+        map.putString("shape", this.shape.name());
 
         return map;
     }
@@ -112,12 +121,13 @@ public class EffectTransform
             && Float.compare(this.scaleZ, that.scaleZ) == 0
             && Float.compare(this.rotateX, that.rotateX) == 0
             && Float.compare(this.rotateY, that.rotateY) == 0
-            && Float.compare(this.rotateZ, that.rotateZ) == 0;
+            && Float.compare(this.rotateZ, that.rotateZ) == 0
+            && this.shape == that.shape;
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(this.offsetX, this.offsetY, this.offsetZ, this.scaleX, this.scaleY, this.scaleZ, this.rotateX, this.rotateY, this.rotateZ);
+        return Objects.hash(this.offsetX, this.offsetY, this.offsetZ, this.scaleX, this.scaleY, this.scaleZ, this.rotateX, this.rotateY, this.rotateZ, this.shape);
     }
 }

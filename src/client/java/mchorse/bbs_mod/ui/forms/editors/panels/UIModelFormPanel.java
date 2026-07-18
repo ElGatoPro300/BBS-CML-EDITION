@@ -11,6 +11,7 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorTransform;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIModelPoseEditor;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -31,6 +32,7 @@ import java.util.Set;
 public class UIModelFormPanel extends UIFormPanel<ModelForm>
 {
     public UIColor color;
+    public UIFormColorTransform colorTransform;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
     public UIFormPaintTransform paintTransform;
@@ -77,9 +79,17 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
             UIOverlay.addOverlay(this.getContext(), list);
         });
-        this.color = new UIColor((c) -> this.form.color.set(new Color().set(c))).withAlpha();
+        this.color = new UIColor((c) ->
+        {
+            Color color = this.form.color.get().copy();
+            Color value = new Color().set(c);
+
+            color.set(value.r, value.g, value.b, value.a);
+            this.form.color.set(color);
+        }).withAlpha();
         this.color.direction(Direction.LEFT);
         this.color.context((menu) -> menu.action(Icons.COLOR, UIKeys.KEYFRAMES_RESET_COLOR, this::resetMainColor));
+        this.colorTransform = new UIFormColorTransform(() -> this.form.color.get(), (color) -> this.form.color.set(color));
         this.paintColor = new UIColor((c) ->
         {
             Color color = new Color().set(c);
@@ -178,6 +188,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
         this.colorsAndGlowContent = UI.column(5, 0,
             this.color,
+            this.colorTransform,
             this.paintColor,
             this.paintIntensity,
             this.paintTransform,
@@ -279,6 +290,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrNormalIntensity.setValue(form.pbrNormalIntensity.get());
         this.pbrSpecularIntensity.setValue(form.pbrSpecularIntensity.get());
         this.color.setColor(form.color.get().getARGBColor());
+        this.colorTransform.syncFromForm();
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

@@ -159,6 +159,15 @@ public final class BlockEffectOverlayUniforms
         {
             anchorUniform.set(bottomAnchored ? 1F : 0F);
         }
+
+        GlUniform shapeUniform = shader.getUniform("PaintMaskShape");
+
+        if (shapeUniform != null)
+        {
+            float shape = transform == null || transform.shape == null ? 0F : transform.shape.id;
+
+            shapeUniform.set(shape);
+        }
     }
 
     public static void bindGlowOverlay(ShaderProgram shader, GlowSettings glow, Color legacyGlow, float glowIntensity, float alpha)

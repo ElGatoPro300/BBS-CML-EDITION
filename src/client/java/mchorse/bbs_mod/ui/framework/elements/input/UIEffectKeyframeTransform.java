@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.framework.elements.input;
 
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
+import mchorse.bbs_mod.forms.forms.utils.PaintMaskShape;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragEndEvent;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragStartEvent;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
@@ -65,6 +66,16 @@ public class UIEffectKeyframeTransform extends UIPropTransform
         {
             this.filling = false;
         }
+    }
+
+    public void setShape(PaintMaskShape shape)
+    {
+        if (this.filling || this.apply == null)
+        {
+            return;
+        }
+
+        this.apply.accept((effect) -> effect.shape = shape == null ? PaintMaskShape.BOX : shape);
     }
 
     private void commit()

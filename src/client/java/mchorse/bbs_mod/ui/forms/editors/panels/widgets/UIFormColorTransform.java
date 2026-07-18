@@ -2,41 +2,33 @@ package mchorse.bbs_mod.ui.forms.editors.panels.widgets;
 
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.PaintMaskShape;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.framework.elements.input.UIEffectKeyframeTransform;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.colors.Color;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/**
- * Paint shape picker + {@link UIEffectKeyframeTransform} for a form's {@link PaintSettings#transform}.
- */
-public class UIFormPaintTransform extends UIElement
+public class UIFormColorTransform extends UIElement
 {
-    private final Supplier<PaintSettings> settings;
+    private final Supplier<Color> color;
     private final UIIcons shapeIcons;
     private final UIEffectKeyframeTransform transform;
 
-    public UIFormPaintTransform(Supplier<PaintSettings> settings, Consumer<PaintSettings> setter)
+    public UIFormColorTransform(Supplier<Color> color, Consumer<Color> setter)
     {
         super();
 
-        this.settings = settings;
+        this.color = color;
         this.column().vertical().stretch();
 
         this.shapeIcons = new UIIcons((b) ->
         {
-            PaintSettings copy = settings.get().copy();
-
-            if (copy.transform == null)
-            {
-                copy.transform = new EffectTransform();
-            }
+            Color copy = color.get().copy();
 
             copy.transform.shape = PaintMaskShape.fromId(b.getValue());
             setter.accept(copy);
@@ -48,7 +40,7 @@ public class UIFormPaintTransform extends UIElement
 
         this.transform = new UIEffectKeyframeTransform((apply) ->
         {
-            PaintSettings copy = settings.get().copy();
+            Color copy = color.get().copy();
 
             if (copy.transform == null)
             {
@@ -64,8 +56,8 @@ public class UIFormPaintTransform extends UIElement
 
     public void syncFromForm()
     {
-        PaintSettings paint = this.settings.get();
-        EffectTransform effect = paint == null || paint.transform == null ? new EffectTransform() : paint.transform;
+        Color value = this.color.get();
+        EffectTransform effect = value == null || value.transform == null ? new EffectTransform() : value.transform;
 
         this.shapeIcons.setValue(effect.shape == null ? 0 : effect.shape.id);
         this.transform.setEffectTransform(effect);

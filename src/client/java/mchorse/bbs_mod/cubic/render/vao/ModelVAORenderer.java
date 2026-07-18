@@ -79,9 +79,20 @@ public class ModelVAORenderer
     private static final Matrix4f formRootInverse = new Matrix4f();
     private static final Matrix4f paintEffectInverse = new Matrix4f();
     private static final Vector3f paintMaskHalf = new Vector3f(EffectTransformMath.MODEL_MASK_HALF_BASE);
+    private static final Matrix4f colorEffectInverse = new Matrix4f();
+    private static final Vector3f colorMaskHalf = new Vector3f(EffectTransformMath.MODEL_MASK_HALF_BASE);
     private static final Matrix4f overlayFormRootInverse = new Matrix4f();
+    private static float paintMaskShape;
+    private static float colorMaskShape;
     private static boolean paintEffectActive;
+    private static boolean colorEffectActive;
     private static boolean paintMaskBottomAnchored = true;
+    private static boolean colorMaskBottomAnchored = true;
+    private static float formColorR = 1F;
+    private static float formColorG = 1F;
+    private static float formColorB = 1F;
+    private static float formColorA = 1F;
+    private static boolean colorTintMasked;
     private static boolean suppressShapeKeyMainPassGlow;
 
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
@@ -730,6 +741,7 @@ public class ModelVAORenderer
 
         EffectTransformMath.buildInverseMatrix(transform, paintEffectInverse);
         paintEffectActive = EffectTransformMath.isTransformActive(transform);
+        paintMaskShape = transform == null || transform.shape == null ? 0F : transform.shape.id;
 
         if (maskHalf != null)
         {
@@ -745,11 +757,75 @@ public class ModelVAORenderer
 
     public static void clearPaintEffectTransform()
     {
-        formRootInverse.identity();
+        if (!colorEffectActive)
+        {
+            formRootInverse.identity();
+        }
+
         paintEffectInverse.identity();
         paintEffectActive = false;
         paintMaskBottomAnchored = true;
+        paintMaskShape = 0F;
         paintMaskHalf.set(EffectTransformMath.MODEL_MASK_HALF_BASE, EffectTransformMath.MODEL_MASK_HALF_BASE * EffectTransformMath.MODEL_MASK_Y_BIAS, EffectTransformMath.MODEL_MASK_HALF_BASE);
+    }
+
+    public static void setColorEffectTransform(Matrix4f formRootInverseMatrix, EffectTransform transform, Vector3f maskHalf)
+    {
+        if (formRootInverseMatrix != null)
+        {
+            formRootInverse.set(formRootInverseMatrix);
+        }
+        else
+        {
+            formRootInverse.identity();
+        }
+
+        EffectTransformMath.buildInverseMatrix(transform, colorEffectInverse);
+        colorEffectActive = EffectTransformMath.isTransformActive(transform);
+        colorMaskShape = transform == null || transform.shape == null ? 0F : transform.shape.id;
+
+        if (maskHalf != null)
+        {
+            colorMaskHalf.set(maskHalf);
+        }
+        else
+        {
+            EffectTransformMath.resolveModelMaskHalfExtents(transform, colorMaskHalf);
+        }
+
+        colorMaskBottomAnchored = true;
+    }
+
+    public static void setFormColorTint(float r, float g, float b, float a)
+    {
+        formColorR = r;
+        formColorG = g;
+        formColorB = b;
+        formColorA = a;
+        colorTintMasked = true;
+    }
+
+    public static void clearFormColorTint()
+    {
+        formColorR = 1F;
+        formColorG = 1F;
+        formColorB = 1F;
+        formColorA = 1F;
+        colorTintMasked = false;
+    }
+
+    public static void clearColorEffectTransform()
+    {
+        if (!paintEffectActive)
+        {
+            formRootInverse.identity();
+        }
+
+        colorEffectInverse.identity();
+        colorEffectActive = false;
+        colorMaskBottomAnchored = true;
+        colorMaskShape = 0F;
+        colorMaskHalf.set(EffectTransformMath.MODEL_MASK_HALF_BASE, EffectTransformMath.MODEL_MASK_HALF_BASE * EffectTransformMath.MODEL_MASK_Y_BIAS, EffectTransformMath.MODEL_MASK_HALF_BASE);
     }
 
     private static Matrix4f overlayFormRootInverse()
@@ -889,6 +965,62 @@ public class ModelVAORenderer
         if (paintMaskBottomAnchoredUniform != null)
         {
             paintMaskBottomAnchoredUniform.set(paintMaskBottomAnchored ? 1F : 0F);
+        }
+
+        GlUniform paintMaskShapeUniform = shader.getUniform("PaintMaskShape");
+
+        if (paintMaskShapeUniform != null)
+        {
+            paintMaskShapeUniform.set(paintMaskShape);
+        }
+
+        GlUniform colorEffectInverseUniform = shader.getUniform("ColorEffectInverse");
+
+        if (colorEffectInverseUniform != null)
+        {
+            colorEffectInverseUniform.set(colorEffectInverse);
+        }
+
+        GlUniform colorEffectActiveUniform = shader.getUniform("ColorEffectActive");
+
+        if (colorEffectActiveUniform != null)
+        {
+            colorEffectActiveUniform.set(colorEffectActive ? 1F : 0F);
+        }
+
+        GlUniform colorMaskHalfUniform = shader.getUniform("ColorMaskHalf");
+
+        if (colorMaskHalfUniform != null)
+        {
+            colorMaskHalfUniform.set(colorMaskHalf.x, colorMaskHalf.y, colorMaskHalf.z);
+        }
+
+        GlUniform colorMaskBottomAnchoredUniform = shader.getUniform("ColorMaskBottomAnchored");
+
+        if (colorMaskBottomAnchoredUniform != null)
+        {
+            colorMaskBottomAnchoredUniform.set(colorMaskBottomAnchored ? 1F : 0F);
+        }
+
+        GlUniform colorMaskShapeUniform = shader.getUniform("ColorMaskShape");
+
+        if (colorMaskShapeUniform != null)
+        {
+            colorMaskShapeUniform.set(colorMaskShape);
+        }
+
+        GlUniform formColorTintUniform = shader.getUniform("FormColorTint");
+
+        if (formColorTintUniform != null)
+        {
+            formColorTintUniform.set(formColorR, formColorG, formColorB, formColorA);
+        }
+
+        GlUniform colorTintMaskedUniform = shader.getUniform("ColorTintMasked");
+
+        if (colorTintMaskedUniform != null)
+        {
+            colorTintMaskedUniform.set(colorTintMasked ? 1F : 0F);
         }
 
         /* After Iris composite, RenderSystem fog is often collapsed (FogEnd≈1) or left as

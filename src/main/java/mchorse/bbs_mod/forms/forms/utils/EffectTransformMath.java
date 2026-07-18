@@ -6,7 +6,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 /**
- * Builds inverse transform matrices and evaluates soft box masks for paint.
+ * Builds inverse transform matrices and evaluates soft paint masks (box / circle / triangle).
  */
 public class EffectTransformMath
 {
@@ -121,7 +121,7 @@ public class EffectTransformMath
     }
 
     /**
-     * Soft unit-box mask in effect-local space. When {@code bottomAnchoredY} is true the box spans
+     * Soft mask in effect-local space. When {@code bottomAnchoredY} is true the volume spans
      * y in [0, 2*halfY] so scale Y maps to model height from the feet upward.
      */
     public static float mask3DModel(float x, float y, float z, EffectTransform transform, Vector3f halfExtents, boolean bottomAnchoredY)
@@ -135,8 +135,8 @@ public class EffectTransformMath
     }
 
     /**
-     * Billboard paint mask always evaluates the soft box so identity transform does not
-     * jump between full paint and a clipped box when the first value is nudged.
+     * Billboard paint mask always evaluates the soft volume so identity transform does not
+     * jump between full paint and a clipped volume when the first value is nudged.
      */
     public static float maskBillboard(float x, float y, float z, EffectTransform transform)
     {
@@ -158,16 +158,45 @@ public class EffectTransformMath
             LOCAL.y -= halfExtents.y;
         }
 
-        float edgeX = Math.abs(LOCAL.x) - halfExtents.x;
-        float edgeY = Math.abs(LOCAL.y) - halfExtents.y;
-        float edgeZ = Math.abs(LOCAL.z) - halfExtents.z;
-        float outsideX = Math.max(edgeX, 0F);
-        float outsideY = Math.max(edgeY, 0F);
-        float outsideZ = Math.max(edgeZ, 0F);
-        float dist = (float) Math.sqrt(outsideX * outsideX + outsideY * outsideY + outsideZ * outsideZ);
-        float maxInside = Math.max(edgeX, Math.max(edgeY, edgeZ));
+        PaintMaskShape shape = transform == null ? PaintMaskShape.BOX : transform.shape;
+        float dist;
 
-        dist += Math.min(Math.max(maxInside, 0F), 0F);
+        if (shape == PaintMaskShape.CIRCLE)
+        {
+            float hx = Math.max(halfExtents.x, EPSILON);
+            float hy = Math.max(halfExtents.y, EPSILON);
+            float hz = Math.max(halfExtents.z, EPSILON);
+            float qx = LOCAL.x / hx;
+            float qy = LOCAL.y / hy;
+            float qz = LOCAL.z / hz;
+            float radius = (float) Math.sqrt(qx * qx + qy * qy + qz * qz);
+            float maxHalf = Math.max(hx, Math.max(hy, hz));
+
+            dist = (radius - 1F) * maxHalf;
+        }
+        else if (shape == PaintMaskShape.TRIANGLE)
+        {
+            /* Front-facing triangle in XY (apex up), thickness along Z — matches chest paint. */
+            float dTri = sdTriangleXY(LOCAL.x, LOCAL.y, halfExtents.x, halfExtents.y);
+            float dZ = Math.abs(LOCAL.z) - halfExtents.z;
+            float outsideTri = Math.max(dTri, 0F);
+            float outsideZ = Math.max(dZ, 0F);
+
+            dist = (float) Math.sqrt(outsideTri * outsideTri + outsideZ * outsideZ);
+            dist += Math.min(Math.max(Math.max(dTri, dZ), 0F), 0F);
+        }
+        else
+        {
+            float edgeX = Math.abs(LOCAL.x) - halfExtents.x;
+            float edgeY = Math.abs(LOCAL.y) - halfExtents.y;
+            float edgeZ = Math.abs(LOCAL.z) - halfExtents.z;
+            float outsideX = Math.max(edgeX, 0F);
+            float outsideY = Math.max(edgeY, 0F);
+            float outsideZ = Math.max(edgeZ, 0F);
+
+            dist = (float) Math.sqrt(outsideX * outsideX + outsideY * outsideY + outsideZ * outsideZ);
+            dist += Math.min(Math.max(Math.max(edgeX, Math.max(edgeY, edgeZ)), 0F), 0F);
+        }
 
         if (dist <= 0F)
         {
@@ -183,6 +212,59 @@ public class EffectTransformMath
         }
 
         return 1F - dist / falloff;
+    }
+
+    /**
+     * Signed distance to an isosceles triangle in XY sized by half extents
+     * (apex at +Y, base at -Y spanning ±halfX) — front-facing on the model.
+     */
+    private static float sdTriangleXY(float x, float y, float halfX, float halfY)
+    {
+        float ax = 0F;
+        float ay = Math.max(halfY, EPSILON);
+        float bx = -Math.max(halfX, EPSILON);
+        float by = -Math.max(halfY, EPSILON);
+        float cx = Math.max(halfX, EPSILON);
+        float cy = -Math.max(halfY, EPSILON);
+
+        return sdTriangle2D(x, y, ax, ay, bx, by, cx, cy);
+    }
+
+    private static float sdTriangle2D(float px, float py, float ax, float ay, float bx, float by, float cx, float cy)
+    {
+        float e0x = bx - ax;
+        float e0y = by - ay;
+        float e1x = cx - bx;
+        float e1y = cy - by;
+        float e2x = ax - cx;
+        float e2y = ay - cy;
+        float v0x = px - ax;
+        float v0y = py - ay;
+        float v1x = px - bx;
+        float v1y = py - by;
+        float v2x = px - cx;
+        float v2y = py - cy;
+        float d0 = distToSegmentSq(v0x, v0y, e0x, e0y);
+        float d1 = distToSegmentSq(v1x, v1y, e1x, e1y);
+        float d2 = distToSegmentSq(v2x, v2y, e2x, e2y);
+        float minDistSq = Math.min(d0, Math.min(d1, d2));
+        float s = Math.signum(e0x * e2y - e0y * e2x);
+        float o0 = s * (v0x * e0y - v0y * e0x);
+        float o1 = s * (v1x * e1y - v1y * e1x);
+        float o2 = s * (v2x * e2y - v2y * e2x);
+        float inside = Math.min(o0, Math.min(o1, o2));
+
+        return (float) (-Math.sqrt(minDistSq) * Math.signum(inside));
+    }
+
+    private static float distToSegmentSq(float vx, float vy, float ex, float ey)
+    {
+        float denom = ex * ex + ey * ey;
+        float t = denom <= EPSILON ? 0F : MathUtils.clamp((vx * ex + vy * ey) / denom, 0F, 1F);
+        float dx = vx - ex * t;
+        float dy = vy - ey * t;
+
+        return dx * dx + dy * dy;
     }
 
     public static float maskBlock(float x, float y, float z, EffectTransform transform)
