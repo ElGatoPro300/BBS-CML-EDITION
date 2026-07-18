@@ -6181,8 +6181,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.cameraEditor.fillData();
         this.actionEditor.fillData();
 
-        if (this.replayEditor.keyframeEditor != null && this.replayEditor.keyframeEditor.editor != null
-            && !this.replayEditor.keyframeEditor.isEditorInputFocused())
+        if (this.replayEditor.keyframeEditor != null && this.replayEditor.keyframeEditor.editor != null)
         {
             this.replayEditor.keyframeEditor.editor.update();
         }

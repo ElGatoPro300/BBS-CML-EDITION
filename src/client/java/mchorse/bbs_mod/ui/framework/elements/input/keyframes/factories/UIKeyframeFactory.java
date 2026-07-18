@@ -5,6 +5,7 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.clips.UIBossBarColorKeyframeFactory;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -23,11 +24,13 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Interpolation;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
+import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public abstract class UIKeyframeFactory <T> extends UIElement
@@ -165,12 +168,51 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         this.scroll.scroll.cancelScrolling();
         this.scroll.full(this);
 
-        this.tick = new UITrackpad(this::setTick);
+        this.tick = new UITrackpad(this::setTick)
+        {
+            @Override
+            public void focus(UIContext context)
+            {
+                UIKeyframeFactory.this.syncTickFromKeyframe();
+                super.focus(context);
+            }
+        };
         this.tick.tooltip(UIKeys.KEYFRAMES_TICK);
-        this.tick.getEvents().register(UITrackpadDragStartEvent.class, (e) -> this.editor.cacheKeyframes());
-        this.tick.getEvents().register(UITrackpadDragEndEvent.class, (e) -> this.editor.submitKeyframes());
-        this.duration = new UITrackpad((v) -> this.setDuration(v.floatValue()));
+        this.tick.getEvents().register(UITrackpadDragStartEvent.class, (e) ->
+        {
+            /* Must run before lastValue is captured (see UITrackpad). */
+            this.syncTickFromKeyframe();
+            this.editor.cacheKeyframes();
+        });
+        this.tick.getEvents().register(UITrackpadDragEndEvent.class, (e) ->
+        {
+            this.editor.submitKeyframes();
+            /* submitKeyframes() replaces channel keyframe instances — rebind. */
+            this.rebindKeyframe();
+            this.syncTickFromKeyframe();
+        });
+        this.duration = new UITrackpad((v) -> this.setDuration(v.floatValue()))
+        {
+            @Override
+            public void focus(UIContext context)
+            {
+                this.setValue(TimeUtils.toTime(UIKeyframeFactory.this.getKeyframe().getDuration()));
+                super.focus(context);
+            }
+        };
         this.duration.limit(0, Float.MAX_VALUE).tooltip(UIKeys.KEYFRAMES_FORCED_DURATION);
+        this.duration.getEvents().register(UITrackpadDragStartEvent.class, (e) ->
+        {
+            this.rebindKeyframe();
+            this.duration.setValue(TimeUtils.toTime(this.keyframe.getDuration()));
+            this.editor.cacheKeyframes();
+        });
+        this.duration.getEvents().register(UITrackpadDragEndEvent.class, (e) ->
+        {
+            this.editor.submitKeyframes();
+            this.rebindKeyframe();
+            this.duration.setValue(TimeUtils.toTime(this.keyframe.getDuration()));
+        });
         this.interp = new UIIcon(Icons.GRAPH, (b) ->
         {
             Interpolation interp = this.keyframe.getInterpolation();
@@ -241,32 +283,150 @@ public abstract class UIKeyframeFactory <T> extends UIElement
 
     public Keyframe<T> getKeyframe()
     {
+        this.rebindKeyframe();
+
         return this.keyframe;
     }
 
     public void setTick(double tick)
     {
-        double time = TimeUtils.fromTime(tick);
+        this.rebindKeyframe();
 
-        this.editor.getGraph().setTick((float) time, false);
-        this.editor.triggerChange();
+        if (this.keyframe == null)
+        {
+            return;
+        }
+
+        float time = (float) TimeUtils.fromTime(tick);
+        float diff = time - this.keyframe.getTick();
+
+        if (Math.abs(diff) > 1.0E-6F)
+        {
+            boolean movedSelection = false;
+
+            /* Diff is relative to the panel's (live) keyframe so the trackpad
+             * absolute value stays the source of truth. */
+            for (UIKeyframeSheet sheet : this.editor.getGraph().getSheets())
+            {
+                if (sheet.selection.hasAny())
+                {
+                    sheet.setTickBy(diff, false);
+                    movedSelection = true;
+                }
+            }
+
+            if (!movedSelection || Math.abs(this.keyframe.getTick() - time) > 1.0E-5F)
+            {
+                this.keyframe.setTick(time, !movedSelection);
+            }
+        }
+
+        if (!this.tick.isActivelyEditing() && !this.tick.isDragging())
+        {
+            this.syncTickFromKeyframe();
+            this.editor.triggerChange();
+        }
     }
 
     public void setDuration(float value)
     {
+        this.rebindKeyframe();
         this.editor.getGraph().setDuration(value);
-        this.editor.triggerChange();
+
+        if (!this.duration.isActivelyEditing() && !this.duration.isDragging())
+        {
+            this.editor.triggerChange();
+        }
     }
 
     public void setValue(Object value)
     {
+        this.rebindKeyframe();
         this.editor.getGraph().setValue(value, true);
         this.editor.triggerChange();
     }
 
     public void update()
     {
-        this.tick.setValue(TimeUtils.toTime(this.keyframe.getTick()));
+        this.rebindKeyframe();
+
+        if (!this.tick.isActivelyEditing() && !this.tick.isDragging())
+        {
+            this.syncTickFromKeyframe();
+        }
+
+        if (!this.duration.isActivelyEditing() && !this.duration.isDragging())
+        {
+            this.duration.setValue(TimeUtils.toTime(this.keyframe.getDuration()));
+        }
+    }
+
+    private void syncTickFromKeyframe()
+    {
+        this.rebindKeyframe();
+
+        if (this.keyframe != null)
+        {
+            this.tick.setValue(TimeUtils.toTime(this.keyframe.getTick()));
+        }
+    }
+
+    /**
+     * {@link UIKeyframes#submitKeyframes()} replaces channel keyframe instances
+     * via {@code copyKeyframes}. The factory must point at the live selected
+     * keyframe or {@link #update()} will keep resetting inputs from an orphan.
+     */
+    @SuppressWarnings("unchecked")
+    protected void rebindKeyframe()
+    {
+        if (this.keyframe == null || this.editor == null)
+        {
+            return;
+        }
+
+        if (this.keyframe.getParent() instanceof KeyframeChannel<?> channel
+            && channel.getKeyframes().contains(this.keyframe))
+        {
+            return;
+        }
+
+        Keyframe<?> selected = this.editor.getGraph().getSelected();
+
+        if (selected != null && selected.getFactory() == this.keyframe.getFactory())
+        {
+            this.keyframe = (Keyframe<T>) selected;
+
+            return;
+        }
+
+        UIKeyframeSheet sheet = this.editor.getGraph().getSheet(this.keyframe);
+
+        if (sheet != null && sheet.selection.hasAny())
+        {
+            List<Keyframe> selectedList = sheet.selection.getSelected();
+
+            if (!selectedList.isEmpty())
+            {
+                this.keyframe = (Keyframe<T>) selectedList.get(0);
+            }
+        }
+    }
+
+    /**
+     * Wire undo cache/submit and live rebind for a keyframe value trackpad.
+     */
+    protected void registerValueTrackpad(UITrackpad trackpad)
+    {
+        trackpad.getEvents().register(UITrackpadDragStartEvent.class, (e) ->
+        {
+            this.rebindKeyframe();
+            this.editor.cacheKeyframes();
+        });
+        trackpad.getEvents().register(UITrackpadDragEndEvent.class, (e) ->
+        {
+            this.editor.submitKeyframes();
+            this.rebindKeyframe();
+        });
     }
 
     public static interface IUIKeyframeFactoryFactory <T>

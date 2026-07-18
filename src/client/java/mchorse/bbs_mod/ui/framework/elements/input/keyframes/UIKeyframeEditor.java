@@ -59,7 +59,7 @@ public class UIKeyframeEditor extends UIElement
         this.view = factory.apply(this::pickKeyframe);
         this.view.changed(() ->
         {
-            if (this.editor != null && !this.isEditorInputFocused())
+            if (this.editor != null)
             {
                 this.editor.update();
             }
@@ -132,6 +132,7 @@ public class UIKeyframeEditor extends UIElement
 
     public UIKeyframeEditor overlayPanel(boolean overlayPanel)
     {
+        this.unfocusEditorInputs();
         this.overlayPanel = overlayPanel;
         this.applyLayout();
         this.resize();
@@ -367,9 +368,25 @@ public class UIKeyframeEditor extends UIElement
 
     public void setStackedLayout(boolean stackedLayout)
     {
+        this.unfocusEditorInputs();
         this.stackedLayout = stackedLayout;
         this.applyLayout();
         this.resize();
+    }
+
+    /**
+     * Layout / embed toggles can leave a trackpad textbox marked focused while
+     * {@link UIContext#activeElement} is cleared or the widget tree moves.
+     * Clearing focus avoids frozen numeric fields until the keyframe is re-picked.
+     */
+    private void unfocusEditorInputs()
+    {
+        UIContext context = this.getContext();
+
+        if (context != null)
+        {
+            context.unfocus();
+        }
     }
 
     public void setChannel(KeyframeChannel channel, int color)

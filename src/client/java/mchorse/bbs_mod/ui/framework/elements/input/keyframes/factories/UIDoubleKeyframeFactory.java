@@ -19,6 +19,7 @@ public class UIDoubleKeyframeFactory extends UIKeyframeFactory<Double>
         this.applySheetLimits();
         this.value.setValue(keyframe.getValue());
         this.handles = new UIBezierHandles(keyframe);
+        this.registerValueTrackpad(this.value);
 
         this.scroll.add(this.value, this.handles.createColumn());
     }
@@ -56,7 +57,12 @@ public class UIDoubleKeyframeFactory extends UIKeyframeFactory<Double>
     {
         super.update();
 
-        this.value.setValue(this.keyframe.getValue());
+        if (!this.value.isActivelyEditing() && !this.value.isDragging())
+        {
+            this.value.setValue(this.keyframe.getValue());
+        }
+
+        this.handles.setKeyframe(this.keyframe);
         this.handles.update();
     }
 }
