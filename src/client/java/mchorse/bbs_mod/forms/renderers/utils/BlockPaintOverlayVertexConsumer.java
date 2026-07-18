@@ -24,7 +24,7 @@ public class BlockPaintOverlayVertexConsumer implements VertexConsumer
     }
 
     @Override
-    public VertexConsumer vertex(float x, float y, float z)
+    public VertexConsumer vertex(double x, double y, double z)
     {
         return this.consumer.vertex(x, y, z);
     }
@@ -47,6 +47,15 @@ public class BlockPaintOverlayVertexConsumer implements VertexConsumer
     }
 
     @Override
+    public void fixedColor(int red, int green, int blue, int alpha)
+    {
+    }
+
+    @Override
+    public void next()
+    {
+    }
+
     public VertexConsumer color(float red, float green, float blue, float alpha)
     {
         float r = MathUtils.clamp(this.paintColor.r * red, 0F, 1F);
@@ -79,5 +88,11 @@ public class BlockPaintOverlayVertexConsumer implements VertexConsumer
     public VertexConsumer normal(float x, float y, float z)
     {
         return this.consumer.normal(x, y, z);
+    }
+
+    @Override
+    public void unfixColor()
+    {
+        this.consumer.unfixColor();
     }
 }

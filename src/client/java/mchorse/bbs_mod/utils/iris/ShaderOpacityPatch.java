@@ -13,7 +13,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.joml.Matrix4f;
-import org.joml.Matrix4fStack;
+
+import net.minecraft.client.util.math.MatrixStack;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -451,7 +452,7 @@ public class ShaderOpacityPatch
     {
         Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
         Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
-        Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
+        MatrixStack modelViewStack = RenderSystem.getModelViewStack();
         boolean savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
 
         try
@@ -462,8 +463,8 @@ public class ShaderOpacityPatch
 
             if (entry.irisCamera)
             {
-                modelViewStack.pushMatrix();
-                modelViewStack.set(entry.modelView);
+                modelViewStack.push();
+                modelViewStack.peek().getPositionMatrix().set(entry.modelView);
                 RenderSystem.applyModelViewMatrix();
             }
             else
@@ -483,7 +484,7 @@ public class ShaderOpacityPatch
             {
                 if (entry.irisCamera)
                 {
-                    modelViewStack.popMatrix();
+                    modelViewStack.pop();
                     RenderSystem.applyModelViewMatrix();
                 }
                 else
@@ -497,10 +498,10 @@ public class ShaderOpacityPatch
         {
             RenderSystem.depthMask(savedDepthMask);
             RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
-            modelViewStack.pushMatrix();
-            modelViewStack.set(savedModelView);
+            modelViewStack.push();
+            modelViewStack.peek().getPositionMatrix().set(savedModelView);
             RenderSystem.applyModelViewMatrix();
-            modelViewStack.popMatrix();
+            modelViewStack.pop();
             RenderSystem.applyModelViewMatrix();
         }
     }
