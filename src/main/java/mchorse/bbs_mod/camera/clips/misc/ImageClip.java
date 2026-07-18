@@ -3,6 +3,7 @@ package mchorse.bbs_mod.camera.clips.misc;
 import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
@@ -30,7 +31,6 @@ public class ImageClip extends CameraClip
     public ValueBoolean mipmap = new ValueBoolean("mipmap", false);
     public ValueVector4f crop = new ValueVector4f("crop", new Vector4f(0, 0, 0, 0));
     public ValueBoolean resizeCrop = new ValueBoolean("resizeCrop", false);
-    public ValueColor color = new ValueColor("color", Color.white());
     public ValueLink blendFrom = new ValueLink("blend_from", null);
     public ValueLink blendTo = new ValueLink("blend_to", null);
     public ValueBoolean uniformSize = new ValueBoolean("uniform_size", true);
@@ -49,11 +49,14 @@ public class ImageClip extends CameraClip
     public final KeyframeChannel<Double> windowX = new KeyframeChannel<>("windowX", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> windowY = new KeyframeChannel<>("windowY", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> opacity = new KeyframeChannel<>("opacity", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Color> color = new KeyframeChannel<>("color", KeyframeFactories.COLOR);
     public final ValueBoolean useKeyframes = new ValueBoolean("use_keyframes", false);
     public final ValueBoolean uniformSeeded = new ValueBoolean("uniform_seeded", false);
     public final ImageUniform uniform = new ImageUniform("uniform");
 
     public final KeyframeChannel[] channels;
+
+    private static final Color DEFAULT_COLOR = Color.white();
 
     private ImageOverlay overlay = new ImageOverlay();
 
@@ -68,7 +71,8 @@ public class ImageClip extends CameraClip
         {
             this.textureTrack, this.offsetX, this.offsetY, this.rotation,
             this.x, this.y, this.width, this.height,
-            this.anchorX, this.anchorY, this.windowX, this.windowY, this.opacity
+            this.anchorX, this.anchorY, this.windowX, this.windowY, this.opacity,
+            this.color
         };
 
         this.add(this.texture);
@@ -76,7 +80,6 @@ public class ImageClip extends CameraClip
         this.add(this.mipmap);
         this.add(this.crop);
         this.add(this.resizeCrop);
-        this.add(this.color);
         this.add(this.blendFrom);
         this.add(this.blendTo);
         this.add(this.uniformSize);
@@ -94,6 +97,7 @@ public class ImageClip extends CameraClip
         this.add(this.windowX);
         this.add(this.windowY);
         this.add(this.opacity);
+        this.add(this.color);
         this.add(this.useKeyframes);
         this.add(this.uniformSeeded);
         this.add(this.uniform);
@@ -102,7 +106,20 @@ public class ImageClip extends CameraClip
     @Override
     public void fromData(BaseType data)
     {
+        BaseType legacyColor = null;
         boolean hasUseKeyframes = data != null && data.isMap() && data.asMap().has("use_keyframes");
+
+        if (data != null && data.isMap())
+        {
+            MapType map = data.asMap();
+            BaseType colorData = map.get("color");
+
+            /* Old clips stored a plain ValueColor (int/map), not a keyframe channel. */
+            if (colorData != null && !this.isKeyframeChannelData(colorData))
+            {
+                legacyColor = colorData;
+            }
+        }
 
         super.fromData(data);
 
@@ -111,6 +128,26 @@ public class ImageClip extends CameraClip
         {
             this.useKeyframes.set(true);
         }
+
+        if (legacyColor != null && this.color.isEmpty())
+        {
+            Color migrated = KeyframeFactories.COLOR.fromData(legacyColor);
+
+            if (migrated != null)
+            {
+                this.uniform.color.set(migrated.copy());
+
+                if (this.useKeyframes.get())
+                {
+                    this.color.insert(0, migrated.copy());
+                }
+            }
+        }
+    }
+
+    private boolean isKeyframeChannelData(BaseType data)
+    {
+        return data.isMap() && data.asMap().has("keyframes");
     }
 
     @Override
@@ -133,7 +170,7 @@ public class ImageClip extends CameraClip
             return;
         }
 
-        Color tinted = this.color.get().copy();
+        Color tinted = this.valueColor(this.color, this.uniform.color, t, DEFAULT_COLOR).copy();
         tinted.a *= alpha;
 
         TextureBlend textureBlend = this.getTextureBlend(t);
@@ -189,6 +226,7 @@ public class ImageClip extends CameraClip
         this.uniform.windowX.set(this.interp(this.windowX, tick, 0.5D));
         this.uniform.windowY.set(this.interp(this.windowY, tick, 0.5D));
         this.uniform.opacity.set(this.interp(this.opacity, tick, 1D));
+        this.uniform.color.set(this.interpColor(this.color, tick, DEFAULT_COLOR).copy());
         this.uniformSeeded.set(true);
     }
 
@@ -213,6 +251,7 @@ public class ImageClip extends CameraClip
         this.seedDouble(this.windowX, this.uniform.windowX.get());
         this.seedDouble(this.windowY, this.uniform.windowY.get());
         this.seedDouble(this.opacity, this.uniform.opacity.get());
+        this.seedColor(this.color, this.uniform.color.get());
     }
 
     private void seedDouble(KeyframeChannel<Double> channel, double value)
@@ -220,6 +259,14 @@ public class ImageClip extends CameraClip
         if (channel.isEmpty())
         {
             channel.insert(0, value);
+        }
+    }
+
+    private void seedColor(KeyframeChannel<Color> channel, Color value)
+    {
+        if (channel.isEmpty())
+        {
+            channel.insert(0, value.copy());
         }
     }
 
@@ -276,6 +323,21 @@ public class ImageClip extends CameraClip
         return this.interp(channel, t, fallback);
     }
 
+    private Color valueColor(KeyframeChannel<Color> channel, ValueColor uniform, float t, Color fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interpColor(channel, t, fallback);
+    }
+
     private double interp(KeyframeChannel<Double> channel, float t, double fallback)
     {
         if (channel.isEmpty())
@@ -284,6 +346,16 @@ public class ImageClip extends CameraClip
         }
 
         return channel.interpolate(t);
+    }
+
+    private Color interpColor(KeyframeChannel<Color> channel, float t, Color fallback)
+    {
+        if (channel.isEmpty())
+        {
+            return fallback;
+        }
+
+        return channel.interpolate(t, fallback);
     }
 
     @Override

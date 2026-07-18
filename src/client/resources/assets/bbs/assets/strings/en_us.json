@@ -780,6 +780,7 @@
     "bbs.ui.camera.panels.image.window_x": "Window X",
     "bbs.ui.camera.panels.image.window_y": "Window Y",
     "bbs.ui.camera.panels.image.opacity": "Opacity",
+    "bbs.ui.camera.panels.image.color": "Color",
     "bbs.ui.camera.panels.image.transform": "Transform",
     "bbs.ui.camera.panels.target": "Target",
     "bbs.ui.camera.panels.target-title": "Pick the target...",

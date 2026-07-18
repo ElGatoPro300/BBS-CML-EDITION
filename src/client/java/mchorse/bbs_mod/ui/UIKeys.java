@@ -233,6 +233,7 @@ public class UIKeys
     public static final IKey CAMERA_PANELS_IMAGE_WINDOW_X = L10n.lang("bbs.ui.camera.panels.image.window_x");
     public static final IKey CAMERA_PANELS_IMAGE_WINDOW_Y = L10n.lang("bbs.ui.camera.panels.image.window_y");
     public static final IKey CAMERA_PANELS_IMAGE_OPACITY = L10n.lang("bbs.ui.camera.panels.image.opacity");
+    public static final IKey CAMERA_PANELS_IMAGE_COLOR = L10n.lang("bbs.ui.camera.panels.image.color");
     public static final IKey CAMERA_PANELS_TARGET = L10n.lang("bbs.ui.camera.panels.target");
     public static final IKey CAMERA_PANELS_TARGET_TITLE = L10n.lang("bbs.ui.camera.panels.target-title");
     public static final IKey CAMERA_PANELS_TARGET_TOOLTIP = L10n.lang("bbs.ui.camera.panels.target-tooltip");

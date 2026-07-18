@@ -1,7 +1,9 @@
 package mchorse.bbs_mod.camera.clips.misc;
 
+import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
+import mchorse.bbs_mod.utils.colors.Color;
 
 /**
  * Static property values used when {@link ImageClip#useKeyframes} is disabled.
@@ -22,6 +24,7 @@ public class ImageUniform extends ValueGroup
     public final ValueDouble windowX = new ValueDouble("windowX", 0.5D);
     public final ValueDouble windowY = new ValueDouble("windowY", 0.5D);
     public final ValueDouble opacity = new ValueDouble("opacity", 1D);
+    public final ValueColor color = new ValueColor("color", Color.white());
 
     public ImageUniform(String id)
     {
@@ -40,5 +43,6 @@ public class ImageUniform extends ValueGroup
         this.add(this.windowX);
         this.add(this.windowY);
         this.add(this.opacity);
+        this.add(this.color);
     }
 }

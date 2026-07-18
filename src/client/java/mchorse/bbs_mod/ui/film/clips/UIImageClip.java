@@ -7,6 +7,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -112,10 +113,11 @@ public class UIImageClip extends UIClip<ImageClip>
             value.set(b.getValue());
         }));
 
-        this.color = new UIColor((c) -> this.editor.editMultiple(this.clip.color, (value) ->
+        this.color = new UIColor((c) ->
         {
-            value.set(Color.rgba(c));
-        })).withAlpha();
+            this.writeColor(this.clip.color, this.clip.uniform.color, Color.rgba(c));
+            this.fillData();
+        }).withAlpha();
 
         this.offsetX = this.createDoubleTrackpad(this.clip.offsetX, this.clip.uniform.offsetX, UIKeys.CAMERA_PANELS_IMAGE_UV_OFFSET_X, false, null, null);
         this.offsetY = this.createDoubleTrackpad(this.clip.offsetY, this.clip.uniform.offsetY, UIKeys.CAMERA_PANELS_IMAGE_UV_OFFSET_Y, false, null, null);
@@ -240,6 +242,19 @@ public class UIImageClip extends UIClip<ImageClip>
     }
 
     private void writeDouble(KeyframeChannel<Double> channel, ValueDouble uniform, double value)
+    {
+        if (this.clip.useKeyframes.get())
+        {
+            channel.insert(this.getClipTick(), value);
+        }
+        else
+        {
+            this.clip.uniformSeeded.set(true);
+            uniform.set(value);
+        }
+    }
+
+    private void writeColor(KeyframeChannel<Color> channel, ValueColor uniform, Color value)
     {
         if (this.clip.useKeyframes.get())
         {
@@ -419,7 +434,7 @@ public class UIImageClip extends UIClip<ImageClip>
         this.linear.setValue(this.clip.linear.get());
         this.mipmap.setValue(this.clip.mipmap.get());
         this.resizeCrop.setValue(this.clip.resizeCrop.get());
-        this.color.setColor(this.clip.color.get().getARGBColor());
+        this.color.setColor(this.getColorValue(this.clip.color, this.clip.uniform.color, Color.white()).getARGBColor());
         this.offsetX.setValue(this.getChannelValue(this.clip.offsetX, this.clip.uniform.offsetX, 0D));
         this.offsetY.setValue(this.getChannelValue(this.clip.offsetY, this.clip.uniform.offsetY, 0D));
         this.rotation.setValue(this.getChannelValue(this.clip.rotation, this.clip.uniform.rotation, 0D));
@@ -437,8 +452,10 @@ public class UIImageClip extends UIClip<ImageClip>
         this.useKeyframes.setValue(this.clip.useKeyframes.get());
         this.updateKeyframesControls();
 
-        /* Avoid rebuilding keyframe sheets on every cursor scrub — only when empty. */
-        if (this.keyframes.view.getGraph().getSheets().isEmpty())
+        /* Avoid rebuilding keyframe sheets on every cursor scrub — only when empty
+         * or when channels were extended (e.g. color track added). */
+        if (this.keyframes.view.getGraph().getSheets().isEmpty()
+            || this.keyframes.view.getGraph().getSheets().size() != this.clip.channels.length)
         {
             this.keyframes.setChannels(this.clip.channels);
         }
@@ -459,6 +476,21 @@ public class UIImageClip extends UIClip<ImageClip>
         }
 
         return channel.interpolate(this.getClipTick());
+    }
+
+    private Color getColorValue(KeyframeChannel<Color> channel, ValueColor uniform, Color fallback)
+    {
+        if (!this.clip.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.clip.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return channel.interpolate(this.getClipTick(), fallback);
     }
 
     private void updateTrackTitles()
@@ -486,6 +518,7 @@ public class UIImageClip extends UIClip<ImageClip>
             case "windowX" -> UIKeys.CAMERA_PANELS_IMAGE_WINDOW_X;
             case "windowY" -> UIKeys.CAMERA_PANELS_IMAGE_WINDOW_Y;
             case "opacity" -> UIKeys.CAMERA_PANELS_IMAGE_OPACITY;
+            case "color" -> UIKeys.CAMERA_PANELS_IMAGE_COLOR;
             default -> IKey.constant(id);
         };
     }

@@ -670,6 +670,7 @@
     "bbs.ui.camera.panels.image.height": "Altura",
     "bbs.ui.camera.panels.image.offset": "Desfase",
     "bbs.ui.camera.panels.image.opacity": "Opacidad",
+    "bbs.ui.camera.panels.image.color": "Color",
     "bbs.ui.camera.panels.image.pick_texture": "Elegir textura...",
     "bbs.ui.camera.panels.image.position_x": "Posición X",
     "bbs.ui.camera.panels.image.position_y": "Posición Y",

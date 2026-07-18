@@ -695,6 +695,7 @@
     "bbs.ui.camera.panels.image.height": "ارتفاع",
     "bbs.ui.camera.panels.image.offset": "موقعیت",
     "bbs.ui.camera.panels.image.opacity": "شفافیت",
+    "bbs.ui.camera.panels.image.color": "رنگ",
     "bbs.ui.camera.panels.image.pick_texture": "انتخاب بافت...",
     "bbs.ui.camera.panels.image.position_x": "موقعیت X",
     "bbs.ui.camera.panels.image.position_y": "موقعیت Y",
