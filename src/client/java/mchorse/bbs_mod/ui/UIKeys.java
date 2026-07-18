@@ -1884,6 +1884,7 @@ public class UIKeys
     public static final IKey SETTINGS_FONT_RESET = L10n.lang("bbs.ui.settings.font_reset");
     public static final IKey WORLD_PROPERTIES = L10n.lang("bbs.ui.world.properties");
     public static final IKey WORLD_TIME_LABEL = L10n.lang("bbs.ui.world.time_label");
+    public static final IKey WORLD_SUN_PATH_ROTATION = L10n.lang("bbs.ui.world.sun_path_rotation");
     public static final IKey WORLD_SECTION_TIME = L10n.lang("bbs.ui.world.section.time");
     public static final IKey WORLD_SECTION_WEATHER = L10n.lang("bbs.ui.world.section.weather");
     public static final IKey WORLD_SECTION_MOBS = L10n.lang("bbs.ui.world.section.mobs");

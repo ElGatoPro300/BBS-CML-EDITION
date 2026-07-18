@@ -1,0 +1,147 @@
+{
+	"unusedString": "
+		// Iris preprocessor is used here, so files can be included.
+		// Keep in mind that uniform declaration in includes should be wrapped in #ifdef VOXY_PATCH
+		#include "/lib/settings.glsl"
+	",
+	"version": 1,
+	"excludeLodsFromVanillaDepth": true,
+	"opaqueDrawBuffers": [
+		0,
+		6
+		#ifdef MCBL_SS
+		,8
+		#endif
+	],
+	"translucentDrawBuffers": [
+		16,
+		1
+		#ifdef MCBL_SS
+		,8
+		#endif
+	],
+	"blending": {
+		-1: "off",
+		0: "SRC_ALPHA ONE_MINUS_SRC_ALPHA ONE ONE_MINUS_SRC_ALPHA"
+	},
+	"taaOffset": "{
+		#ifdef TAA
+		vec2 view = 1.0 / vec2(viewWidth, viewHeight);
+		
+		#if TAA_MODE == 0
+		vec2 jitterOffsets8[8] = vec2[8](
+			vec2( 0.125,-0.375),
+			vec2(-0.125, 0.375),
+			vec2( 0.625, 0.125),
+			vec2( 0.375,-0.625),
+			vec2(-0.625, 0.625),
+			vec2(-0.875,-0.125),
+			vec2( 0.375,-0.875),
+			vec2( 0.875, 0.875)
+		);
+		return jitterOffsets8[int(framemod8)] * view;
+		#else
+		vec2 jitterOffsets2[2] = vec2[2](
+			vec2( 1.0,  0.0),
+			vec2( 0.0,  1.0)
+		);
+		return jitterOffsets2[int(framemod2)] * view;
+		#endif
+		#endif
+
+		return vec2(0.0);
+	}",
+
+	"uniforms": [
+		#ifdef WEATHER_PERBIOME
+		"isDesert",
+		"isMesa",
+		"isCold",
+		"isSwamp",
+		"isMushroom",
+		"isSavanna",
+		"isJungle",
+		#endif
+
+		#ifdef TAA
+		#if TAA_MODE == 0
+		"framemod8",
+		#else
+		"framemod2",
+		#endif
+		#endif
+
+		#ifdef MCBL_SS
+		"relativeEyePosition",
+		"heldItemId",
+		"heldItemId2",
+		#endif
+
+		#ifdef DISTANT_HORIZONS
+		"dhProjectionInverse",
+		#endif
+
+		"bedrockLevel",
+		"frameCounter",
+		"isEyeInWater",
+		"moonPhase",
+		"vxRenderDistance",
+		"worldTime",
+
+		"blindFactor",
+		"cloudHeight",
+		"darknessFactor",
+		"endFlashIntensity",
+		"far",
+		"frameTimeCounter",
+		"nightVision",
+		"rainStrength",
+		"screenBrightness",
+		"shadowFade",
+		"timeAngle",
+		"timeBrightness",
+		"viewWidth",
+		"viewHeight",
+
+		"eyeBrightnessSmooth",
+
+		"cameraPosition",
+		"previousCameraPosition",
+		"fogColor",
+		"skyColor",
+
+		"vxModelView", "vxModelViewInv","vxModelViewPrev",
+		"vxProj", "vxProjInv", "vxProjPrev",
+		"shadowProjection",
+		"shadowModelView"
+	],
+	"samplers": {
+		#ifdef SHADOW
+		"shadowtex0": "sampler2DShadow",
+		#ifdef SHADOW_COLOR
+		"shadowtex1": "sampler2DShadow",
+		"shadowcolor0": "sampler2D",
+		#endif
+		#endif
+
+		#if CLOUDS == 2
+		"gaux1":"sampler2D",
+		#endif
+
+		#ifdef MCBL_SS
+		"colortex8":"sampler2D",
+		"colortex9":"sampler2D",
+		#endif
+
+		#ifdef DISTANT_HORIZONS
+		"dhDepthTex1": "sampler2D",
+		#endif
+
+		"gaux2":"sampler2D",
+		"depthtex0":"sampler2D",
+		"depthtex1":"sampler2D",
+		"noisetex": "sampler2D",
+		"vxDepthTexTrans":"sampler2D",
+		"vxDepthTexOpaque":"sampler2D"
+	}
+}

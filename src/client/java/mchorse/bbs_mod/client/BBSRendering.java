@@ -24,6 +24,8 @@ import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
+import mchorse.bbs_mod.film.BaseFilmController;
+import mchorse.bbs_mod.film.WorldFilmController;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
@@ -41,6 +43,7 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.WorldPropertiesHelper;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIBossBarRenderer;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
@@ -1082,7 +1085,39 @@ public class BBSRendering
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
 
-            return values != null ? values.get(key) : null;
+            if (values != null && values.containsKey(key))
+            {
+                return values.get(key);
+            }
+        }
+
+        return getWorldFilmCurveValue(key);
+    }
+
+    /**
+     * Curve values from an in-world film playback ({@link WorldFilmController}),
+     * used when playing a film outside the BBS editor (no camera controller).
+     */
+    private static Double getWorldFilmCurveValue(String key)
+    {
+        for (BaseFilmController controller : BBSModClient.getFilms().getControllers())
+        {
+            if (!(controller instanceof WorldFilmController worldFilm))
+            {
+                continue;
+            }
+
+            if (worldFilm.hasFinished())
+            {
+                continue;
+            }
+
+            Map<String, Double> values = CurveClip.getValues(worldFilm.getCameraContext());
+
+            if (values != null && values.containsKey(key))
+            {
+                return values.get(key);
+            }
         }
 
         return null;
@@ -1220,11 +1255,20 @@ public class BBSRendering
         return v == null ? null : (long) (v * 1000L);
     }
 
-    public static Float getSunPathRotationDegrees()
+    /**
+     * Sun-path yaw in degrees. Film curve (editor or in-world playback) overrides
+     * World Properties when present.
+     */
+    public static float getSunPathRotationDegrees()
     {
         Double v = getCurveValue(ShaderCurves.SUN_PATH_ROTATION);
 
-        return v == null ? null : v.floatValue();
+        if (v != null)
+        {
+            return v.floatValue();
+        }
+
+        return WorldPropertiesHelper.getSunPathRotation();
     }
 
     public static Double getBrightness()

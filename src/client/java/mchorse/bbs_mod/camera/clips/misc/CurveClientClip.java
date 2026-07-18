@@ -85,6 +85,15 @@ public class CurveClientClip extends CurveClip
                 continue;
             }
 
+            if (ShaderCurves.SUN_PATH_ROTATION.equals(id)
+                || id.equals(SHADER_CURVES_PREFIX + ShaderCurves.SUN_PATH_ROTATION))
+            {
+                /* Uniform is read live from clip data; keep variable registered for Iris. */
+                ShaderCurves.ensureSunPathRotationVariable();
+
+                continue;
+            }
+
             if (id.startsWith(SHADER_CURVES_PREFIX))
             {
                 ShaderCurves.ShaderVariable variable = ShaderCurves.variableMap.get(id.substring(SHADER_CURVES_PREFIX.length()));

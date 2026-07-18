@@ -48,6 +48,8 @@
         "LivingEntityRendererInvoker",
         "EntityRenderDispatcherMixin",
         "iris.ShadowRendererMixin",
+        "iris.ShadowMatricesMixin",
+        "iris.CelestialUniformsMixin",
         "audio.SoundEngineMixin",
         "TitleScreenMixin",
         "SelectWorldScreenMixin",

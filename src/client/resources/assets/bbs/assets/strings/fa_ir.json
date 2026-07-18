@@ -2581,6 +2581,7 @@
     "bbs.ui.world.time.night": "شب",
     "bbs.ui.world.time.noon": "ظهر",
     "bbs.ui.world.time_label": "زمان روز",
+    "bbs.ui.world.sun_path_rotation": "چرخش خورشید",
     "bbs.ui.world.weather.clear": "صاف",
     "bbs.ui.world.weather.rain": "باران",
     "bbs.ui.world.weather.thunder": "رعد و برق",

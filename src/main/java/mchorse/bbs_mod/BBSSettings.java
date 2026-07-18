@@ -198,6 +198,7 @@ public class BBSSettings
     public static ValueBoolean coloredBackground;
     public static ValueFloat backgroundBrightness;
     public static ValueDouble worldGammaPercent;
+    public static ValueFloat worldSunPathRotation;
     public static ValueBoolean interfaceShadows;
 
     public static ValueString entitySelectorsPropertyWhitelist;
@@ -519,6 +520,7 @@ public class BBSSettings
         coloredBackground = builder.getBoolean("colored_background", true);
         backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
         worldGammaPercent = builder.getDouble("world_gamma_percent", 100D, 0D, 1500D);
+        worldSunPathRotation = builder.getFloat("world_sun_path_rotation", 0F, -180F, 180F);
         interfaceShadows = builder.getBoolean("interface_shadows", true);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
