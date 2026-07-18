@@ -249,16 +249,19 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         double time = TimeUtils.fromTime(tick);
 
         this.editor.getGraph().setTick((float) time, false);
+        this.editor.triggerChange();
     }
 
     public void setDuration(float value)
     {
         this.editor.getGraph().setDuration(value);
+        this.editor.triggerChange();
     }
 
     public void setValue(Object value)
     {
         this.editor.getGraph().setValue(value, true);
+        this.editor.triggerChange();
     }
 
     public void update()

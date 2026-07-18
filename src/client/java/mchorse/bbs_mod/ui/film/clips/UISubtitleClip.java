@@ -12,6 +12,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -49,6 +50,8 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
     public UIToggle useKeyframes;
     public UIButton edit;
     public UIKeyframeEditor keyframes;
+
+    private int lastSyncedCursor = Integer.MIN_VALUE;
 
     public UISubtitleClip(SubtitleClip clip, IUIClipsDelegate editor)
     {
@@ -261,6 +264,7 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
             UIReplaysEditor.renderBackground(context, editor.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
         });
         editor.view.duration(() -> this.clip.duration.get());
+        editor.view.changed(() -> this.fillData());
         editor.setUndoId(undoId);
 
         return editor;
@@ -323,6 +327,24 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
 
         this.applySheetLimits();
         this.updateTrackTitles();
+        this.lastSyncedCursor = this.editor.getCursor();
+    }
+
+    /**
+     * Keep property inputs in sync if the film cursor moves without going through
+     * the normal scrub refresh path (e.g. after a prior fillData failure).
+     */
+    @Override
+    public void render(UIContext context)
+    {
+        int cursor = this.editor.getCursor();
+
+        if (cursor != this.lastSyncedCursor)
+        {
+            this.fillData();
+        }
+
+        super.render(context);
     }
 
     private void applySheetLimits()
@@ -367,7 +389,20 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
             return this.clip.uniformSeeded.get() ? uniform.get() : fallback;
         }
 
-        return channel.interpolate(this.getClipTick());
+        return this.readDouble(channel, this.getClipTick(), fallback);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private double readDouble(KeyframeChannel<Double> channel, float tick, double fallback)
+    {
+        Object value = ((KeyframeChannel) channel).interpolate(tick);
+
+        if (value instanceof Number)
+        {
+            return ((Number) value).doubleValue();
+        }
+
+        return fallback;
     }
 
     private boolean getBooleanValue(KeyframeChannel<Boolean> channel, ValueBoolean uniform, boolean fallback)

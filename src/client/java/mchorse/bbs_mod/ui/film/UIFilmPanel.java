@@ -6141,8 +6141,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
      */
     private void refreshCursorFields()
     {
-        this.lastFilledCursor = this.runner.ticks;
+        /* Update lastFilledCursor only after a successful fill. If fillData throws
+         * mid-panel (e.g. bad keyframe factory types), the next frame must retry
+         * so later fields are not left permanently stale. */
         this.fillData();
+        this.lastFilledCursor = this.runner.ticks;
     }
 
     public boolean isRunning()

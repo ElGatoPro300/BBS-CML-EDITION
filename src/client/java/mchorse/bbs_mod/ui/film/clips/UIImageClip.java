@@ -15,6 +15,7 @@ import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.forms.editors.utils.UICropOverlayPanel;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
@@ -63,6 +64,8 @@ public class UIImageClip extends UIClip<ImageClip>
     public UIToggle useKeyframes;
     public UIButton edit;
     public UIKeyframeEditor keyframes;
+
+    private int lastSyncedCursor = Integer.MIN_VALUE;
 
     public UIImageClip(ImageClip clip, IUIClipsDelegate editor)
     {
@@ -288,6 +291,7 @@ public class UIImageClip extends UIClip<ImageClip>
             UIReplaysEditor.renderBackground(context, editor.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
         });
         editor.view.duration(() -> this.clip.duration.get());
+        editor.view.changed(() -> this.fillData());
         editor.setUndoId(undoId);
 
         return editor;
@@ -296,6 +300,34 @@ public class UIImageClip extends UIClip<ImageClip>
     private int getClipTick()
     {
         return MathHelper.clamp(this.editor.getCursor() - this.clip.tick.get(), 0, this.clip.duration.get());
+    }
+
+    /**
+     * Keep property inputs in sync if the film cursor moves without going through
+     * the normal scrub refresh path (e.g. after a prior fillData failure).
+     */
+    @Override
+    public void render(UIContext context)
+    {
+        int cursor = this.editor.getCursor();
+
+        if (cursor != this.lastSyncedCursor)
+        {
+            this.fillData();
+        }
+
+        super.render(context);
+    }
+
+    private void applySheetLimits()
+    {
+        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
+        {
+            if ("blend".equals(sheet.id) || "opacity".equals(sheet.id))
+            {
+                sheet.limit(0D, 1D);
+            }
+        }
     }
 
     private void toggleUniformSize()
@@ -469,17 +501,7 @@ public class UIImageClip extends UIClip<ImageClip>
 
         this.applySheetLimits();
         this.updateTrackTitles();
-    }
-
-    private void applySheetLimits()
-    {
-        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
-        {
-            if ("blend".equals(sheet.id) || "opacity".equals(sheet.id))
-            {
-                sheet.limit(0D, 1D);
-            }
-        }
+        this.lastSyncedCursor = this.editor.getCursor();
     }
 
     private double getChannelValue(KeyframeChannel<Double> channel, ValueDouble uniform, double fallback)
@@ -494,7 +516,20 @@ public class UIImageClip extends UIClip<ImageClip>
             return this.clip.uniformSeeded.get() ? uniform.get() : fallback;
         }
 
-        return channel.interpolate(this.getClipTick());
+        return this.readDouble(channel, this.getClipTick(), fallback);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private double readDouble(KeyframeChannel<Double> channel, float tick, double fallback)
+    {
+        Object value = ((KeyframeChannel) channel).interpolate(tick);
+
+        if (value instanceof Number)
+        {
+            return ((Number) value).doubleValue();
+        }
+
+        return fallback;
     }
 
     private Color getColorValue(KeyframeChannel<Color> channel, ValueColor uniform, Color fallback)
