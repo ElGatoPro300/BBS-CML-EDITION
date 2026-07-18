@@ -170,6 +170,7 @@ public class BBSSettings
     public static ValueInt replayContextOptions;
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
+    public static ValueBoolean editorEmbeddedKeyframeSidePanel;
     public static ValueBoolean editorMinutesBackup;
     public static ValueBoolean editorTimelineToolbar;
     public static ValueBoolean modelPbrPanelControls;
@@ -248,6 +249,16 @@ public class BBSSettings
     public static boolean isSaveAsCompatible()
     {
         return saveAsCompatible == null || saveAsCompatible.get();
+    }
+
+    /**
+     * When enabled (default), embedded clip keyframe editors show properties
+     * in an overlay side/bottom panel. When disabled, properties go to the
+     * general Properties layout tab (same host as replay keyframes).
+     */
+    public static boolean isEmbeddedKeyframeSidePanelEnabled()
+    {
+        return editorEmbeddedKeyframeSidePanel == null || editorEmbeddedKeyframeSidePanel.get();
     }
 
     public static int primaryColor()
@@ -641,6 +652,7 @@ public class BBSSettings
         editorClipPreview = builder.getBoolean("clip_preview", true);
         editorRewind = builder.getBoolean("rewind", true);
         editorHorizontalClipEditor = builder.getBoolean("horizontal_clip_editor", true);
+        editorEmbeddedKeyframeSidePanel = builder.getBoolean("embedded_keyframe_side_panel", true);
         editorMinutesBackup = builder.getBoolean("minutes_backup", true);
         editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
         editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);

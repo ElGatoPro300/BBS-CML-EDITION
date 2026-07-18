@@ -223,6 +223,8 @@
     "bbs.config.editor.guides_color-comment": "Color that will be used for rule of thirds and center lines (including transparency)",
     "bbs.config.editor.horizontal_clip_editor": "Horizontal clip editor",
     "bbs.config.editor.horizontal_clip_editor-comment": "Determines whether clip editor's elements will be organized vertically or horizontally",
+    "bbs.config.editor.embedded_keyframe_side_panel": "Side panel in embedded views",
+    "bbs.config.editor.embedded_keyframe_side_panel-comment": "When enabled, selecting a keyframe in an embedded clip keyframe view shows its properties in a side or bottom overlay panel. When disabled, those properties appear in the Properties tab instead (like the replay keyframe timeline)",
     "bbs.config.editor.horizontal_flight": "Horizontal flight",
     "bbs.config.editor.horizontal_flight-comment": "When enabled, the pitch of the camera won't affect the movement making the WASD movement cardinal (XZ plane)",
     "bbs.config.editor.import_mode": "Project Import Mode",

@@ -208,6 +208,8 @@
     "bbs.config.editor.guides_color-comment": "Color que se utilizará para la regla de tercios y líneas centrales (incluida la transparencia)",
     "bbs.config.editor.horizontal_clip_editor": "Editor de clips horizontal",
     "bbs.config.editor.horizontal_clip_editor-comment": "Determina si los elementos del editor de clips se organizarán vertical u horizontalmente",
+    "bbs.config.editor.embedded_keyframe_side_panel": "Panel lateral en vistas embebidas",
+    "bbs.config.editor.embedded_keyframe_side_panel-comment": "Si está activado, al seleccionar un keyframe en una vista embebida de un clip sus propiedades aparecen en un panel lateral u horizontal superpuesto. Si está desactivado, esas propiedades se muestran en la pestaña Propiedades (como en la timeline de replays)",
     "bbs.config.editor.horizontal_flight": "Vuelo horizontal",
     "bbs.config.editor.horizontal_flight-comment": "Cuando está habilitado, la inclinación de la cámara no afectará el movimiento, haciendo que el movimiento WASD sea cardinal (plano XZ)",
     "bbs.config.editor.import_mode": "Modo de Importación de Proyectos",

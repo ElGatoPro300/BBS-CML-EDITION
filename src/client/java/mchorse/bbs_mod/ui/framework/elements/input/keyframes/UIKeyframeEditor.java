@@ -49,6 +49,7 @@ public class UIKeyframeEditor extends UIElement
     private UIElement target;
     private boolean stackedLayout;
     private boolean overlayPanel;
+    private Runnable pickListener;
     private int sidePanelWidth = SIDE_PANEL_WIDTH;
     private int bottomPanelHeight = BOTTOM_PANEL_HEIGHT;
     private UIDraggable sidePanelResizer;
@@ -123,9 +124,42 @@ public class UIKeyframeEditor extends UIElement
 
     public UIKeyframeEditor target(UIElement target)
     {
-        this.target = target;
+        if (this.target == target)
+        {
+            this.view.resetFlex().full(this).w(1F);
 
+            return this;
+        }
+
+        if (this.editor != null)
+        {
+            this.editor.removeFromParent();
+        }
+
+        this.target = target;
         this.view.resetFlex().full(this).w(1F);
+
+        if (this.editor != null)
+        {
+            if (this.target != null)
+            {
+                this.target.add(this.editor);
+            }
+            else
+            {
+                this.add(this.editor);
+            }
+        }
+
+        this.applyLayout();
+        this.resize();
+
+        return this;
+    }
+
+    public UIKeyframeEditor pickListener(Runnable pickListener)
+    {
+        this.pickListener = pickListener;
 
         return this;
     }
@@ -189,6 +223,11 @@ public class UIKeyframeEditor extends UIElement
 
         this.applyLayout();
         this.resize();
+
+        if (this.pickListener != null)
+        {
+            this.pickListener.run();
+        }
     }
 
     /**

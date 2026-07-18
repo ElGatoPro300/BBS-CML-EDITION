@@ -2782,6 +2782,64 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return BBSSettings.editorSeparateReplayPropertiesPanel == null || BBSSettings.editorSeparateReplayPropertiesPanel.get();
     }
 
+    public void applyEmbeddedKeyframeSidePanelSetting()
+    {
+        if (this.cameraEditor != null && this.cameraEditor.clips != null)
+        {
+            this.cameraEditor.clips.applyEmbeddedKeyframePropertiesMode();
+        }
+
+        if (this.actionEditor != null && this.actionEditor.clips != null)
+        {
+            this.actionEditor.clips.applyEmbeddedKeyframePropertiesMode();
+        }
+    }
+
+    /**
+     * Select the general Properties tab (or unified properties) used by replay
+     * keyframes and by embedded clip keyframe editors when the side-panel
+     * overlay setting is disabled.
+     */
+    public void focusEmbeddedKeyframePropertiesTab()
+    {
+        if (this.undoHandler != null && this.undoHandler.isUndoing())
+        {
+            return;
+        }
+
+        String panelId = this.shouldRedirectProperties() ? "unifiedEditArea" : "editArea";
+
+        this.focusPanelTab(panelId);
+    }
+
+    /**
+     * Activate {@code panelId} inside its tab group without clearing timeline
+     * selections or re-entering through {@link #focusLinkedPropertiesTab}.
+     */
+    public void focusPanelTab(String panelId)
+    {
+        if (panelId == null)
+        {
+            return;
+        }
+
+        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+        boolean changed = root != null && this.selectPanelInTabbedNode(root, panelId);
+
+        if (changed)
+        {
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
+        }
+
+        UIElement panel = this.panelById.get(panelId);
+        boolean needsRefresh = panel != null && !panel.isVisible();
+
+        if (changed || needsRefresh)
+        {
+            this.setupEditorFlex(true, false, true);
+        }
+    }
+
     public IKey getWindowPanelTitle(String panelId)
     {
         return this.getPanelTitle(panelId);
@@ -2808,6 +2866,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.replayEditor.keyframeEditor.target(unified ? this.unifiedEditArea : this.editArea);
         }
+
+        this.applyEmbeddedKeyframeSidePanelSetting();
     }
 
     public boolean isWindowPanelVisible(String panelId)

@@ -18,6 +18,7 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
+import mchorse.bbs_mod.ui.film.clips.UIClip;
 import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
 import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
 import mchorse.bbs_mod.ui.film.toolbar.ClipPlacementInteractionState;
@@ -1416,6 +1417,12 @@ public class UIClips extends UIElement
 
         if (this.embedded != null)
         {
+            if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+            {
+                keyframeEditor.pickListener(null);
+                keyframeEditor.target(null);
+            }
+
             this.embedded.removeFromParent();
         }
 
@@ -1430,20 +1437,93 @@ public class UIClips extends UIElement
 
             if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
             {
-                keyframeEditor.overlayPanel(true);
-                keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
-                this.embeddedLayout.active(this.embeddedStackedLayout);
-                this.add(this.embeddedLayout);
-                this.embeddedLayout.resize();
+                this.configureEmbeddedKeyframeEditor(keyframeEditor, true);
             }
 
             this.embedded.resize();
             this.embeddedClose.resize();
         }
+        else
+        {
+            this.syncEmbeddedClipPanelVisibility(true);
+        }
 
         if (this.embedViewListener != null)
         {
             this.embedViewListener.accept(this.embedded);
+        }
+    }
+
+    /**
+     * Re-apply side-panel vs properties-tab mode for an open embedded keyframe editor
+     * (settings toggle or workspace layout change).
+     */
+    public void applyEmbeddedKeyframePropertiesMode()
+    {
+        if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+        {
+            this.embeddedLayout.removeFromParent();
+            /* Retarget only — do not steal the active tab (avoids nested
+             * setupEditorFlex while switching Properties tabs). */
+            this.configureEmbeddedKeyframeEditor(keyframeEditor, false);
+            this.embedded.resize();
+            this.embeddedClose.resize();
+        }
+    }
+
+    private void configureEmbeddedKeyframeEditor(UIKeyframeEditor keyframeEditor)
+    {
+        this.configureEmbeddedKeyframeEditor(keyframeEditor, false);
+    }
+
+    private void configureEmbeddedKeyframeEditor(UIKeyframeEditor keyframeEditor, boolean focusPropertiesTab)
+    {
+        UIFilmPanel filmPanel = this.getFilmPanel();
+        boolean sidePanel = BBSSettings.isEmbeddedKeyframeSidePanelEnabled() || filmPanel == null;
+
+        if (sidePanel)
+        {
+            keyframeEditor.pickListener(null);
+            keyframeEditor.target(null);
+            keyframeEditor.overlayPanel(true);
+            keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
+            this.embeddedLayout.active(this.embeddedStackedLayout);
+            this.add(this.embeddedLayout);
+            this.embeddedLayout.resize();
+            this.syncEmbeddedClipPanelVisibility(true);
+        }
+        else
+        {
+            /* Same host as replay keyframes: the general Properties tab (editArea),
+             * not Camera/Action properties — those keep the clip form. */
+            UIElement propertiesTarget = filmPanel.shouldRedirectProperties()
+                ? filmPanel.unifiedEditArea
+                : filmPanel.editArea;
+
+            keyframeEditor.overlayPanel(false);
+            keyframeEditor.target(propertiesTarget);
+            keyframeEditor.pickListener(filmPanel::focusEmbeddedKeyframePropertiesTab);
+            this.syncEmbeddedClipPanelVisibility(true);
+
+            if (focusPropertiesTab)
+            {
+                filmPanel.focusEmbeddedKeyframePropertiesTab();
+            }
+        }
+    }
+
+    private void syncEmbeddedClipPanelVisibility(boolean visible)
+    {
+        if (!(this.delegate instanceof UIClipsPanel panel))
+        {
+            return;
+        }
+
+        UIClip clipPanel = panel.getClipPanel();
+
+        if (clipPanel != null)
+        {
+            clipPanel.setVisible(visible && panel.isVisible());
         }
     }
 
