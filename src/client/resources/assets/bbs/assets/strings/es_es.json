@@ -2368,6 +2368,7 @@
     "bbs.ui.timeline_toolbar.disabled.column_insert_replay_only": "Deshabilitado: la inserción de columnas solo está disponible en el editor de reproducción",
     "bbs.ui.timeline_toolbar.disabled.viewport_hidden": "Deshabilitado: el visor de la cámara está oculto o colapsado",
     "bbs.ui.timeline_toolbar.drag": "Arrastrar para reposicionar la barra de herramientas",
+    "bbs.ui.timeline_toolbar.drag_locked": "Desbloquea el layout para reposicionar la barra de herramientas",
     "bbs.ui.timeline_toolbar.edit": "Edición",
     "bbs.ui.timeline_toolbar.edit_track": "Editar pista",
     "bbs.ui.timeline_toolbar.history": "Historial",

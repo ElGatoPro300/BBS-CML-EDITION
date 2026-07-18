@@ -2481,6 +2481,7 @@
     "bbs.ui.timeline_toolbar.disabled.column_insert_replay_only": "Disabled: column insert is only available in the replay editor",
     "bbs.ui.timeline_toolbar.disabled.viewport_hidden": "Disabled: the camera viewport is hidden or collapsed",
     "bbs.ui.timeline_toolbar.drag": "Drag to reposition the toolbar",
+    "bbs.ui.timeline_toolbar.drag_locked": "Unlock the layout to reposition the toolbar",
     "bbs.ui.timeline_toolbar.edit": "Edit",
     "bbs.ui.timeline_toolbar.edit_track": "Edit track",
     "bbs.ui.timeline_toolbar.history": "History",

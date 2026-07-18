@@ -2443,6 +2443,7 @@
     "bbs.ui.timeline_toolbar.history": "تاریخچه",
     "bbs.ui.timeline_toolbar.edit_track": "ویرایش ترک",
     "bbs.ui.timeline_toolbar.drag": "برای جابه‌جایی نوار ابزار بکشید",
+    "bbs.ui.timeline_toolbar.drag_locked": "برای جابه‌جایی نوار ابزار، قفل چیدمان را باز کنید",
     "bbs.ui.textures.keys.category": "ویرایشگر پیکسل",
     "bbs.ui.textures.keys.fill": "پر کردن سیلابی",
     "bbs.ui.textures.keys.pick": "انتخاب رنگ",

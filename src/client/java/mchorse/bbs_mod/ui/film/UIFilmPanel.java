@@ -64,6 +64,7 @@ import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplayPropertiesPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
@@ -4305,6 +4306,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         layout.setLayoutLocked(!layout.isLayoutLocked());
         this.flushBbsSettings();
         this.clearPanelDragState();
+
+        if (layout.isLayoutLocked())
+        {
+            TimelineToolbar.cancelAllDockDrags(this);
+        }
+
         this.updateLayoutLockTooltip();
         this.setupEditorFlex(true);
     }
