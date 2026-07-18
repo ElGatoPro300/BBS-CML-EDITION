@@ -157,6 +157,8 @@ public interface IUIKeyframeGraph
             }
         }
 
+        value = sheet.clampValue(value);
+
         int index = sheet.channel.insert(tick, value);
         Keyframe keyframe = sheet.channel.get(index);
 

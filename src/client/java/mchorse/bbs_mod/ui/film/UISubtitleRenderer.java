@@ -90,14 +90,15 @@ public class UISubtitleRenderer
             }
 
             String label = StringUtils.processColoredText(subtitle.label);
-            int w = 0;
-            int h = 0;
+            float w = 0;
+            float h = 0;
             int x = (int) (width * subtitle.windowX + subtitle.x);
             int y = (int) (height * subtitle.windowY + subtitle.y);
             float scale = subtitle.size;
             int subColor = subtitle.color;
+            int wrapWidth = Math.max(0, Math.round(subtitle.maxWidth));
 
-            List<String> strings = subtitle.maxWidth <= 10 ? Arrays.asList(label) : FontRenderer.wrap(vanilla, label, subtitle.maxWidth);
+            List<String> strings = subtitle.maxWidth <= 10F ? Arrays.asList(label) : FontRenderer.wrap(vanilla, label, wrapWidth);
 
             for (String string : strings)
             {
@@ -109,18 +110,23 @@ public class UISubtitleRenderer
             int fw = (int) ((w + 10) * scale);
             int fh = (int) ((h + 10) * scale);
 
+            if (fw <= 0 || fh <= 0)
+            {
+                continue;
+            }
+
             RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), VertexSorter.BY_Z);
 
             framebuffer.resize(fw, fh);
             framebuffer.applyClear();
 
-            int yy = 5;
+            float yy = 5F;
 
             for (String string : strings)
             {
                 string = string.trim();
 
-                int xx = 5 + (w - vanilla.getWidth(string)) / 2;
+                int xx = 5 + (int) ((w - vanilla.getWidth(string)) / 2);
 
                 if (Colors.getA(subtitle.backgroundColor) > 0)
                 {
@@ -129,11 +135,11 @@ public class UISubtitleRenderer
                     int th = vanilla.fontHeight - 2;
 
                     batcher.box(xx - offset, yy - offset, xx + tw + offset - 1, yy + th + offset, Colors.mulA(subtitle.backgroundColor, alpha));
-                    batcher.text(font, string, xx, yy, Colors.setA(subColor, 1F), subtitle.textShadow);
+                    batcher.text(font, string, xx, (int) yy, Colors.setA(subColor, 1F), subtitle.textShadow);
                 }
                 else
                 {
-                    batcher.text(font, string, xx, yy, Colors.setA(subColor, 1F), subtitle.textShadow);
+                    batcher.text(font, string, xx, (int) yy, Colors.setA(subColor, 1F), subtitle.textShadow);
                 }
 
                 yy += subtitle.lineHeight;

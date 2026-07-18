@@ -5,7 +5,6 @@ import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
-import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.colors.Color;
 
 /**
@@ -28,8 +27,8 @@ public class SubtitleUniform extends ValueGroup
     public final ValueDouble backgroundOffset = new ValueDouble("backgroundOffset", 2D);
     public final ValueDouble shadow = new ValueDouble("shadow", 0D);
     public final ValueBoolean shadowOpaque = new ValueBoolean("shadowOpaque", false);
-    public final ValueInt lineHeight = new ValueInt("lineHeight", 12);
-    public final ValueInt maxWidth = new ValueInt("maxWidth", 0);
+    public final ValueDouble lineHeight = new ValueDouble("lineHeight", 12D, 0D, Double.POSITIVE_INFINITY);
+    public final ValueDouble maxWidth = new ValueDouble("maxWidth", 0D, 0D, Double.POSITIVE_INFINITY);
 
     public SubtitleUniform(String id)
     {

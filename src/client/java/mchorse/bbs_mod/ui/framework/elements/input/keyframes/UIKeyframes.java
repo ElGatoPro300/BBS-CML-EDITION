@@ -412,7 +412,7 @@ public class UIKeyframes extends UIElement
 
             for (Keyframe keyframe : selected)
             {
-                keyframe.setValue(factory.yToValue(factory.getY(keyframe.getValue()) + difference));
+                keyframe.setValue(sheet.clampValue(factory.yToValue(factory.getY(keyframe.getValue()) + difference)));
             }
 
             sheet.channel.postNotify();

@@ -491,7 +491,11 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
         MapType map = data.asMap();
         IKeyframeFactory<T> factory = KeyframeFactories.FACTORIES.get(map.getString("type"));
 
-        this.factory = factory;
+        /* Keep the constructor factory if the saved type is missing/unknown. */
+        if (factory != null)
+        {
+            this.factory = factory;
+        }
 
         super.fromData(map.getList("keyframes"));
 

@@ -140,15 +140,13 @@ public class UIImageClip extends UIClip<ImageClip>
         this.blend = this.createDoubleTrackpad(this.clip.blend, this.clip.uniform.blend, UIKeys.CAMERA_PANELS_IMAGE_BLEND, false, 0F, 1F);
         this.blend.tooltip(UIKeys.CAMERA_PANELS_IMAGE_BLEND, Direction.BOTTOM);
 
-        this.x = this.createDoubleTrackpad(this.clip.x, this.clip.uniform.x, UIKeys.CAMERA_PANELS_IMAGE_POSITION_X, true, null, null);
-        this.y = this.createDoubleTrackpad(this.clip.y, this.clip.uniform.y, UIKeys.CAMERA_PANELS_IMAGE_POSITION_Y, true, null, null);
+        this.x = this.createDoubleTrackpad(this.clip.x, this.clip.uniform.x, UIKeys.CAMERA_PANELS_IMAGE_POSITION_X, false, null, null);
+        this.y = this.createDoubleTrackpad(this.clip.y, this.clip.uniform.y, UIKeys.CAMERA_PANELS_IMAGE_POSITION_Y, false, null, null);
 
-        this.width = new UITrackpad((v) -> this.setWidth(v.intValue()));
-        this.width.integer();
+        this.width = new UITrackpad((v) -> this.setWidth(v.doubleValue()));
         this.width.tooltip(UIKeys.CAMERA_PANELS_IMAGE_WIDTH);
 
-        this.height = new UITrackpad((v) -> this.setHeight(v.intValue()));
-        this.height.integer();
+        this.height = new UITrackpad((v) -> this.setHeight(v.doubleValue()));
         this.height.tooltip(UIKeys.CAMERA_PANELS_IMAGE_HEIGHT);
 
         this.uniformSize = new UIIcon(Icons.LINK, (b) -> this.toggleUniformSize());
@@ -169,8 +167,8 @@ public class UIImageClip extends UIClip<ImageClip>
             this.writeDouble(this.clip.opacity, this.clip.uniform.opacity, v.doubleValue() / 100D);
             this.fillData();
         });
-        this.opacity.integer();
         this.opacity.limit(0, 100);
+        this.opacity.tooltip(UIKeys.CAMERA_PANELS_IMAGE_OPACITY);
 
         this.useKeyframes = new UIToggle(UIKeys.SCREEN_PANELS_USE_KEYFRAMES, (b) ->
         {
@@ -243,6 +241,15 @@ public class UIImageClip extends UIClip<ImageClip>
 
     private void writeDouble(KeyframeChannel<Double> channel, ValueDouble uniform, double value)
     {
+        if (channel == this.clip.blend)
+        {
+            value = MathHelper.clamp(value, ImageClip.BLEND_MIN, ImageClip.BLEND_MAX);
+        }
+        else if (channel == this.clip.opacity)
+        {
+            value = MathHelper.clamp(value, ImageClip.OPACITY_MIN, ImageClip.OPACITY_MAX);
+        }
+
         if (this.clip.useKeyframes.get())
         {
             channel.insert(this.getClipTick(), value);
@@ -311,9 +318,9 @@ public class UIImageClip extends UIClip<ImageClip>
         this.fillData();
     }
 
-    private void setWidth(int width)
+    private void setWidth(double width)
     {
-        this.writeDouble(this.clip.width, this.clip.uniform.width, (double) width);
+        this.writeDouble(this.clip.width, this.clip.uniform.width, width);
 
         if (this.clip.uniformSize.get())
         {
@@ -323,9 +330,9 @@ public class UIImageClip extends UIClip<ImageClip>
         this.fillData();
     }
 
-    private void setHeight(int height)
+    private void setHeight(double height)
     {
-        this.writeDouble(this.clip.height, this.clip.uniform.height, (double) height);
+        this.writeDouble(this.clip.height, this.clip.uniform.height, height);
 
         if (this.clip.uniformSize.get())
         {
@@ -460,7 +467,19 @@ public class UIImageClip extends UIClip<ImageClip>
             this.keyframes.setChannels(this.clip.channels);
         }
 
+        this.applySheetLimits();
         this.updateTrackTitles();
+    }
+
+    private void applySheetLimits()
+    {
+        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
+        {
+            if ("blend".equals(sheet.id) || "opacity".equals(sheet.id))
+            {
+                sheet.limit(0D, 1D);
+            }
+        }
     }
 
     private double getChannelValue(KeyframeChannel<Double> channel, ValueDouble uniform, double fallback)
@@ -519,6 +538,7 @@ public class UIImageClip extends UIClip<ImageClip>
             case "windowY" -> UIKeys.CAMERA_PANELS_IMAGE_WINDOW_Y;
             case "opacity" -> UIKeys.CAMERA_PANELS_IMAGE_OPACITY;
             case "color" -> UIKeys.CAMERA_PANELS_IMAGE_COLOR;
+            case "blend" -> UIKeys.CAMERA_PANELS_IMAGE_BLEND;
             default -> IKey.constant(id);
         };
     }
