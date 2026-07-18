@@ -369,24 +369,46 @@ public class BOBJModelVAO
         }
     }
 
-    private void bindDrawTexture(Link defaultTexture)
+    /**
+     * BBS {@link ShaderProgram#bind()} snapshots Sampler* from {@link RenderSystem} at
+     * {@link ModelVAORenderer#setupUniforms}. Skin must be bound before that — binding after
+     * leaves Sampler0 on whatever Iris left (featureless tinted silhouette, no skin).
+     */
+    private void bindDrawTexture(Link texture)
     {
-        if (defaultTexture != null)
+        if (texture != null)
         {
-            BBSModClient.getTextures().bindTexture(defaultTexture);
+            BBSModClient.getTextures().bindTexture(texture);
         }
+    }
+
+    private void rebindShaderSamplers(ShaderProgram shader, MatrixStack stack, float r, float g, float b, float a, int light, int overlay)
+    {
+        ModelVAORenderer.setupUniforms(stack, shader);
+        RenderSystem.setShader(() -> shader);
+        shader.bind();
+        GL30.glBindVertexArray(this.vao);
+
+        GL30.glDisableVertexAttribArray(Attributes.COLOR);
+        GL30.glDisableVertexAttribArray(Attributes.OVERLAY_UV);
+        GL30.glDisableVertexAttribArray(Attributes.LIGHTMAP_UV);
+
+        GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
+        GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
+        GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
     }
 
     public void render(ShaderProgram shader, MatrixStack stack, float r, float g, float b, float a, StencilMap stencilMap, int light, int overlay, Link defaultTexture)
     {
         boolean hasShaders = BBSRendering.isIrisShadersEnabled();
 
-        GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
-        GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
-        GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
-
         int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int currentElementArrayBuffer = GL30.glGetInteger(GL30.GL_ELEMENT_ARRAY_BUFFER_BINDING);
+
+        if (defaultTexture != null)
+        {
+            this.bindDrawTexture(defaultTexture);
+        }
 
         ModelVAORenderer.setupUniforms(stack, shader);
 
@@ -394,6 +416,16 @@ public class BOBJModelVAO
         shader.bind();
 
         GL30.glBindVertexArray(this.vao);
+
+        /* Constant color/light/overlay must be set after VAO bind (same as ModelVAO). Setting
+         * them before bind loses form alpha under Iris deferred redraws — opaque silhouette. */
+        GL30.glDisableVertexAttribArray(Attributes.COLOR);
+        GL30.glDisableVertexAttribArray(Attributes.OVERLAY_UV);
+        GL30.glDisableVertexAttribArray(Attributes.LIGHTMAP_UV);
+
+        GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
+        GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
+        GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
 
         GL30.glEnableVertexAttribArray(Attributes.POSITION);
         GL30.glEnableVertexAttribArray(Attributes.TEXTURE_UV);
@@ -427,11 +459,6 @@ public class BOBJModelVAO
 
             if (this.fullOverrides.isEmpty() && this.partialOverrides.isEmpty())
             {
-                if (defaultTexture != null)
-                {
-                    this.bindDrawTexture(defaultTexture);
-                }
-
                 GL30.glDrawArrays(GL30.GL_TRIANGLES, 0, this.count);
             }
             else
@@ -439,11 +466,6 @@ public class BOBJModelVAO
                 this.overridden.clear();
                 this.overridden.addAll(this.fullOverrides.keySet());
                 this.overridden.addAll(this.partialOverrides.keySet());
-
-                if (defaultTexture != null)
-                {
-                    this.bindDrawTexture(defaultTexture);
-                }
 
                 this.drawTriangles((bone) -> bone < 0 || !this.overridden.contains(bone));
 
@@ -462,6 +484,7 @@ public class BOBJModelVAO
 
                         try
                         {
+                            this.rebindShaderSamplers(shader, stack, r, g, b, a, light, overlay);
                             this.drawTriangles((boneIndex) -> boneIndex == bone.index);
                         }
                         finally
@@ -474,6 +497,7 @@ public class BOBJModelVAO
                 for (Map.Entry<Integer, Link> entry : this.fullOverrides.entrySet())
                 {
                     this.bindDrawTexture(entry.getValue());
+                    this.rebindShaderSamplers(shader, stack, r, g, b, a, light, overlay);
                     this.drawTriangles((bone) -> bone == entry.getKey());
                 }
             }

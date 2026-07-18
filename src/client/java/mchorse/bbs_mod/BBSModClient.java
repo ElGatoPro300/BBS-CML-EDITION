@@ -78,6 +78,7 @@ import mchorse.bbs_mod.settings.ui.UIValueMap;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.WorldPropertiesHelper;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
@@ -546,6 +547,8 @@ public class BBSModClient implements ClientModInitializer
 
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
+
+        BBSSettings.complementaryOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
 
         if (BBSSettings.worldGammaPercent != null)
         {

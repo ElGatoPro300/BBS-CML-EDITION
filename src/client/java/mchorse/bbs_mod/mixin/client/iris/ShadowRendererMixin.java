@@ -111,7 +111,7 @@ public class ShadowRendererMixin
                                 continue;
                             }
 
-                            if (entity.getForm() != null && !((Boolean) entity.getForm().shaderShadow.get()))
+                            if (entity.getForm() != null && !entity.getForm().shaderShadow.get())
                             {
                                 continue;
                             }
@@ -200,7 +200,7 @@ public class ShadowRendererMixin
                         continue;
                     }
 
-                    if (entity.getForm() != null && !((Boolean) entity.getForm().shaderShadow.get()))
+                    if (entity.getForm() != null && !entity.getForm().shaderShadow.get())
                     {
                         continue;
                     }
@@ -248,7 +248,7 @@ public class ShadowRendererMixin
                         continue;
                     }
 
-                    if (entity.getForm() != null && !((Boolean) entity.getForm().shaderShadow.get()))
+                    if (entity.getForm() != null && !entity.getForm().shaderShadow.get())
                     {
                         continue;
                     }

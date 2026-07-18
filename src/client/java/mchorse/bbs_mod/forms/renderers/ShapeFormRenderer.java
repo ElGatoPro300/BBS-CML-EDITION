@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
@@ -19,6 +20,7 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.math.Noise;
 
 import net.minecraft.client.MinecraftClient;
@@ -81,7 +83,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
         RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
-        this.renderShape(stack, GameRenderer::getRenderTypeEntityTranslucentProgram, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+        this.renderShape(stack, GameRenderer::getRenderTypeEntityTranslucentProgram, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, null);
 
         DiffuseLighting.disableGuiDepthLighting();
 
@@ -95,10 +97,10 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
             : GameRenderer::getRenderTypeEntityTranslucentProgram;
 
-        this.renderShape(context.stack, shader, context.overlay, context.light);
+        this.renderShape(context.stack, shader, context.overlay, context.light, context);
     }
 
-    private void renderShape(MatrixStack stack, Supplier<ShaderProgram> shader, int overlay, int light)
+    private void renderShape(MatrixStack stack, Supplier<ShaderProgram> shader, int overlay, int light, FormRenderingContext renderContext)
     {
         this.evaluator = new ShapeGraphEvaluator(this.form.graph.get());
         
@@ -207,6 +209,9 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.scale(this.form.sizeX.get(), this.form.sizeY.get(), this.form.sizeZ.get());
 
         ShapeForm.ShapeType type = this.form.type.get();
+        /* Under Iris, translucent flats wash fog/sky — redraw with BBS after composite.
+         * Do not stamp opaque Iris solid for render-depth here: renderDepthEnabled defaults
+         * true, and a visible a=1 stamp makes low opacity look bright / never invisible. */
         boolean deferTranslucent = BBSRendering.needsIrisTranslucentFlatDeferral(c.a);
 
         if (deferTranslucent)
@@ -223,8 +228,12 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean lighting = this.form.lighting.get();
-
-            ModelVAORenderer.submitDeferredTranslucentModel(() ->
+            /* Like no-shader depthMask(true): render-depth flats must keep writing depth at
+             * any opacity (including below #1d). Gating on TRANSLUCENT_ALPHA_DISCARD_REF made
+             * Iris deferred occlusion die right after that alpha. */
+            boolean depthWrite = this.form.renderDepthEnabled.get();
+            double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
+            Runnable deferredDraw = () ->
             {
                 MatrixStack overlayStack = new MatrixStack();
 
@@ -246,11 +255,20 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
                     BBSShaders::getModel,
                     false
                 );
-            }, false);
+            };
+
+            if (ShaderOpacityPatch.shouldJoinPostDeferredQueue(c.a))
+            {
+                ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, depthWrite, deferredDraw);
+            }
+            else
+            {
+                ModelVAORenderer.submitDeferredTranslucentModel(deferredDraw, depthWrite);
+            }
         }
         else
         {
-            /* Without Iris, entity_translucent discards low alpha — BBS model + depth write. */
+            /* No-shader / opaque Iris path: depthMask true like vanilla. */
             if (BBSRendering.needsBbsModelForLowOpacity(c.a))
             {
                 RenderSystem.setShader(BBSShaders::getModel);
@@ -259,7 +277,6 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             RenderSystem.enableDepthTest();
             RenderSystem.depthMask(true);
 
-            // Draw Geometry based on Type
             Tessellator tessellator = Tessellator.getInstance();
             BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
 

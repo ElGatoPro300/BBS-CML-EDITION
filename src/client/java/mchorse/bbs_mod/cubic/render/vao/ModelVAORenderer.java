@@ -102,15 +102,17 @@ public class ModelVAORenderer
         private final boolean synced;
         private final boolean fullModel;
         private final boolean depthWrite;
+        private final boolean depthTest;
         private final Runnable draw;
 
-        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, Runnable draw)
+        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, boolean depthTest, Runnable draw)
         {
             this.projection = projection;
             this.modelView = modelView;
             this.synced = synced;
             this.fullModel = fullModel;
             this.depthWrite = depthWrite;
+            this.depthTest = depthTest;
             this.draw = draw;
         }
     }
@@ -130,12 +132,12 @@ public class ModelVAORenderer
 
     public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, Runnable draw)
     {
-        enqueuePaintOverlay(projection, modelView, false, false, true, draw);
+        enqueuePaintOverlay(projection, modelView, false, false, true, true, draw);
     }
 
     public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
     {
-        enqueuePaintOverlay(projection, modelView, synced, false, true, draw);
+        enqueuePaintOverlay(projection, modelView, synced, false, true, true, draw);
     }
 
     /**
@@ -144,10 +146,21 @@ public class ModelVAORenderer
      */
     public static void submitDeferredTranslucentModel(Runnable draw)
     {
-        submitDeferredTranslucentModel(draw, true);
+        /* Flat / thin translucent meshes z-fight when depth is rewritten after composite.
+         * Character self-occlusion uses the two-arg overload with depthWrite true. */
+        submitDeferredTranslucentModel(draw, false, true);
     }
 
     public static void submitDeferredTranslucentModel(Runnable draw, boolean depthWrite)
+    {
+        submitDeferredTranslucentModel(draw, depthWrite, true);
+    }
+
+    /**
+     * @param depthTest false for zero-thickness billboards — post-Iris depth does not match
+     *                  captured matrices and LEQUAL produces stippled grass bleed-through.
+     */
+    public static void submitDeferredTranslucentModel(Runnable draw, boolean depthWrite, boolean depthTest)
     {
         enqueuePaintOverlay(
             new Matrix4f(RenderSystem.getProjectionMatrix()),
@@ -155,11 +168,17 @@ public class ModelVAORenderer
             false,
             true,
             depthWrite,
+            depthTest,
             draw
         );
     }
 
     private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, Runnable draw)
+    {
+        enqueuePaintOverlay(projection, modelView, synced, fullModel, depthWrite, true, draw);
+    }
+
+    private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, boolean depthTest, Runnable draw)
     {
         PaintOverlayEntry entry = new PaintOverlayEntry(
             new Matrix4f(projection),
@@ -167,6 +186,7 @@ public class ModelVAORenderer
             synced,
             fullModel,
             depthWrite,
+            depthTest,
             draw
         );
 
@@ -210,7 +230,7 @@ public class ModelVAORenderer
 
             if (entry.fullModel)
             {
-                beginDeferredTranslucentModelPass(entry.depthWrite);
+                beginDeferredTranslucentModelPass(entry.depthWrite, entry.depthTest);
             }
             else
             {
@@ -345,10 +365,16 @@ public class ModelVAORenderer
 
     /**
      * Full translucent redraw after Iris composite — BBS model shader keeps low form alpha.
-     * Depth test stays on. {@code depthWrite} true for character meshes (self-occlusion);
-     * false for flat panels so scene depth / fog stay intact.
+     * {@code depthWrite} true matches the no-shader path so render-depth panels can occlude
+     * forms behind them. {@code depthTest} false for zero-thickness billboards whose captured
+     * depth does not match the post-Iris depth buffer (stippled bleed-through).
      */
     public static void beginDeferredTranslucentModelPass(boolean depthWrite)
+    {
+        beginDeferredTranslucentModelPass(depthWrite, true);
+    }
+
+    public static void beginDeferredTranslucentModelPass(boolean depthWrite, boolean depthTest)
     {
         savedDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
@@ -359,16 +385,30 @@ public class ModelVAORenderer
         deferredTranslucentPass = true;
 
         RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.blendFuncSeparate(
+            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.SRC_ALPHA,
+            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA,
+            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.ONE,
+            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA
+        );
+
+        if (depthTest)
+        {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        }
+        else
+        {
+            RenderSystem.disableDepthTest();
+        }
+
         RenderSystem.depthMask(depthWrite);
         RenderSystem.enableCull();
     }
 
     public static void beginDeferredTranslucentModelPass()
     {
-        beginDeferredTranslucentModelPass(true);
+        beginDeferredTranslucentModelPass(true, true);
     }
 
     public static void endDeferredTranslucentModelPass()
@@ -736,6 +776,7 @@ public class ModelVAORenderer
 
         RenderSystem.setShader(() -> shader);
         shader.bind();
+        mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.reassertPostDeferredDepthState();
         modelVAO.render(shader.getFormat(), r, g, b, a, light, overlay);
         shader.unbind();
 
@@ -850,24 +891,53 @@ public class ModelVAORenderer
             paintMaskBottomAnchoredUniform.set(paintMaskBottomAnchored ? 1F : 0F);
         }
 
-        if (shader.fogStart != null)
+        /* After Iris composite, RenderSystem fog is often collapsed (FogEnd≈1) or left as
+         * dense atmospheric fog — linear_fog then replaces the whole mesh with FogColor
+         * (featureless sky-tinted silhouette, texture gone). Captured-matrix redraws already
+         * sit on the final image; skip fog so low-opacity / render-depth fades keep albedo. */
+        if (usesCapturedModelView())
         {
-            shader.fogStart.set(RenderSystem.getShaderFogStart());
-        }
+            if (shader.fogStart != null)
+            {
+                shader.fogStart.set(1_000_000F);
+            }
 
-        if (shader.fogEnd != null)
-        {
-            shader.fogEnd.set(RenderSystem.getShaderFogEnd());
-        }
+            if (shader.fogEnd != null)
+            {
+                shader.fogEnd.set(1_000_001F);
+            }
 
-        if (shader.fogColor != null)
-        {
-            shader.fogColor.set(RenderSystem.getShaderFogColor());
-        }
+            if (shader.fogColor != null)
+            {
+                shader.fogColor.set(0F, 0F, 0F, 0F);
+            }
 
-        if (shader.fogShape != null)
+            if (shader.fogShape != null)
+            {
+                shader.fogShape.set(0);
+            }
+        }
+        else
         {
-            shader.fogShape.set(RenderSystem.getShaderFogShape().getId());
+            if (shader.fogStart != null)
+            {
+                shader.fogStart.set(RenderSystem.getShaderFogStart());
+            }
+
+            if (shader.fogEnd != null)
+            {
+                shader.fogEnd.set(RenderSystem.getShaderFogEnd());
+            }
+
+            if (shader.fogColor != null)
+            {
+                shader.fogColor.set(RenderSystem.getShaderFogColor());
+            }
+
+            if (shader.fogShape != null)
+            {
+                shader.fogShape.set(RenderSystem.getShaderFogShape().getId());
+            }
         }
 
         if (shader.colorModulator != null)

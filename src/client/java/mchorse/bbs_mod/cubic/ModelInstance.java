@@ -741,7 +741,9 @@ public class ModelInstance implements IModelInstance
             {
                 ShaderProgram shader = program.get();
                 Link texture = defaultTexture != null ? defaultTexture : this.texture;
-                boolean disableCull = this.hasShapeKeys();
+                boolean disableCull = this.hasShapeKeys()
+                    && !ModelVAORenderer.isDeferredTranslucentPass()
+                    && !ModelVAORenderer.isPaintOverlayPass();
 
                 RenderSystem.setShader(program);
 

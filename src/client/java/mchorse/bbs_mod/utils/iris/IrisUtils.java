@@ -252,6 +252,21 @@ public class IrisUtils
         }
     }
 
+    public static void reloadShaders()
+    {
+        try
+        {
+            if (isShaderPackEnabled())
+            {
+                Iris.reload();
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public static void openShaderPackScreen()
     {
         try

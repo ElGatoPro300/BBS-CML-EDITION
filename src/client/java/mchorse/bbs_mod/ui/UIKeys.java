@@ -486,6 +486,8 @@ public class UIKeys
     public static final IKey FILM_TELEPORT_TITLE = L10n.lang("bbs.ui.film.teleport-title");
     public static final IKey FILM_PREVIEW_TOGGLE_OVERLAYS = L10n.lang("bbs.ui.film.preview.toggle_overlays");
     public static final IKey FILM_PREVIEW_TOGGLE_SHADERS = L10n.lang("bbs.ui.film.preview.toggle_shaders");
+    public static final IKey FILM_PREVIEW_SHADER_SETTINGS = L10n.lang("bbs.ui.film.preview.shader_settings");
+    public static final IKey FILM_PREVIEW_CHANGE_SHADER = L10n.lang("bbs.ui.film.preview.change_shader");
     public static final IKey FILM_PREVIEW_VIEWPORT_TOOLBAR_HINT = L10n.lang("bbs.ui.film.preview.viewport_toolbar.hint");
     public static final IKey FILM_PREVIEW_GIZMO_TOOLBAR_HINT = L10n.lang("bbs.ui.film.preview.gizmo_toolbar.hint");
     public static final IKey FILM_TITLE = L10n.lang("bbs.ui.film.title");
@@ -644,6 +646,8 @@ public class UIKeys
     public static final IKey FORMS_EDITOR_GIZMO_TOOLBAR_HINT = L10n.lang("bbs.ui.forms.editor.gizmo_toolbar.hint");
     public static final IKey FORMS_EDITORS_PAINT_COLOR = L10n.lang("bbs.ui.forms.editors.paint_color");
     public static final IKey FORMS_EDITORS_PAINT_INTENSITY = L10n.lang("bbs.ui.forms.editors.paint_intensity");
+    public static final IKey FORMS_EDITORS_COLOR_NOSHADING_OPACITY = L10n.lang("bbs.ui.forms.editors.color_noshading_opacity");
+    public static final IKey FORMS_EDITORS_COLOR_NOSHADING_OPACITY_TOOLTIP = L10n.lang("bbs.ui.forms.editors.color_noshading_opacity-tooltip");
     public static final IKey FORMS_EDITORS_PAINT_SYNC = L10n.lang("bbs.ui.forms.editors.paint_sync");
     public static final IKey FORMS_EDITORS_PAINT_SYNC_TOOLTIP = L10n.lang("bbs.ui.forms.editors.paint_sync-tooltip");
     public static final IKey FORMS_EDITORS_COLORS_AND_GLOW = L10n.lang("bbs.ui.forms.editors.colors_and_glow");

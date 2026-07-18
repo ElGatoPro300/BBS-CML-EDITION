@@ -6,6 +6,7 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
@@ -19,6 +20,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
@@ -79,6 +81,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             null,
             true,
             false,
+            null,
             null
         );
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
@@ -111,10 +114,10 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
         );
 
-        this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking(), context.world);
+        this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking(), context.world, context);
     }
 
-    private void renderModel(Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, MatrixStack world)
+    private void renderModel(Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, MatrixStack world, FormRenderingContext renderContext)
     {
         Link texture = this.form.texture.get();
         ModelVAO data = BBSModClient.getTextures().getExtruder().get(texture);
@@ -180,7 +183,9 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
             boolean paintActive = paintStrength != 0F;
-            boolean deferTranslucentModel = BBSRendering.needsIrisTranslucentModelDeferral(color.a);
+            boolean lowAlphaDefer = BBSRendering.needsIrisTranslucentModelDeferral(color.a);
+            boolean noshadingOpacityDefer = BBSRendering.needsIrisNoshadingOpacityDeferral(color.a, this.form.noshadingOpacity.get());
+            boolean deferTranslucentModel = lowAlphaDefer || noshadingOpacityDefer;
             boolean deferPaintToOverlay = paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
             Supplier<ShaderProgram> renderShader = shader;
             boolean bbsModelShader = !BBSRendering.isIrisWorldModelPass() || deferTranslucentModel;
@@ -221,6 +226,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             if (deferTranslucentModel)
             {
+                /* No Iris depth stamp — same as ModelForm: punching depth would erase entities behind. */
                 ModelVAORenderer.setPaint(paintActive ? paintColor.r : 0F, paintActive ? paintColor.g : 0F, paintActive ? paintColor.b : 0F, paintActive ? paintStrength : 0F);
 
                 if (hasGlow)
@@ -236,10 +242,25 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 Matrix3f normalMatrix = new Matrix3f(matrices.peek().getNormalMatrix());
                 TextureBlend textureBlendSnapshot = this.form.textureBlend == null ? null : new TextureBlend(this.form.textureBlend.from, this.form.textureBlend.to, this.form.textureBlend.blend);
                 boolean useShaderBlend = FormTextureBlendRenderer.isBlending(this.form.textureBlend);
-                float cr = color.r;
-                float cg = color.g;
-                float cb = color.b;
-                float ca = color.a;
+                float ca = lowAlphaDefer
+                    ? BBSRendering.easeDeferredModelAlpha(color.a)
+                    : color.a;
+                final float cr;
+                final float cg;
+                final float cb;
+
+                if (lowAlphaDefer && !noshadingOpacityDefer)
+                {
+                    cr = 0F;
+                    cg = 0F;
+                    cb = 0F;
+                }
+                else
+                {
+                    cr = color.r;
+                    cg = color.g;
+                    cb = color.b;
+                }
                 int overlayLight = light;
                 int overlayOverlay = overlay;
                 boolean paintActiveSnapshot = paintActive;
@@ -248,6 +269,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 float pb = paintColor.b;
                 float pa = paintStrength;
 
+                /* Extruded meshes are thin front/back slabs — deferred color must not rewrite depth. */
                 ModelVAORenderer.submitDeferredTranslucentModel(() ->
                 {
                     try
@@ -284,7 +306,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                         ModelVAORenderer.clearPaint();
                         ModelVAORenderer.clearGlowing();
                     }
-                });
+                }, false);
             }
             else if (deferPaintToOverlay)
             {
@@ -301,6 +323,181 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             if (!deferTranslucentModel)
             {
+            TextureBlend textureBlend = this.form.textureBlend;
+            boolean useShaderBlend = bbsModelShader && FormTextureBlendRenderer.isBlending(textureBlend);
+            TextureBlend textureBlendSnapshot = textureBlend == null ? null : new TextureBlend(textureBlend.from, textureBlend.to, textureBlend.blend);
+            float opacityAlpha = color.a;
+
+            if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, renderContext != null && renderContext.renderDepthFrame != null))
+            {
+                /* Entity-local matrices only — submitPostDeferredForm restores camera ModelView. */
+                Matrix4f positionMatrix = new Matrix4f(matrices.peek().getPositionMatrix());
+                Matrix3f normalMatrix = new Matrix3f(matrices.peek().getNormalMatrix());
+                Color colorSnapshot = color.copy();
+                Color paintSnapshot = paintColor.copy();
+                float paintStrengthSnapshot = paintStrength;
+                boolean paintActiveSnapshot = paintActive;
+                boolean stripGlowSnapshot = stripMainPassGlow;
+                boolean hasGlowSnapshot = hasGlow;
+                boolean paintOnlyGlowSnapshot = paintOnlyGlow;
+                boolean deferPaintSnapshot = deferPaintToOverlay;
+                boolean shaderOverlaySnapshot = shaderOverlay;
+                GlowSettings glowSnapshot = glow.copy();
+                Color resolvedGlowSnapshot = resolvedGlow.copy();
+                Color legacyGlowSnapshot = legacyGlow.copy();
+                Link textureSnapshot = texture;
+                Supplier<ShaderProgram> shaderSnapshot = renderShader;
+                int overlayLight = light;
+                int overlayOverlay = overlay;
+                EffectTransform paintTransformQueued = paintTransformSnapshot;
+                Vector3f paintMaskHalfQueued = paintMaskHalfSnapshot;
+                double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
+                boolean depthWrite = true;
+
+                ShaderOpacityPatch.submitPostDeferredForm(sortDepth, 0D, depthWrite, () ->
+                {
+                    MatrixStack overlayStack = new MatrixStack();
+
+                    overlayStack.peek().getPositionMatrix().set(positionMatrix);
+                    overlayStack.peek().getNormalMatrix().set(normalMatrix);
+
+                    try
+                    {
+                        if (paintActiveSnapshot && !deferPaintSnapshot)
+                        {
+                            ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformQueued, paintMaskHalfQueued, false);
+                            ModelVAORenderer.setPaint(paintSnapshot.r, paintSnapshot.g, paintSnapshot.b, paintStrengthSnapshot);
+                        }
+                        else
+                        {
+                            ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
+                        }
+
+                        if (stripGlowSnapshot)
+                        {
+                            GlowSettings glowOff = glowSnapshot.copy();
+
+                            glowOff.intensity = 0F;
+                            ModelVAORenderer.setGlow(glowOff, resolvedGlowSnapshot.r, resolvedGlowSnapshot.g, resolvedGlowSnapshot.b, legacyGlowSnapshot);
+                        }
+                        else if (hasGlowSnapshot)
+                        {
+                            ModelVAORenderer.setGlow(glowSnapshot, resolvedGlowSnapshot.r, resolvedGlowSnapshot.g, resolvedGlowSnapshot.b, legacyGlowSnapshot);
+                        }
+                        else
+                        {
+                            ModelVAORenderer.clearGlowing();
+                        }
+
+                        if (useShaderBlend)
+                        {
+                            Link fromTexture = FormTextureBlendRenderer.resolveFrom(textureBlendSnapshot, textureSnapshot);
+                            Link toTexture = FormTextureBlendRenderer.resolveTo(textureBlendSnapshot, textureSnapshot);
+                            ModelVAO fromData = BBSModClient.getTextures().getExtruder().get(fromTexture);
+
+                            if (fromData != null)
+                            {
+                                ModelVAORenderer.setTextureBlend(toTexture, textureBlendSnapshot.blend);
+
+                                try
+                                {
+                                    BBSModClient.getTextures().bindTexture(fromTexture);
+                                    ModelVAORenderer.render(shaderSnapshot.get(), fromData, overlayStack, colorSnapshot.r, colorSnapshot.g, colorSnapshot.b, colorSnapshot.a, overlayLight, overlayOverlay);
+                                }
+                                finally
+                                {
+                                    ModelVAORenderer.clearTextureBlend();
+                                }
+                            }
+                        }
+                        else
+                        {
+                            FormTextureBlendRenderer.draw(textureBlendSnapshot, textureSnapshot, (link, alphaFactor) ->
+                            {
+                                ModelVAO passData = BBSModClient.getTextures().getExtruder().get(link);
+
+                                if (passData == null)
+                                {
+                                    return;
+                                }
+
+                                Color passColor = colorSnapshot.copy();
+
+                                passColor.a *= alphaFactor;
+                                BBSModClient.getTextures().bindTexture(link);
+                                ModelVAORenderer.render(shaderSnapshot.get(), passData, overlayStack, passColor.r, passColor.g, passColor.b, passColor.a, overlayLight, overlayOverlay);
+                            });
+                        }
+
+                        if (deferPaintSnapshot)
+                        {
+                            if (hasGlowSnapshot)
+                            {
+                                ModelVAORenderer.setGlow(glowSnapshot, resolvedGlowSnapshot.r, resolvedGlowSnapshot.g, resolvedGlowSnapshot.b, legacyGlowSnapshot);
+                            }
+                            else
+                            {
+                                GlowSettings glowOff = glowSnapshot.copy();
+
+                                glowOff.intensity = 0F;
+                                ModelVAORenderer.setGlow(glowOff, resolvedGlowSnapshot.r, resolvedGlowSnapshot.g, resolvedGlowSnapshot.b, legacyGlowSnapshot);
+                            }
+
+                            ModelVAORenderer.setPaint(paintSnapshot.r, paintSnapshot.g, paintSnapshot.b, paintStrengthSnapshot);
+                            ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformQueued, paintMaskHalfQueued, false);
+                            this.renderExtrudedOverlayPass(useShaderBlend, textureBlendSnapshot, textureSnapshot, overlayStack, colorSnapshot.r, colorSnapshot.g, colorSnapshot.b, colorSnapshot.a, overlayLight, overlayOverlay);
+
+                            if (hasGlowSnapshot && !paintOnlyGlowSnapshot)
+                            {
+                                ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
+                                ModelVAORenderer.setGlow(glowSnapshot, resolvedGlowSnapshot.r, resolvedGlowSnapshot.g, resolvedGlowSnapshot.b, legacyGlowSnapshot);
+                                RenderSystem.enableBlend();
+                                RenderSystem.depthMask(false);
+                                RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+
+                                try
+                                {
+                                    this.renderExtrudedOverlayPass(useShaderBlend, textureBlendSnapshot, textureSnapshot, overlayStack, 0F, 0F, 0F, colorSnapshot.a, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlayOverlay);
+                                }
+                                finally
+                                {
+                                    RenderSystem.depthMask(true);
+                                    RenderSystem.defaultBlendFunc();
+                                }
+                            }
+                        }
+                        else if (shaderOverlaySnapshot)
+                        {
+                            ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
+                            ModelVAORenderer.setGlow(glowSnapshot, resolvedGlowSnapshot.r, resolvedGlowSnapshot.g, resolvedGlowSnapshot.b, legacyGlowSnapshot);
+                            RenderSystem.enableBlend();
+                            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+
+                            try
+                            {
+                                this.renderExtrudedOverlayPass(useShaderBlend, textureBlendSnapshot, textureSnapshot, overlayStack, 0F, 0F, 0F, colorSnapshot.a, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlayOverlay);
+                            }
+                            finally
+                            {
+                                RenderSystem.defaultBlendFunc();
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        ModelVAORenderer.clearPaintEffectTransform();
+                        ModelVAORenderer.clearPaint();
+                        ModelVAORenderer.clearGlowing();
+                        ModelVAORenderer.clearTextureBlend();
+                    }
+                });
+
+                ModelVAORenderer.clearPaintEffectTransform();
+                ModelVAORenderer.clearPaint();
+                ModelVAORenderer.clearGlowing();
+            }
+            else
+            {
             if (stripMainPassGlow)
             {
                 GlowSettings glowOff = glow.copy();
@@ -313,9 +510,14 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 ModelVAORenderer.setGlow(glow, resolvedGlow.r, resolvedGlow.g, resolvedGlow.b, legacyGlow);
             }
 
-            TextureBlend textureBlend = this.form.textureBlend;
-            boolean useShaderBlend = bbsModelShader && FormTextureBlendRenderer.isBlending(textureBlend);
-            TextureBlend textureBlendSnapshot = textureBlend == null ? null : new TextureBlend(textureBlend.from, textureBlend.to, textureBlend.blend);
+            boolean forceDepth = ShaderOpacityPatch.isActive() && opacityAlpha >= 0.95F;
+
+            if (forceDepth)
+            {
+                ShaderOpacityPatch.setForceLiveDepthWrite(true);
+                RenderSystem.enableDepthTest();
+                RenderSystem.depthMask(true);
+            }
 
             try
             {
@@ -483,6 +685,12 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 ModelVAORenderer.clearPaintEffectTransform();
                 ModelVAORenderer.clearPaint();
                 ModelVAORenderer.clearGlowing();
+
+                if (forceDepth)
+                {
+                    ShaderOpacityPatch.setForceLiveDepthWrite(false);
+                }
+            }
             }
             }
 

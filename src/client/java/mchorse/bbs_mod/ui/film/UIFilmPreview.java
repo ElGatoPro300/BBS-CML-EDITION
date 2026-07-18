@@ -186,24 +186,18 @@ public class UIFilmPreview extends UIElement
             }
         };
         this.hideOverlays.tooltip(UIKeys.FILM_PREVIEW_TOGGLE_OVERLAYS);
-        this.toggleShaders = new UIIcon(Icons.GLOBE, (b) -> BBSRendering.toggleShaders())
-        {
-            @Override
-            public boolean subMouseClicked(UIContext context)
-            {
-                if (context.mouseButton == 1 && this.area.isInside(context) && BBSRendering.isIrisLoaded())
-                {
-                    UIUtils.playClick();
-                    BBSRendering.openShaderPackScreen();
-
-                    return true;
-                }
-
-                return super.subMouseClicked(context);
-            }
-        };
+        this.toggleShaders = new UIIcon(Icons.GLOBE, (b) -> BBSRendering.toggleShaders());
         this.toggleShaders.tooltip(UIKeys.FILM_PREVIEW_TOGGLE_SHADERS);
         this.toggleShaders.setVisible(BBSRendering.isIrisLoaded());
+        this.toggleShaders.context((menu) ->
+        {
+            menu.action(Icons.CURVES, UIKeys.FILM_PREVIEW_SHADER_SETTINGS, () ->
+            {
+                UIOverlay.addOverlay(this.getContext(), this.panel.dashboard.settingsPanel, 580, 340);
+                this.panel.dashboard.settingsPanel.selectCategory("shader_curves");
+            });
+            menu.action(Icons.MATERIAL, UIKeys.FILM_PREVIEW_CHANGE_SHADER, () -> BBSRendering.openShaderPackScreen());
+        });
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
         this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE);
         this.plause.context((menu) ->

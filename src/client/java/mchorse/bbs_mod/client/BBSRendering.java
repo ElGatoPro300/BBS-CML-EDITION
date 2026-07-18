@@ -63,6 +63,7 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -238,6 +239,11 @@ public class BBSRendering
              * frames and made deferred translucent redraws (low Iris opacity) disappear. */
             framebuffer.beginWrite(false);
             reassignFramebuffer(framebuffer);
+        }
+        else
+        {
+            /* World / non-film path: Iris may leave a different FBO bound at frame end. */
+            MinecraftClient.getInstance().getFramebuffer().beginWrite(false);
         }
     }
 
@@ -456,6 +462,7 @@ public class BBSRendering
         GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
 
         renderingWorld = true;
+        ShaderOpacityPatch.onWorldRenderBegin();
         updateCloudRenderMode(mc);
         ModelVAORenderer.clearPaintOverlayQueue();
 
@@ -477,6 +484,7 @@ public class BBSRendering
         }
 
         ModelVAORenderer.flushPaintOverlayQueue();
+        ShaderOpacityPatch.onWorldRenderEnd();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
@@ -799,19 +807,96 @@ public class BBSRendering
 
     /**
      * Iris {@code entity_translucent} typically discards below ~0.1 ({@code alphaTestRef}).
-     * Use {@code 28/255} so {@code #1bffffff} (≈0.106) is deferred too — at the old 0.1
-     * cutoff that byte still went through Iris and washed fog/sky in the film viewport.
+     * Character meshes defer to BBS only below this — keeping mid/high opacity on Iris so
+     * pack lighting/shadows stay on every model (changing one form's alpha must not flatten
+     * the rest of the scene).
+     * <p>
+     * With the Complementary opacity patch, mid/low opacity also stays on Iris (same look /
+     * lighting). Cloud/fog holes are avoided by queuing those draws until after Iris deferred
+     * ({@link mchorse.bbs_mod.utils.iris.ShaderOpacityPatch#shouldDelayUntilPostDeferred(float)}),
+     * not by disabling depth writes.
      */
     public static final float TRANSLUCENT_ALPHA_DISCARD_REF = 28F / 255F;
 
     /**
-     * True when Iris would discard (or mis-composite) low form opacity on character meshes;
-     * queue a BBS model redraw after compositing. Kept near alphaTestRef so slight opacity
-     * (e.g. {@code #fcffffff}) still uses shader-pack lighting.
+     * True when Iris would discard/mis-composite very low form opacity; queue a BBS redraw
+     * after compositing. Slight opacity (e.g. {@code #e7}/{@code #fc}) stays on Iris.
+     * When the Complementary opacity patch is active, only near-zero alpha is deferred so
+     * pack lighting stays on the Iris path.
      */
     public static boolean needsIrisTranslucentModelDeferral(float alpha)
     {
-        return isIrisWorldModelPass() && !isIrisShadowPass() && alpha < TRANSLUCENT_ALPHA_DISCARD_REF;
+        if (!isIrisWorldModelPass() || isIrisShadowPass())
+        {
+            return false;
+        }
+
+        float ref = ShaderOpacityPatch.isActive()
+            ? ShaderOpacityPatch.LOW_ALPHA_TEST_REF
+            : TRANSLUCENT_ALPHA_DISCARD_REF;
+
+        return alpha < ref;
+    }
+
+    /**
+     * Opt-in paint flag: use the clean deferred opacity path at any translucent alpha
+     * (same compositing as post-{@code #1b}) without forcing neighbors off Iris lighting.
+     */
+    public static boolean needsIrisNoshadingOpacityDeferral(float alpha, boolean noshadingOpacity)
+    {
+        return noshadingOpacity && isIrisWorldModelPass() && !isIrisShadowPass() && alpha > 0.001F && alpha < 0.999F;
+    }
+
+    /**
+     * Iris live path keeps the user's alpha. Do not pull toward a sub-{@code alphaTestRef}
+     * handoff — that made models vanish around {@code #2e}/{@code #2c} before the
+     * {@code #1c}→{@code #1b} deferral switch.
+     */
+    public static float easeIrisModelAlpha(float alpha)
+    {
+        return alpha;
+    }
+
+    /**
+     * Lift deferred alpha toward {@link #TRANSLUCENT_ALPHA_DISCARD_REF} so the first deferred
+     * step ({@code #1b}) matches the last Iris step ({@code #1d}) — continuous handoff with
+     * near-zero jump; deeper alphas stay near the user value.
+     */
+    public static float easeDeferredModelAlpha(float alpha)
+    {
+        if (!isIrisWorldModelPass() || isIrisShadowPass())
+        {
+            return alpha;
+        }
+
+        if (alpha <= 0F || alpha >= TRANSLUCENT_ALPHA_DISCARD_REF)
+        {
+            return alpha;
+        }
+
+        float t = alpha / TRANSLUCENT_ALPHA_DISCARD_REF;
+
+        t = t * t * (3F - 2F * t);
+
+        /* t→1 at #1b/#1c edge → ≈ REF (match Iris #1d); t→0 → stay near zero. */
+        return alpha + (TRANSLUCENT_ALPHA_DISCARD_REF - alpha) * t;
+    }
+
+    /**
+     * Deferred Iris low-alpha redraw ({@code #1b} and below): keep alpha, force RGB black
+     * ({@code #aa000000}). White RGB on the BBS deferred path brightens vs Iris; black matches
+     * the Iris handoff. Above the threshold the live Iris path keeps the user RGB ({@code ffffff}).
+     */
+    public static void applyDeferredModelHandoffRgb(Color color)
+    {
+        if (color == null)
+        {
+            return;
+        }
+
+        color.r = 0F;
+        color.g = 0F;
+        color.b = 0F;
     }
 
     /**
