@@ -4,6 +4,8 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
+import mchorse.bbs_mod.camera.clips.misc.BossBarClip;
+import mchorse.bbs_mod.camera.clips.misc.BossBarState;
 import mchorse.bbs_mod.camera.clips.misc.ChromaSkyCurveSettings;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
@@ -40,6 +42,7 @@ import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
+import mchorse.bbs_mod.ui.film.UIBossBarRenderer;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.UIHotbarRenderer;
 import mchorse.bbs_mod.ui.film.UIImageRenderer;
@@ -488,10 +491,10 @@ public class BBSRendering
             Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
 
             RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
-            renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
             VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
 
             ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
+            renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
 
             RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         }
@@ -525,10 +528,10 @@ public class BBSRendering
 
                 RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
-                renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
                 VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
 
                 ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
+                renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
 
                 RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
             }
@@ -1225,8 +1228,9 @@ public class BBSRendering
         List<Subtitle> subtitles = SubtitleClip.getSubtitles(context);
         List<HotbarState> hotbars = HotbarClip.getHotbars(context);
         List<ImageOverlay> images = ImageClip.getImages(context);
+        List<BossBarState> bossBars = BossBarClip.getBossBars(context);
 
-        if (subtitles.isEmpty() && hotbars.isEmpty() && images.isEmpty())
+        if (subtitles.isEmpty() && hotbars.isEmpty() && images.isEmpty() && bossBars.isEmpty())
         {
             return;
         }
@@ -1237,30 +1241,40 @@ public class BBSRendering
         int subtitleIndex = 0;
         int hotbarIndex = 0;
         int imageIndex = 0;
+        int bossBarIndex = 0;
 
-        while (subtitleIndex < subtitles.size() || hotbarIndex < hotbars.size() || imageIndex < images.size())
+        while (subtitleIndex < subtitles.size() || hotbarIndex < hotbars.size() || imageIndex < images.size() || bossBarIndex < bossBars.size())
         {
             int subtitleOrder = subtitleIndex < subtitles.size() ? subtitles.get(subtitleIndex).renderOrder : Integer.MAX_VALUE;
             int hotbarOrder = hotbarIndex < hotbars.size() ? hotbars.get(hotbarIndex).renderOrder : Integer.MAX_VALUE;
             int imageOrder = imageIndex < images.size() ? images.get(imageIndex).renderOrder : Integer.MAX_VALUE;
+            int bossBarOrder = bossBarIndex < bossBars.size() ? bossBars.get(bossBarIndex).renderOrder : Integer.MAX_VALUE;
+            int nextOrder = Math.min(Math.min(subtitleOrder, hotbarOrder), Math.min(imageOrder, bossBarOrder));
 
-            if (subtitleOrder <= hotbarOrder && subtitleOrder <= imageOrder)
+            /* Draw lowest renderOrder first so higher timeline layers end up on top. */
+            if (subtitleOrder == nextOrder)
             {
                 UISubtitleRenderer.renderSubtitle(matrices, batcher, subtitles.get(subtitleIndex));
                 subtitleIndex += 1;
             }
-            else if (hotbarOrder <= imageOrder)
+            else if (hotbarOrder == nextOrder)
             {
                 UIHotbarRenderer.renderHotbar(matrices, batcher, hotbars.get(hotbarIndex), 0, 0, width, height);
                 hotbarIndex += 1;
             }
-            else
+            else if (imageOrder == nextOrder)
             {
                 UIImageRenderer.renderImage(matrices, batcher, images.get(imageIndex));
                 imageIndex += 1;
             }
+            else
+            {
+                UIBossBarRenderer.renderBossBar(matrices, batcher, bossBars.get(bossBarIndex), 0, 0, width, height);
+                bossBarIndex += 1;
+            }
         }
 
+        bossBars.clear();
         RenderSystem.enableDepthTest();
     }
 }

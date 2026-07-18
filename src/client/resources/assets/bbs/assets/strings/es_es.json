@@ -2096,6 +2096,8 @@
     "bbs.ui.screen_node.square_wave": "Onda cuadrada",
     "bbs.ui.screen_node.vignette": "Viñeta",
     "bbs.ui.screen_panels.keyframes": "Fotogramas clave",
+    "bbs.ui.screen_panels.use_keyframes": "Usar fotogramas clave",
+    "bbs.ui.screen_panels.use_keyframes-tooltip": "Activado: los cambios insertan fotogramas clave. Desactivado: un único valor para toda la duración del clip.",
     "bbs.ui.screen_panels.letterbox_color": "Color de Letterbox",
     "bbs.ui.screen_panels.letterbox_height": "Altura",
     "bbs.ui.screen_panels.letterbox_offset": "Desfase",
