@@ -59,7 +59,7 @@ public class UIKeyframeEditor extends UIElement
         this.view = factory.apply(this::pickKeyframe);
         this.view.changed(() ->
         {
-            if (this.editor != null)
+            if (this.editor != null && !this.isEditorInputFocused())
             {
                 this.editor.update();
             }
@@ -188,6 +188,39 @@ public class UIKeyframeEditor extends UIElement
 
         this.applyLayout();
         this.resize();
+    }
+
+    /**
+     * True when a focused text/trackpad input belongs to the open keyframe
+     * property panel. Used to avoid mid-typing refreshes that reset fields.
+     */
+    public boolean isEditorInputFocused()
+    {
+        if (this.editor == null)
+        {
+            return false;
+        }
+
+        UIContext context = this.getContext();
+
+        if (context == null || !(context.activeElement instanceof UIElement focused))
+        {
+            return false;
+        }
+
+        UIElement current = focused;
+
+        while (current != null)
+        {
+            if (current == this.editor)
+            {
+                return true;
+            }
+
+            current = current.getParent();
+        }
+
+        return false;
     }
 
     private void applyLayout()

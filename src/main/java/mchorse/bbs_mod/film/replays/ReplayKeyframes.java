@@ -381,7 +381,7 @@ public class ReplayKeyframes extends ValueGroup
         }
     }
 
-    public void record(int tick, IEntity entity, List<String> groups)
+    public void record(float tick, IEntity entity, List<String> groups)
     {
         boolean empty = groups == null || groups.isEmpty();
         boolean position = empty || groups.contains(GROUP_POSITION);
@@ -473,7 +473,7 @@ public class ReplayKeyframes extends ValueGroup
      * Insert keyframes at {@code tick} using values interpolated from the
      * existing animation at that tick (for cursor placement).
      */
-    public void insertInterpolated(int tick, List<String> groups)
+    public void insertInterpolated(float tick, List<String> groups)
     {
         boolean empty = groups == null || groups.isEmpty();
         boolean position = empty || groups.contains(GROUP_POSITION);

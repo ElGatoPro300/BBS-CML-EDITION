@@ -279,17 +279,19 @@ public class UITrackpad extends UIBaseTextbox
     }
 
     /**
-     * Set the value of the field. The input value would be rounded up to 3
-     * decimal places.
+     * Set the value of the field. While the text box is focused, skip updates so
+     * external refreshes (pose sync, keyframe panel update, etc.) cannot clobber
+     * in-progress typing or steal focus indirectly via value resets.
      */
     public void setValue(double value)
     {
-        this.setValueInternal(value);
-
-        if (!this.textbox.isFocused())
+        if (this.textbox.isFocused())
         {
-            this.updateTextField();
+            return;
         }
+
+        this.setValueInternal(value);
+        this.updateTextField();
     }
 
     private void updateTextField()
