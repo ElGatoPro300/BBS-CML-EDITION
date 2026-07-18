@@ -1230,8 +1230,32 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.editor.full(this.formEditor).resize();
         this.updateModelEditorButton();
         this.refillState();
+        this.syncFormTransformGizmoForEditor();
 
         return true;
+    }
+
+    /**
+     * Forms without a pose editor (extruded, label, billboard, …) only expose a form-level
+     * transform. Enable that gizmo target as soon as their panel opens — otherwise the gizmo
+     * stays inert until the user visits the General tab once (which calls
+     * {@link #enableFormTransformGizmoFromGeneralPanel()}).
+     */
+    private void syncFormTransformGizmoForEditor()
+    {
+        if (this.editor instanceof UIModelForm)
+        {
+            /* Model forms default to pose bones; leave transform-gizmo mode off until the
+             * toolbar gear (or General tab) opts in. */
+            this.gizmoTargetsTransform = false;
+
+            return;
+        }
+
+        if (this.editor != null)
+        {
+            this.enableFormTransformGizmoFromGeneralPanel();
+        }
     }
 
     public Form finish()
