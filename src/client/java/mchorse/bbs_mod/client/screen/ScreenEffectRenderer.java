@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.client.screen;
 
-import mchorse.bbs_mod.camera.clips.misc.BossBarClip;
-import mchorse.bbs_mod.camera.clips.misc.BossBarState;
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
 import mchorse.bbs_mod.camera.clips.screen.ColorEffect;
 import mchorse.bbs_mod.camera.clips.screen.EyeClip;
@@ -11,7 +9,6 @@ import mchorse.bbs_mod.camera.clips.screen.GrainEffect;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxEffect;
 import mchorse.bbs_mod.camera.clips.screen.ScreenNodeEffect;
-import mchorse.bbs_mod.ui.film.UIBossBarRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.clips.ClipContext;
@@ -114,16 +111,6 @@ public class ScreenEffectRenderer
         for (LetterboxEffect effect : letterboxEffects)
         {
             renderLetterbox(batcher, effect, screenW, screenH);
-        }
-
-        List<BossBarState> bossBars = BossBarClip.getBossBars(context);
-
-        if (!bossBars.isEmpty())
-        {
-            MatrixStack stack = batcher.getContext().getMatrices();
-
-            UIBossBarRenderer.renderBossBars(stack, batcher, bossBars, 0, 0, screenW, screenH);
-            bossBars.clear();
         }
 
         /* Clear all effect lists to prevent accumulation across frames */

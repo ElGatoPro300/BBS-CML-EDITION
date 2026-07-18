@@ -47,6 +47,7 @@ public class UIEyeClip extends UIClip<EyeClip>
         super.registerUI();
 
         this.color = this.createColorChannel(this.clip.color);
+        this.color.withAlpha();
 
         this.colorOpacity = new UITrackpad((v) ->
         {
@@ -175,7 +176,11 @@ public class UIEyeClip extends UIClip<EyeClip>
 
         for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
         {
-            if ("width".equals(sheet.id) || "zoom".equals(sheet.id))
+            if ("color".equals(sheet.id))
+            {
+                sheet.defaultInsertValue = DEFAULT_COLOR.copy();
+            }
+            else if ("width".equals(sheet.id) || "zoom".equals(sheet.id))
             {
                 sheet.defaultInsertValue = 1D;
             }

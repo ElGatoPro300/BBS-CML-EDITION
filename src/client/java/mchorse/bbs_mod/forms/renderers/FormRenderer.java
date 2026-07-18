@@ -7,6 +7,8 @@ import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
+import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
@@ -108,6 +110,17 @@ public abstract class FormRenderer <T extends Form>
         if (!this.form.shaderShadow.get() && BBSRendering.isIrisShadowPass())
         {
             return;
+        }
+
+        if (context.isShadowPass || BBSRendering.isIrisShadowPass())
+        {
+            BaseValue colorValue = this.form.get("color");
+
+            if (colorValue instanceof ValueColor valueColor && valueColor.get().a <= 0.001F)
+            {
+                /* Keep shadow casting when the mesh itself is fully transparent. */
+                this.form.shaderShadow.setRuntimeValue(true);
+            }
         }
 
         if (!this.form.render.get())
@@ -265,7 +278,19 @@ public abstract class FormRenderer <T extends Form>
 
     public void renderBodyParts(FormRenderingContext context)
     {
-        for (BodyPart part : this.getSortedBodyParts(context))
+        if (this.form.parts.getAllTyped().isEmpty())
+        {
+            return;
+        }
+
+        List<BodyPart> parts = this.getSortedBodyParts(context);
+
+        if (ItemBodyPartBatch.renderBodyParts(this, parts, context))
+        {
+            return;
+        }
+
+        for (BodyPart part : parts)
         {
             this.renderBodyPart(part, context);
         }

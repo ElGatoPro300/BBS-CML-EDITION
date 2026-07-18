@@ -2,6 +2,11 @@ package mchorse.bbs_mod.ui.film.replays;
 
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
+import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -11,6 +16,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorK
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -59,30 +65,51 @@ public final class FilmPoseGizmoDrag
         }
 
         boolean filmTransformGizmo = replayTransformGizmo || anchorTrackGizmo;
+        boolean bobjModel = FilmPoseGizmoDrag.isBobjReplay(panel);
 
         if (poseGizmo)
         {
-            /* Pose bodies mirror X/Z relative to euler storage (see shouldInvertRotationRing).
-             * View-space rays fix translate / Y ring feel; X/Z rings still need poseModelGizmoTuning
-             * on the transform editor (same as UIModelPoseEditor). Trackball arcball clears euler
-             * flips each drag via clearTrackballEulerInverts(). */
-            transform.setInvertGizmoViewRing(true);
+            transform.configurePoseRingTuning(bobjModel);
+
+            /* Cubic pose bodies mirror X/Z relative to euler storage (post-multiplied bone-local
+             * Ry(180°), see shouldInvertRotationRing) — the view ring inherits that sign. BOBJ
+             * bones pre-multiply the flip globally, so their view ring keeps the natural sense.
+             * Trackball arcball clears euler flips each drag via clearTrackballEulerInverts(). */
+            transform.setInvertGizmoViewRing(!bobjModel);
             transform.setInvertGizmoTrackball(false);
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.clearTrackballEulerInverts();
             transform.invertFilmArcballDragY();
             transform.setFilmArcballTrackball(true);
             transform.setFilmMatchPoseTrackball(false);
+
+            /* Pose editor may be built before the model is known (scale defaults to 16). */
+            transform.translationScale(bobjModel ? 1F : 16F);
+            transform.setAxisProjectedTranslation(bobjModel);
         }
         else if (poseLimbGizmo)
         {
+            transform.configurePoseLimbRingTuning(bobjModel);
+
             transform.setInvertGizmoViewRing(false);
             transform.setInvertGizmoTrackball(false);
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.setFilmArcballTrackball(false);
             transform.clearTrackballEulerInverts();
-            transform.invertModelPoseTrackballXZ();
+
+            /* The vertical drag flip belongs to the limb context (both formats); the X/Z
+             * euler flips compensate the cubic bone-local Ry(180°) that BOBJ doesn't have. */
             transform.invertModelPoseTrackballDragY();
+
+            if (!bobjModel)
+            {
+                transform.invertModelPoseTrackballXZ();
+            }
+
+            /* Limb sheets have null formProperty, so the factory often kept cubic's /16 scale
+             * on BOBJ — force block units + axis-projected rays so drag tracks the cursor. */
+            transform.translationScale(bobjModel ? 1F : 16F);
+            transform.setAxisProjectedTranslation(bobjModel);
         }
         else if (replayTransformGizmo)
         {
@@ -158,15 +185,9 @@ public final class FilmPoseGizmoDrag
             return false;
         }
 
-        if (BBSRendering.isIrisShadersEnabled())
-        {
-            matrix.set(panel.lastGizmoMatrix);
-        }
-        else
-        {
-            matrix.set(BBSRendering.camera);
-            matrix.mul(panel.lastGizmoMatrix);
-        }
+        /* Same frustum-based composition as the visual pass, so drags grab the
+         * handle exactly where it is drawn regardless of the shader path. */
+        Gizmo.composeVisualMatrix(panel.lastGizmoMatrix, BBSRendering.camera, panel.lastProjection, matrix);
 
         return true;
     }
@@ -205,5 +226,24 @@ public final class FilmPoseGizmoDrag
         camera.copy(panel.getWorldCamera());
         camera.view.set(panel.lastView);
         camera.projection.set(panel.lastProjection);
+    }
+
+    private static boolean isBobjReplay(UIFilmPanel panel)
+    {
+        if (panel == null || panel.replayEditor == null)
+        {
+            return false;
+        }
+
+        Replay replay = panel.replayEditor.getReplay();
+
+        if (replay == null)
+        {
+            return false;
+        }
+
+        Form form = FormUtils.getRoot(replay.form.get());
+
+        return form instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
     }
 }

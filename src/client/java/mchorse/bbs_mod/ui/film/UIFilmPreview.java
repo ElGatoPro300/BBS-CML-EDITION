@@ -28,6 +28,7 @@ import mchorse.bbs_mod.ui.film.controller.UIGizmoSizeContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIGizmoTranslateSpeedContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIViewportHideContextMenu;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -184,25 +185,18 @@ public class UIFilmPreview extends UIElement
             }
         };
         this.hideOverlays.tooltip(UIKeys.FILM_PREVIEW_TOGGLE_OVERLAYS);
-        this.toggleShaders = new UIIcon(Icons.GLOBE, (b) -> BBSRendering.toggleShaders())
-        {
-            @Override
-            public boolean subMouseClicked(UIContext context)
-            {
-                if (context.mouseButton == 1 && this.area.isInside(context) && BBSRendering.isIrisLoaded())
-                {
-                    UIUtils.playClick();
-                    BBSRendering.openShaderPackScreen();
-
-                    return true;
-                }
-
-                return super.subMouseClicked(context);
-            }
-        };
+        this.toggleShaders = new UIIcon(Icons.GLOBE, (b) -> BBSRendering.toggleShaders());
         this.toggleShaders.tooltip(UIKeys.FILM_PREVIEW_TOGGLE_SHADERS);
-        this.toggleShaders.activeBackground(Colors.A50 | Colors.BLUE);
         this.toggleShaders.setVisible(BBSRendering.isIrisLoaded());
+        this.toggleShaders.context((menu) ->
+        {
+            menu.action(Icons.CURVES, UIKeys.FILM_PREVIEW_SHADER_SETTINGS, () ->
+            {
+                UIOverlay.addOverlay(this.getContext(), this.panel.dashboard.settingsPanel, 580, 340);
+                this.panel.dashboard.settingsPanel.selectCategory("shader_curves");
+            });
+            menu.action(Icons.MATERIAL, UIKeys.FILM_PREVIEW_CHANGE_SHADER, () -> BBSRendering.openShaderPackScreen());
+        });
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
         this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE);
         this.plause.context((menu) ->
@@ -554,6 +548,22 @@ public class UIFilmPreview extends UIElement
         return absolute;
     }
 
+    /**
+     * Extra bottom offset so viewport hints sit above the preview icon row when it
+     * overlaps the letterboxed viewport.
+     */
+    private int getViewportHintBottomReserve(Area viewport)
+    {
+        Area icons = this.icons.area;
+
+        if (icons.ey() <= viewport.y || icons.y >= viewport.ey())
+        {
+            return 0;
+        }
+
+        return icons.h + TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+    }
+
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
@@ -561,6 +571,11 @@ public class UIFilmPreview extends UIElement
 
         if (area.isInside(context))
         {
+            if (this.panel.replayEditor.handleViewportInteractionMouse(context, area))
+            {
+                return true;
+            }
+
             /* In flight mode, viewport clicks drive the camera directly (left = look around,
              * right = roll, middle = FOV). This has to be started here rather than left to the
              * dashboard's orbit element, because this panel uses BLOCK_INSIDE mouse propagation
@@ -594,7 +609,13 @@ public class UIFilmPreview extends UIElement
 
                 return false;
             }
-            else if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
+
+            if (context.mouseButton == 1 && this.panel.replayEditor.clickViewport(context, area))
+            {
+                return true;
+            }
+
+            if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
                 && BBSSettings.editorOrbitWithoutFlight.get()
                 && !this.panel.getController().orbit.isAnimating()
                 && this.panel.getController().orbit.canStart(context) >= 0)
@@ -608,6 +629,17 @@ public class UIFilmPreview extends UIElement
         }
 
         return super.subMouseClicked(context);
+    }
+
+    @Override
+    protected boolean subKeyPressed(UIContext context)
+    {
+        if (this.panel.replayEditor.handleViewportInteractionKey(context))
+        {
+            return true;
+        }
+
+        return super.subKeyPressed(context);
     }
 
     @Override
@@ -641,10 +673,6 @@ public class UIFilmPreview extends UIElement
         this.gizmoRotate.active(mode == Gizmo.Mode.ROTATE);
         this.gizmoCombined.active(mode == Gizmo.Mode.COMBINED);
         this.gizmoTop.active(mode == Gizmo.Mode.TOP);
-        if (BBSRendering.isIrisLoaded())
-        {
-            this.toggleShaders.active(BBSRendering.isIrisShadersEnabled());
-        }
 
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();
@@ -658,6 +686,11 @@ public class UIFilmPreview extends UIElement
         if (texture != null && area.w > 0 && area.h > 0)
         {
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
+        }
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteraction(context, area);
         }
 
         if (this.pendingThumbnail != null)
@@ -807,6 +840,7 @@ public class UIFilmPreview extends UIElement
 
         if (!BBSSettings.editorFilmOverlayVisible.get()) UIDashboardPanels.renderHighlight(context.batcher, this.hideOverlays.area, Direction.BOTTOM);
         if (this.viewportButtonsHidden) UIDashboardPanels.renderHighlight(context.batcher, this.hideOverlays.area, Direction.BOTTOM);
+        if (BBSRendering.isIrisShadersEnabled() && this.toggleShaders.isVisible()) UIDashboardPanels.renderHighlight(context.batcher, this.toggleShaders.area, Direction.BOTTOM);
 
         if (!this.viewportButtonsHidden && this.panel.getController().isControlling())
         {
@@ -820,6 +854,12 @@ public class UIFilmPreview extends UIElement
         context.batcher.clip(this.area, context);
         super.render(context);
         context.batcher.unclip(context);
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteractionHint(context, area,
+                this.getViewportHintBottomReserve(area));
+        }
     }
 
     private void renderCursor(UIContext context)

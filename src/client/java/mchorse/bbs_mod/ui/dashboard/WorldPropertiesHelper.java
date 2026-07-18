@@ -81,6 +81,33 @@ public class WorldPropertiesHelper
         return mc.options == null ? 100D : mc.options.getGamma().getValue() * 100D;
     }
 
+    public static void setSunPathRotation(float degrees)
+    {
+        if (degrees > 180F)
+        {
+            degrees = 180F;
+        }
+        else if (degrees < -180F)
+        {
+            degrees = -180F;
+        }
+
+        if (BBSSettings.worldSunPathRotation != null)
+        {
+            BBSSettings.worldSunPathRotation.set(degrees);
+        }
+    }
+
+    public static float getSunPathRotation()
+    {
+        if (BBSSettings.worldSunPathRotation != null)
+        {
+            return BBSSettings.worldSunPathRotation.get();
+        }
+
+        return 0F;
+    }
+
     public static void setNightVision(boolean enabled)
     {
         executeCommand(enabled

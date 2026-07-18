@@ -251,6 +251,21 @@ public class IrisUtils
         }
     }
 
+    public static void reloadShaders()
+    {
+        try
+        {
+            if (isShaderPackEnabled())
+            {
+                Iris.reload();
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public static void openShaderPackScreen()
     {
         try
@@ -331,6 +346,15 @@ public class IrisUtils
     {
         for (ShaderCurves.ShaderVariable value : variableMap.values())
         {
+            if (ShaderCurves.SUN_PATH_ROTATION.equals(value.name))
+            {
+                /* Negated vs sky matrix so Complementary light stays opposite the sun disc. */
+                list.add(new FloatCachedUniform(value.uniformName, UniformUpdateFrequency.PER_FRAME, () ->
+                    mchorse.bbs_mod.client.SunPathRotation.getLightYawDegrees()));
+
+                continue;
+            }
+
             if (value.integer)
             {
                 list.add(new IntCachedUniform(value.uniformName, UniformUpdateFrequency.PER_FRAME, () -> (int) value.getValue()));

@@ -21,6 +21,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
     private UITextbox argumentsAudio;
     private UIToggle audio;
     private UIToggle audioEnvironment;
+    private UIToggle audioSeparateFile;
     private UIIcon flip;
     private UITrackpad width;
     private UITrackpad height;
@@ -77,6 +78,16 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
             }
         });
         this.audioEnvironment.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT_TOOLTIP);
+        this.audioSeparateFile = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE, (b) ->
+        {
+            if (this.filling)
+            {
+                return;
+            }
+
+            this.value.audioSeparateFile.set(b.getValue());
+        });
+        this.audioSeparateFile.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE_TOOLTIP);
         this.flip = new UIIcon(Icons.EXCHANGE, (b) ->
         {
             int w = this.value.width.get();
@@ -108,7 +119,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
             UI.label(UIKeys.VIDEO_SETTINGS_ARGS),
             this.arguments,
             UI.label(UIKeys.VIDEO_SETTINGS_AUDIO_ARGS),
-            this.argumentsAudio, this.audio, this.audioEnvironment,
+            this.argumentsAudio, this.audio, this.audioEnvironment, this.audioSeparateFile,
             UI.label(UIKeys.VIDEO_SETTINGS_RESOLUTION).marginTop(6),
             UI.row(this.width, this.flip, this.height),
             UI.label(UIKeys.VIDEO_SETTINGS_FRAME_RATE).marginTop(6),
@@ -161,6 +172,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
         this.argumentsAudio.setText(this.value.argumentsAudio.get());
         this.audio.setValue(this.value.audio.get());
         this.audioEnvironment.setValue(this.value.audioEnvironment.get());
+        this.audioSeparateFile.setValue(this.value.audioSeparateFile.get());
         this.width.setValue(this.value.width.get());
         this.height.setValue(this.value.height.get());
         this.frameRate.setValue(this.value.frameRate.get());

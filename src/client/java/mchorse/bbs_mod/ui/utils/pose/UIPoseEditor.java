@@ -463,7 +463,7 @@ public class UIPoseEditor extends UIElement
 
             if (this.onChange != null) this.onChange.run();
         });
-        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
         this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
         this.paintIntensity.context((menu) ->
         {
@@ -1127,7 +1127,7 @@ public class UIPoseEditor extends UIElement
 
     protected void setPaintIntensity(PoseTransform transform, float value)
     {
-        transform.paintColor.a = value;
+        transform.paintColor.a = PaintSettings.clampIntensity(value);
         transform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(transform.paintColor.a);
     }
 

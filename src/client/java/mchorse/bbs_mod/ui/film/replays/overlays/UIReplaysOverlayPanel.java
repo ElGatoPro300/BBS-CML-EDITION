@@ -2,11 +2,13 @@ package mchorse.bbs_mod.ui.film.replays.overlays;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.MobCemPoseCapture;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.MobForm;
+import mchorse.bbs_mod.forms.forms.utils.ShadowSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
@@ -30,6 +32,7 @@ import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -56,53 +59,22 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIReplayList replays;
 
     public UIElement replayProperties;
-    public UIElement windowedReplayProperties;
     public UIElement groupProperties;
     public UINestedEdit pickEdit;
-    public UINestedEdit windowedPickEdit;
     public UIToggle enabled;
-    public UIToggle windowedEnabled;
     public UIToggle groupEnabled;
     public UITextbox label;
-    public UITextbox windowedLabel;
     public UITextbox groupLabel;
     public UITextbox nameTag;
-    public UITextbox windowedNameTag;
-
-    /* Windowed duplicates of the remaining property sections (shadow, playback,
-       positioning, item drops) so the floating General panel mirrors the embedded one. */
-    public UIToggle windowedShadow;
-    public UITrackpad windowedShadowSize;
-    public UITrackpad windowedShadowOpacity;
-    public UITrackpad windowedLooping;
-    public UIToggle windowedActor;
-    public UIToggle windowedFp;
-    public UIToggle windowedVanillaMobPlayback;
-    public UIToggle windowedRelative;
-    public UIElement windowedRelativeRow;
-    public UITrackpad windowedRelativeOffsetX;
-    public UITrackpad windowedRelativeOffsetY;
-    public UITrackpad windowedRelativeOffsetZ;
-    public UIToggle windowedAxesPreview;
-    public UIButton windowedPickAxesPreviewBone;
-    public UIToggle windowedDropItemsOnDeath;
-    public UIButton windowedReplaceReplayInventory;
-    public UITrackpad windowedDropVelocityMinX;
-    public UITrackpad windowedDropVelocityMaxX;
-    public UITrackpad windowedDropVelocityMinY;
-    public UITrackpad windowedDropVelocityMaxY;
-    public UITrackpad windowedDropVelocityMinZ;
-    public UITrackpad windowedDropVelocityMaxZ;
-    public UIElement windowedDropVelocityLabel;
-    public UIElement windowedDropVelocityRowX;
-    public UIElement windowedDropVelocityRowY;
-    public UIElement windowedDropVelocityRowZ;
-    public UIElement windowedDropVelocityGroup;
-    public UIElement windowedItemDropsContent;
-
     public UIToggle shadow;
     public UITrackpad shadowSize;
+    public UITrackpad shadowSizeZ;
+    public UIIcon shadowSizeLink;
     public UITrackpad shadowOpacity;
+    public UITrackpad shadowOffsetX;
+    public UITrackpad shadowOffsetY;
+    public UITrackpad shadowOffsetZ;
+    private boolean linkShadowSize = true;
     public UITrackpad looping;
     public UIToggle actor;
     public UIToggle fp;
@@ -137,7 +109,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIDraggable dockedResizer;
 
     private UIElement propertiesHost;
-    private boolean embeddedGeneralVisible = true;
+    private boolean propertiesExternal;
     private Consumer<Replay> callback;
     private final UIFilmPanel filmPanel;
     private boolean docked;
@@ -196,7 +168,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.enabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) ->
         {
             this.edit((replay) -> replay.enabled.set(b.getValue()));
-            this.windowedEnabled.setValue(b.getValue());
             filmPanel.getController().createEntities();
         });
         this.groupEnabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) ->
@@ -214,7 +185,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.label = new UITextbox(1000, (s) -> this.edit((replay) ->
         {
             replay.label.set(s);
-            this.windowedLabel.setText(s);
             LOGGER.info("Replay display name changed: replayId={}, label={}", replay.getId(), s);
         }));
         this.label.textbox.setPlaceholder(UIKeys.FILM_REPLAY_LABEL);
@@ -232,68 +202,30 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
              });
         });
         this.groupLabel.textbox.setPlaceholder(UIKeys.FILM_REPLAY_LABEL);
-        this.nameTag = new UITextbox(1000, (s) -> this.edit((replay) ->
-        {
-            replay.nameTag.set(s);
-            this.windowedNameTag.setText(s);
-        }));
+        this.nameTag = new UITextbox(1000, (s) -> this.edit((replay) -> replay.nameTag.set(s)));
         this.nameTag.textbox.setPlaceholder(UIKeys.FILM_REPLAY_NAME_TAG);
-
-        this.windowedPickEdit = new UINestedEdit((editing) ->
-        {
-            if (this.replays.getCurrent().isEmpty())
-            {
-                return;
-            }
-
-            this.replays.openFormEditor(this.replays.getCurrent().get(0).form, editing, (form) ->
-            {
-                this.windowedPickEdit.setForm(form);
-                this.pickEdit.setForm(form);
-                Replay replay = this.replays.getCurrentFirst();
-
-                if (replay != null)
-                {
-                    MobCemPoseCapture.syncReplay(replay);
-                    boolean isMobForm = form instanceof MobForm;
-
-                    this.vanillaMobPlayback.setVisible(isMobForm);
-
-                    if (isMobForm)
-                    {
-                        this.vanillaMobPlayback.setValue(replay.vanillaMobPlayback.get());
-                    }
-
-                    this.filmPanel.getController().createEntities();
-                }
-            });
-        });
-        this.windowedPickEdit.pick.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_PICK_FORM);
-        this.windowedPickEdit.edit.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_EDIT_FORM);
-        this.windowedEnabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) ->
-        {
-            this.edit((replay) -> replay.enabled.set(b.getValue()));
-            this.enabled.setValue(b.getValue());
-            filmPanel.getController().createEntities();
-        });
-        this.windowedLabel = new UITextbox(1000, (s) -> this.edit((replay) ->
-        {
-            replay.label.set(s);
-            this.label.setText(s);
-            LOGGER.info("Replay display name changed: replayId={}, label={}", replay.getId(), s);
-        }));
-        this.windowedLabel.textbox.setPlaceholder(UIKeys.FILM_REPLAY_LABEL);
-        this.windowedNameTag = new UITextbox(1000, (s) -> this.edit((replay) ->
-        {
-            replay.nameTag.set(s);
-            this.nameTag.setText(s);
-        }));
-        this.windowedNameTag.textbox.setPlaceholder(UIKeys.FILM_REPLAY_NAME_TAG);
         this.shadow = new UIToggle(UIKeys.FILM_REPLAY_SHADOW, (b) -> this.edit((replay) -> replay.shadow.set(b.getValue())));
-        this.shadowSize = new UITrackpad((v) -> this.edit((replay) -> replay.shadowSize.set(v.floatValue())));
-        this.shadowSize.tooltip(UIKeys.FILM_REPLAY_SHADOW_SIZE);
-        this.shadowOpacity = new UITrackpad((v) -> this.edit((replay) -> replay.shadowOpacity.set(v.floatValue())));
+        this.shadowOpacity = new UITrackpad((v) -> this.editShadow((settings) -> settings.opacity = v.floatValue()));
         this.shadowOpacity.limit(0F, 1F).tooltip(UIKeys.FILM_REPLAY_SHADOW_OPACITY);
+        this.shadowSize = new UITrackpad((v) -> this.setShadowSizeX(v.floatValue()));
+        this.shadowSize.limit(0D).tooltip(UIKeys.FILM_REPLAY_SHADOW_SIZE_X);
+        this.shadowSize.textbox.setColor(Colors.RED);
+        this.shadowSizeZ = new UITrackpad((v) -> this.setShadowSizeZ(v.floatValue()));
+        this.shadowSizeZ.limit(0D).tooltip(UIKeys.FILM_REPLAY_SHADOW_SIZE_Y);
+        this.shadowSizeZ.textbox.setColor(Colors.GREEN);
+        this.shadowSizeLink = new UIIcon(Icons.LINK, (b) -> this.toggleShadowSizeLink());
+        this.shadowSizeLink.tooltip(UIKeys.FILM_REPLAY_SHADOW_SIZE_LINK);
+        this.shadowSizeLink.iconColor(Colors.GRAY).activeColor(Colors.A100 + Colors.ACTIVE);
+        this.updateShadowSizeLinkIcon();
+        this.shadowOffsetX = new UITrackpad((v) -> this.editShadow((settings) -> settings.offsetX = v.floatValue()));
+        this.shadowOffsetX.tooltip(UIKeys.FILM_REPLAY_SHADOW_OFFSET_X);
+        this.shadowOffsetX.textbox.setColor(Colors.RED);
+        this.shadowOffsetY = new UITrackpad((v) -> this.editShadow((settings) -> settings.offsetY = v.floatValue()));
+        this.shadowOffsetY.tooltip(UIKeys.FILM_REPLAY_SHADOW_OFFSET_Y);
+        this.shadowOffsetY.textbox.setColor(Colors.GREEN);
+        this.shadowOffsetZ = new UITrackpad((v) -> this.editShadow((settings) -> settings.offsetZ = v.floatValue()));
+        this.shadowOffsetZ.tooltip(UIKeys.FILM_REPLAY_SHADOW_OFFSET_Z);
+        this.shadowOffsetZ.textbox.setColor(Colors.BLUE);
         this.looping = new UITrackpad((v) -> this.edit((replay) -> replay.looping.set(v.intValue())));
         this.looping.limit(0).integer().tooltip(UIKeys.FILM_REPLAY_LOOPING_TOOLTIP);
         this.actor = new UIToggle(UIKeys.FILM_REPLAY_ACTOR, (b) -> this.edit((replay) -> replay.actor.set(b.getValue())));
@@ -400,18 +332,33 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.dropVelocityRowZ = UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ);
 
         this.replayProperties = UI.scrollView(6, 6);
-        this.windowedReplayProperties = UI.scrollView(6, 6);
 
-        this.addPropertySection(this.replayProperties, UIKeys.FILM_REPLAY_SECTION_GENERAL, UI.column(4,
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_GENERAL, UI.column(4,
             this.pickEdit, this.enabled, this.label, this.nameTag
         ));
-        this.addPropertySection(this.replayProperties, UIKeys.FILM_REPLAY_SHADOW, UI.column(4,
-            this.shadow, this.shadowSize, this.shadowOpacity
-        ));
-        this.addPropertySection(this.replayProperties, UIKeys.FILM_REPLAY_SECTION_PLAYBACK, UI.column(4,
+        UIElement shadowSection = UI.column(4,
+            this.shadow,
+            UI.label(UIKeys.FILM_REPLAY_SHADOW_OPACITY),
+            this.shadowOpacity,
+            UI.label(UIKeys.FILM_REPLAY_SHADOW_WIDTH),
+            UI.row(this.shadowSize, this.shadowSizeLink, this.shadowSizeZ),
+            UI.label(UIKeys.FILM_REPLAY_SHADOW_OFFSET),
+            UI.row(this.shadowOffsetX, this.shadowOffsetY, this.shadowOffsetZ)
+        );
+
+        shadowSection.context((menu) ->
+        {
+            menu.action(Icons.CLOSE, UIKeys.FILM_REPLAY_SHADOW_RESET_ALL, this::resetShadowAll);
+            menu.action(Icons.VISIBLE, UIKeys.FILM_REPLAY_SHADOW_RESET_OPACITY, this::resetShadowOpacity);
+            menu.action(Icons.SCALE, UIKeys.FILM_REPLAY_SHADOW_RESET_WIDTH, this::resetShadowWidth);
+            menu.action(Icons.ALL_DIRECTIONS, UIKeys.FILM_REPLAY_SHADOW_RESET_OFFSET, this::resetShadowOffset);
+        });
+
+        this.addPropertySection(UIKeys.FILM_REPLAY_SHADOW, shadowSection);
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_PLAYBACK, UI.column(4,
             this.looping, this.actor, this.fp, this.vanillaMobPlayback
         ));
-        this.addPropertySection(this.replayProperties, UIKeys.FILM_REPLAY_SECTION_POSITIONING, UI.column(4,
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_POSITIONING, UI.column(4,
             this.relative, this.relativeRow, this.axesPreview, this.pickAxesPreviewBone
         ));
         this.dropVelocityGroup = UI.column(4,
@@ -421,23 +368,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         );
         this.itemDropsContent = UI.column(4, this.dropItemsOnDeath, this.dropVelocityGroup);
 
-        this.addPropertySection(this.replayProperties, UIKeys.FILM_REPLAY_SECTION_ITEM_DROPS, this.itemDropsContent);
-
-        this.buildWindowedEditors();
-
-        this.addPropertySection(this.windowedReplayProperties, UIKeys.FILM_REPLAY_SECTION_GENERAL, UI.column(4,
-            this.windowedPickEdit, this.windowedEnabled, this.windowedLabel, this.windowedNameTag
-        ));
-        this.addPropertySection(this.windowedReplayProperties, UIKeys.FILM_REPLAY_SHADOW, UI.column(4,
-            this.windowedShadow, this.windowedShadowSize, this.windowedShadowOpacity
-        ));
-        this.addPropertySection(this.windowedReplayProperties, UIKeys.FILM_REPLAY_SECTION_PLAYBACK, UI.column(4,
-            this.windowedLooping, this.windowedActor, this.windowedFp, this.windowedVanillaMobPlayback
-        ));
-        this.addPropertySection(this.windowedReplayProperties, UIKeys.FILM_REPLAY_SECTION_POSITIONING, UI.column(4,
-            this.windowedRelative, this.windowedRelativeRow, this.windowedAxesPreview, this.windowedPickAxesPreviewBone
-        ));
-        this.addPropertySection(this.windowedReplayProperties, UIKeys.FILM_REPLAY_SECTION_ITEM_DROPS, this.windowedItemDropsContent);
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_ITEM_DROPS, this.itemDropsContent);
 
         this.groupProperties = UI.scrollView(5, 6, UI.column(4, this.groupEnabled, this.groupLabel));
         this.dockedResizer = new UIDraggable((context) ->
@@ -467,177 +398,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         }
     }
 
-    private void buildWindowedEditors()
-    {
-        this.windowedShadow = new UIToggle(UIKeys.FILM_REPLAY_SHADOW, (b) ->
-        {
-            this.edit((replay) -> replay.shadow.set(b.getValue()));
-            this.shadow.setValue(b.getValue());
-        });
-        this.windowedShadowSize = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.shadowSize.set(v.floatValue()));
-            this.shadowSize.setValue(v);
-        });
-        this.windowedShadowSize.tooltip(UIKeys.FILM_REPLAY_SHADOW_SIZE);
-        this.windowedShadowOpacity = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.shadowOpacity.set(v.floatValue()));
-            this.shadowOpacity.setValue(v);
-        });
-        this.windowedShadowOpacity.limit(0F, 1F).tooltip(UIKeys.FILM_REPLAY_SHADOW_OPACITY);
-
-        this.windowedLooping = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.looping.set(v.intValue()));
-            this.looping.setValue(v);
-        });
-        this.windowedLooping.limit(0).integer().tooltip(UIKeys.FILM_REPLAY_LOOPING_TOOLTIP);
-        this.windowedActor = new UIToggle(UIKeys.FILM_REPLAY_ACTOR, (b) ->
-        {
-            this.edit((replay) -> replay.actor.set(b.getValue()));
-            this.actor.setValue(b.getValue());
-        });
-        this.windowedActor.tooltip(UIKeys.FILM_REPLAY_ACTOR_TOOLTIP);
-        this.windowedFp = new UIToggle(UIKeys.FILM_REPLAY_FP, (b) ->
-        {
-            for (Replay replay : this.replays.getList())
-            {
-                if (replay.fp.get())
-                {
-                    replay.fp.set(false);
-                }
-            }
-
-            Replay current = this.replays.getCurrentFirst();
-
-            if (current != null)
-            {
-                current.fp.set(b.getValue());
-            }
-
-            this.fp.setValue(b.getValue());
-        });
-        this.windowedVanillaMobPlayback = new UIToggle(UIKeys.FILM_REPLAY_VANILLA_MOB_PLAYBACK, (b) ->
-        {
-            Replay current = this.replays.getCurrentFirst();
-
-            if (current != null)
-            {
-                current.vanillaMobPlayback.set(b.getValue());
-                current.vanillaMobPlaybackSerialized = true;
-            }
-
-            this.vanillaMobPlayback.setValue(b.getValue());
-            this.filmPanel.getController().createEntities();
-        });
-        this.windowedVanillaMobPlayback.tooltip(UIKeys.FILM_REPLAY_VANILLA_MOB_PLAYBACK_TOOLTIP);
-
-        this.windowedRelative = new UIToggle(UIKeys.CAMERA_PANELS_RELATIVE, (b) ->
-        {
-            this.edit((replay) -> replay.relative.set(b.getValue()));
-            this.relative.setValue(b.getValue());
-        });
-        this.windowedRelative.tooltip(UIKeys.FILM_REPLAY_RELATIVE_TOOLTIP);
-        this.windowedRelativeOffsetX = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> BaseValue.edit(replay.relativeOffset, (value) -> value.get().x = v));
-            this.relativeOffsetX.setValue(v);
-        });
-        this.windowedRelativeOffsetY = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> BaseValue.edit(replay.relativeOffset, (value) -> value.get().y = v));
-            this.relativeOffsetY.setValue(v);
-        });
-        this.windowedRelativeOffsetZ = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> BaseValue.edit(replay.relativeOffset, (value) -> value.get().z = v));
-            this.relativeOffsetZ.setValue(v);
-        });
-        this.windowedAxesPreview = new UIToggle(UIKeys.FILM_REPLAY_AXES_PREVIEW, (b) ->
-        {
-            this.edit((replay) -> replay.axesPreview.set(b.getValue()));
-            this.axesPreview.setValue(b.getValue());
-        });
-        this.windowedPickAxesPreviewBone = new UIButton(UIKeys.FILM_REPLAY_PICK_AXES_PREVIEW, (b) ->
-        {
-            Replay replay = this.filmPanel.replayEditor.getReplay();
-
-            UIAnchorKeyframeFactory.displayAttachments(this.filmPanel, this.filmPanel.getData().replays.getList().indexOf(replay), replay.axesPreviewBone.get(), (s) ->
-            {
-                this.edit((r) -> r.axesPreviewBone.set(s));
-            });
-        });
-
-        this.windowedDropItemsOnDeath = new UIToggle(UIKeys.FILM_REPLAY_DROP_ITEMS_ON_DEATH, (b) ->
-        {
-            this.edit((replay) -> replay.dropItemsOnDeath.set(b.getValue()));
-            this.dropItemsOnDeath.setValue(b.getValue());
-            this.updateDropVelocityVisibility(b.getValue());
-        });
-        this.windowedDropItemsOnDeath.tooltip(UIKeys.FILM_REPLAY_DROP_ITEMS_ON_DEATH_TOOLTIP);
-        this.windowedReplaceReplayInventory = new UIButton(UIKeys.FILM_REPLACE_INVENTORY, (b) ->
-        {
-            ClientPlayerEntity player = MinecraftClient.getInstance().player;
-
-            if (player != null)
-            {
-                this.edit((replay) -> BaseValue.edit(replay.inventory, (inv) -> inv.fromPlayer(player)));
-            }
-        });
-        this.windowedReplaceReplayInventory.tooltip(UIKeys.FILM_REPLACE_INVENTORY_TOOLTIP);
-
-        this.windowedDropVelocityMinX = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.dropVelocityMinX.set(v.floatValue()));
-            this.dropVelocityMinX.setValue(v);
-        });
-        this.windowedDropVelocityMinX.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MIN_X);
-        this.windowedDropVelocityMaxX = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.dropVelocityMaxX.set(v.floatValue()));
-            this.dropVelocityMaxX.setValue(v);
-        });
-        this.windowedDropVelocityMaxX.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MAX_X);
-        this.windowedDropVelocityMinY = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.dropVelocityMinY.set(v.floatValue()));
-            this.dropVelocityMinY.setValue(v);
-        });
-        this.windowedDropVelocityMinY.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MIN_Y);
-        this.windowedDropVelocityMaxY = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.dropVelocityMaxY.set(v.floatValue()));
-            this.dropVelocityMaxY.setValue(v);
-        });
-        this.windowedDropVelocityMaxY.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MAX_Y);
-        this.windowedDropVelocityMinZ = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.dropVelocityMinZ.set(v.floatValue()));
-            this.dropVelocityMinZ.setValue(v);
-        });
-        this.windowedDropVelocityMinZ.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MIN_Z);
-        this.windowedDropVelocityMaxZ = new UITrackpad((v) ->
-        {
-            this.edit((replay) -> replay.dropVelocityMaxZ.set(v.floatValue()));
-            this.dropVelocityMaxZ.setValue(v);
-        });
-        this.windowedDropVelocityMaxZ.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MAX_Z);
-
-        this.windowedRelativeRow = UI.row(this.windowedRelativeOffsetX, this.windowedRelativeOffsetY, this.windowedRelativeOffsetZ);
-        this.windowedDropVelocityLabel = UI.label(UIKeys.FILM_REPLAY_DROP_VELOCITY);
-        this.windowedDropVelocityRowX = UI.row(5, 0, this.windowedDropVelocityMinX, this.windowedDropVelocityMaxX);
-        this.windowedDropVelocityRowY = UI.row(5, 0, this.windowedDropVelocityMinY, this.windowedDropVelocityMaxY);
-        this.windowedDropVelocityRowZ = UI.row(5, 0, this.windowedDropVelocityMinZ, this.windowedDropVelocityMaxZ);
-        this.windowedDropVelocityGroup = UI.column(4,
-            this.windowedDropVelocityLabel,
-            this.windowedDropVelocityRowX, this.windowedDropVelocityRowY, this.windowedDropVelocityRowZ,
-            this.windowedReplaceReplayInventory
-        );
-        this.windowedItemDropsContent = UI.column(4, this.windowedDropItemsOnDeath, this.windowedDropVelocityGroup);
-    }
-
-    private void addPropertySection(UIElement target, IKey title, UIElement content)
+    private void addPropertySection(IKey title, UIElement content)
     {
         UIElement section = new UIElement();
 
@@ -657,81 +418,58 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 section.remove(content);
             }
 
-            section.resize();
-            target.resize();
             this.resize();
         });
 
         section.add(header, content);
 
-        target.add(section);
+        this.replayProperties.add(section);
     }
 
-    public void setupWindowedGeneralHost(UIElement host)
+    public void attachPropertiesHost(UIElement host)
     {
         this.propertiesHost = host;
-
-        if (host == null)
-        {
-            return;
-        }
-
-        host.add(this.windowedReplayProperties);
-        this.windowedReplayProperties.relative(host).x(0).y(0).w(1F).h(1F);
-        host.resize();
+        this.setPropertiesExternal(true);
     }
 
     public void setPropertiesExternal(boolean external)
     {
-        /* Windowed General uses duplicate widgets; embedded properties stay in the replays panel. */
-    }
-
-    public boolean isPropertiesExternal()
-    {
-        return false;
-    }
-
-    private void syncGeneralEditors(Replay replay)
-    {
-        if (replay == null || replay.isGroup.get())
+        if (this.propertiesExternal == external)
         {
             return;
         }
 
-        this.windowedPickEdit.setForm(replay.form.get());
-        this.windowedEnabled.setValue(replay.enabled.get());
-        this.windowedLabel.setText(replay.label.get());
-        this.windowedNameTag.setText(replay.nameTag.get());
+        this.propertiesExternal = external;
+        UIElement target = external ? this.propertiesHost : this.content;
 
-        this.windowedShadow.setValue(replay.shadow.get());
-        this.windowedShadowSize.setValue(replay.shadowSize.get());
-        this.windowedShadowOpacity.setValue(replay.shadowOpacity.get());
-        this.windowedLooping.setValue(replay.looping.get());
-        this.windowedActor.setValue(replay.actor.get());
-        this.windowedFp.setValue(replay.fp.get());
-
-        boolean isMobForm = replay.form.get() instanceof MobForm;
-
-        this.windowedVanillaMobPlayback.setVisible(isMobForm);
-
-        if (isMobForm)
+        if (target == null)
         {
-            this.windowedVanillaMobPlayback.setValue(replay.vanillaMobPlayback.get());
+            return;
         }
 
-        this.windowedRelative.setValue(replay.relative.get());
-        this.windowedRelativeOffsetX.setValue(replay.relativeOffset.get().x);
-        this.windowedRelativeOffsetY.setValue(replay.relativeOffset.get().y);
-        this.windowedRelativeOffsetZ.setValue(replay.relativeOffset.get().z);
-        this.windowedAxesPreview.setValue(replay.axesPreview.get());
-        this.windowedDropItemsOnDeath.setValue(replay.dropItemsOnDeath.get());
-        this.windowedDropVelocityMinX.setValue(replay.dropVelocityMinX.get());
-        this.windowedDropVelocityMaxX.setValue(replay.dropVelocityMaxX.get());
-        this.windowedDropVelocityMinY.setValue(replay.dropVelocityMinY.get());
-        this.windowedDropVelocityMaxY.setValue(replay.dropVelocityMaxY.get());
-        this.windowedDropVelocityMinZ.setValue(replay.dropVelocityMinZ.get());
-        this.windowedDropVelocityMaxZ.setValue(replay.dropVelocityMaxZ.get());
-        this.updateDropVelocityVisibility(replay.dropItemsOnDeath.get());
+        /* The UI framework doesn't guarantee that adding an element to another parent
+           automatically detaches it from its previous one. Ensure these property panels
+           exist in exactly one place to avoid rendering/hit-testing even when the
+           external host window is hidden or collapsed. */
+        this.replayProperties.removeFromParent();
+        this.groupProperties.removeFromParent();
+
+        target.add(this.replayProperties, this.groupProperties);
+        this.replayProperties.relative(target).x(0).y(0).w(1F).h(1F);
+        this.groupProperties.relative(target).x(0).y(0).w(1F).h(1F);
+        this.updateDockedLayout();
+
+        if (this.propertiesHost != null)
+        {
+            this.propertiesHost.resize();
+        }
+
+        this.resize();
+    }
+
+    public boolean isPropertiesExternal()
+    {
+        return this.propertiesExternal;
     }
 
     public void setDocked(boolean docked)
@@ -772,6 +510,14 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     {
         if (this.docked)
         {
+            if (this.propertiesExternal)
+            {
+                this.replays.relative(this.content).x(0).y(0).w(1F).h(1F);
+                this.dockedResizer.setVisible(false);
+
+                return;
+            }
+
             int maxHeight = Math.min(DOCKED_REPLAYS_HEIGHT_MAX, Math.max(DOCKED_BOTTOM_SECTION_MIN, this.content.area.h - DOCKED_TOP_SECTION_MIN - DOCKED_RESIZER_HEIGHT));
             this.dockedReplaysHeight = MathUtils.clamp(this.dockedReplaysHeight, DOCKED_BOTTOM_SECTION_MIN, DOCKED_REPLAYS_HEIGHT_MAX);
 
@@ -911,40 +657,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.replays.update();
     }
 
-    public boolean isEmbeddedGeneralVisible()
-    {
-        return this.embeddedGeneralVisible;
-    }
-
-    public void setEmbeddedGeneralVisible(boolean visible)
-    {
-        if (this.embeddedGeneralVisible == visible)
-        {
-            return;
-        }
-
-        this.embeddedGeneralVisible = visible;
-        this.updateEmbeddedPropertiesVisibility();
-        this.resize();
-    }
-
-    private void updateEmbeddedPropertiesVisibility()
-    {
-        Replay replay = this.replays.getCurrentFirst();
-        boolean hasReplay = replay != null;
-        boolean isGroup = hasReplay && replay.isGroup.get();
-        boolean showEmbedded = hasReplay && !isGroup && this.embeddedGeneralVisible;
-
-        this.replayProperties.setVisible(showEmbedded);
-        this.groupProperties.setVisible(hasReplay && isGroup);
-
-        if (this.docked)
-        {
-            this.dockedResizer.setVisible(showEmbedded || (hasReplay && isGroup));
-            this.updateDockedLayout();
-        }
-    }
-
     public void setReplay(Replay replay)
     {
         boolean hasReplay = replay != null;
@@ -952,6 +664,9 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.dupeReplay.setEnabled(hasReplay && !isGroup);
         this.removeReplay.setEnabled(hasReplay);
+
+        this.replayProperties.setVisible(hasReplay && !isGroup);
+        this.groupProperties.setVisible(hasReplay && isGroup);
 
         if (hasReplay)
         {
@@ -967,10 +682,16 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.pickEdit.setForm(replay.form.get());
                 this.enabled.setValue(replay.enabled.get());
                 this.nameTag.setText(replay.nameTag.get());
-                this.syncGeneralEditors(replay);
                 this.shadow.setValue(replay.shadow.get());
-                this.shadowSize.setValue(replay.shadowSize.get());
-                this.shadowOpacity.setValue(replay.shadowOpacity.get());
+
+                ShadowSettings shadow = BaseFilmController.resolveShadowSettings(replay, 0F);
+
+                this.shadowSize.setValue(shadow.widthX);
+                this.shadowSizeZ.setValue(shadow.widthZ);
+                this.shadowOpacity.setValue(shadow.opacity);
+                this.shadowOffsetX.setValue(shadow.offsetX);
+                this.shadowOffsetY.setValue(shadow.offsetY);
+                this.shadowOffsetZ.setValue(shadow.offsetZ);
                 this.looping.setValue(replay.looping.get());
                 this.actor.setValue(replay.actor.get());
                 this.fp.setValue(replay.fp.get());
@@ -999,46 +720,169 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.updateDropVelocityVisibility(replay.dropItemsOnDeath.get());
             }
         }
-
-        this.updateEmbeddedPropertiesVisibility();
     }
 
     private void updateDropVelocityVisibility(boolean visible)
     {
-        boolean changed = false;
+        boolean present = this.itemDropsContent.getChildren().contains(this.dropVelocityGroup);
 
-        changed |= this.toggleChild(this.itemDropsContent, this.dropVelocityGroup, visible);
-        changed |= this.toggleChild(this.windowedItemDropsContent, this.windowedDropVelocityGroup, visible);
-
-        if (changed)
+        if (visible && !present)
         {
+            this.itemDropsContent.add(this.dropVelocityGroup);
+            this.resize();
+        }
+        else if (!visible && present)
+        {
+            this.itemDropsContent.remove(this.dropVelocityGroup);
             this.resize();
         }
     }
 
-    private boolean toggleChild(UIElement parent, UIElement child, boolean visible)
+    private void editShadow(Consumer<ShadowSettings> editor)
     {
-        if (parent == null || child == null)
+        this.edit((replay) ->
         {
-            return false;
+            ShadowSettings settings = BaseFilmController.resolveShadowSettings(replay, 0F).copy();
+
+            editor.accept(settings);
+            this.writeShadowSettings(replay, settings);
+        });
+    }
+
+    private void writeShadowSettings(Replay replay, ShadowSettings settings)
+    {
+        replay.shadowOpacity.set(settings.opacity);
+        replay.shadowSize.set(settings.widthX);
+        replay.shadowSizeZ.set(settings.widthZ);
+        replay.shadowOffsetX.set(settings.offsetX);
+        replay.shadowOffsetY.set(settings.offsetY);
+        replay.shadowOffsetZ.set(settings.offsetZ);
+
+        if (replay.keyframes.shadow.isEmpty())
+        {
+            replay.keyframes.shadow.insert(0, settings.copy());
+
+            return;
         }
 
-        boolean present = parent.getChildren().contains(child);
+        Keyframe<ShadowSettings> first = replay.keyframes.shadow.get(0);
 
-        if (visible && !present)
+        if (first != null && first.getTick() == 0F)
         {
-            parent.add(child);
-
-            return true;
+            first.setValue(settings.copy(), true);
         }
-        else if (!visible && present)
+    }
+
+    private void resetShadowAll()
+    {
+        this.editShadow((settings) ->
         {
-            parent.remove(child);
+            ShadowSettings defaults = new ShadowSettings();
 
-            return true;
+            settings.opacity = defaults.opacity;
+            settings.widthX = defaults.widthX;
+            settings.widthZ = defaults.widthZ;
+            settings.offsetX = defaults.offsetX;
+            settings.offsetY = defaults.offsetY;
+            settings.offsetZ = defaults.offsetZ;
+        });
+        this.refreshShadowFields();
+    }
+
+    private void resetShadowOpacity()
+    {
+        this.editShadow((settings) -> settings.opacity = 1F);
+        this.refreshShadowFields();
+    }
+
+    private void resetShadowWidth()
+    {
+        this.editShadow((settings) ->
+        {
+            settings.widthX = 0.5F;
+            settings.widthZ = 0.5F;
+        });
+        this.refreshShadowFields();
+    }
+
+    private void resetShadowOffset()
+    {
+        this.editShadow((settings) ->
+        {
+            settings.offsetX = 0F;
+            settings.offsetY = 0F;
+            settings.offsetZ = 0F;
+        });
+        this.refreshShadowFields();
+    }
+
+    private void refreshShadowFields()
+    {
+        Replay replay = this.replays.getCurrentFirst();
+
+        if (replay == null)
+        {
+            return;
         }
 
-        return false;
+        ShadowSettings shadow = BaseFilmController.resolveShadowSettings(replay, 0F);
+
+        this.shadowSize.setValue(shadow.widthX);
+        this.shadowSizeZ.setValue(shadow.widthZ);
+        this.shadowOpacity.setValue(shadow.opacity);
+        this.shadowOffsetX.setValue(shadow.offsetX);
+        this.shadowOffsetY.setValue(shadow.offsetY);
+        this.shadowOffsetZ.setValue(shadow.offsetZ);
+    }
+
+    private void setShadowSizeX(float value)
+    {
+        this.editShadow((settings) ->
+        {
+            settings.widthX = value;
+
+            if (this.linkShadowSize)
+            {
+                settings.widthZ = value;
+                this.shadowSizeZ.setValue(value);
+            }
+        });
+    }
+
+    private void setShadowSizeZ(float value)
+    {
+        this.editShadow((settings) ->
+        {
+            settings.widthZ = value;
+
+            if (this.linkShadowSize)
+            {
+                settings.widthX = value;
+                this.shadowSize.setValue(value);
+            }
+        });
+    }
+
+    private void toggleShadowSizeLink()
+    {
+        this.linkShadowSize = !this.linkShadowSize;
+        this.updateShadowSizeLinkIcon();
+
+        if (this.linkShadowSize)
+        {
+            float x = (float) this.shadowSize.getValue();
+
+            this.editShadow((settings) ->
+            {
+                settings.widthZ = x;
+                this.shadowSizeZ.setValue(x);
+            });
+        }
+    }
+
+    private void updateShadowSizeLinkIcon()
+    {
+        this.shadowSizeLink.active(this.linkShadowSize);
     }
 
     @Override

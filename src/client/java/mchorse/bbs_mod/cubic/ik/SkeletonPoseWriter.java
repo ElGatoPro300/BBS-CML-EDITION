@@ -195,12 +195,8 @@ public final class SkeletonPoseWriter
         LimbResolver.Limit[] limits = buildLimits(model, workIds, boneLimits);
         Vector3f restHinge = restBendNormal(model, workIds, rootParentRotation);
         Vector3f bendNormal = new Vector3f();
-        List<Vector3f> solved = LimbResolver.resolve(currentPositions, target, usePole, polePoint, bendOffsetRad, flexibility, MAX_ITERATIONS, TOLERANCE, limits, limits == null ? null : rootParentRotation, restHinge, bendNormal);
-
-        if (solved.size() == workIds.size() && solved.size() >= 2)
-        {
-            solved.add(new Vector3f(target));
-        }
+        boolean invertBend = model instanceof BOBJModel;
+        List<Vector3f> solved = LimbResolver.resolve(currentPositions, target, usePole, polePoint, bendOffsetRad, flexibility, MAX_ITERATIONS, TOLERANCE, limits, limits == null ? null : rootParentRotation, restHinge, bendNormal, invertBend);
 
         Vector3f bendSeed = bendNormal.lengthSquared() < EPS * EPS ? null : bendNormal;
         Vector3f stretchGap = null;
@@ -485,7 +481,7 @@ public final class SkeletonPoseWriter
             Vector3f segLocal = invOrigin.transform(new Vector3f(segWorld[i]));
             Vector3f normalLocal = invOrigin.transform(new Vector3f(solvedNormalWorld[i]));
             Vector3f restNormalLocal = new Quaternionf(restFrame[i]).conjugate().transform(new Vector3f(restNormalWorld[i]));
-            Quaternionf localRot = QuaternionMath.buildOrientedFrame(restDir[i], restNormalLocal, segLocal, normalLocal);
+            Quaternionf localRot = QuaternionMath.buildOrientedFrameDirect(restDir[i], restNormalLocal, segLocal, normalLocal);
             Quaternionf oriented = influence >= 1F - EPS ? new Quaternionf(localRot) : bobjFkLocal(chainBones[i]).slerp(localRot, influence);
 
             chainBones[i].orient = oriented;
@@ -514,6 +510,60 @@ public final class SkeletonPoseWriter
         {
             stretchBobj(model, bonesMap, chainIds, solved, stretchGap);
         }
+    }
+
+    /**
+     * Tip-follows-target for the euler BOBJ path ({@code workIds.size() < 4}), matching
+     * the tail of {@link #writeOrientationsBobj}.
+     */
+    private static void applyBobjTipOrient(BOBJModel model, List<String> chainIds, Quaternionf rootParentRotation, float influence, Quaternionf tipTarget)
+    {
+        int bones = chainIds.size() - 1;
+
+        if (bones < 1)
+        {
+            return;
+        }
+
+        Map<String, BOBJBone> bonesMap = model.getArmature().bones;
+        BOBJBone[] chainBones = new BOBJBone[bones];
+        Quaternionf[] relRot = new Quaternionf[bones];
+
+        for (int i = 0; i < bones; i++)
+        {
+            BOBJBone bone = bonesMap.get(chainIds.get(i));
+
+            if (bone == null)
+            {
+                return;
+            }
+
+            chainBones[i] = bone;
+            relRot[i] = bone.relBoneMat.getNormalizedRotation(new Quaternionf());
+        }
+
+        Quaternionf originRot = new Quaternionf(rootParentRotation);
+
+        for (int i = 0; i < bones - 1; i++)
+        {
+            Quaternionf oriented = chainBones[i].orient != null ? new Quaternionf(chainBones[i].orient) : bobjFkLocal(chainBones[i]);
+
+            originRot.mul(oriented).mul(relRot[i + 1]);
+        }
+
+        BOBJBone tip = bonesMap.get(chainIds.get(chainIds.size() - 1));
+
+        if (tip == null)
+        {
+            return;
+        }
+
+        Quaternionf tipRelRot = tip.relBoneMat.getNormalizedRotation(new Quaternionf());
+        Quaternionf lastOrient = chainBones[bones - 1].orient != null ? new Quaternionf(chainBones[bones - 1].orient) : bobjFkLocal(chainBones[bones - 1]);
+        Quaternionf tipParent = new Quaternionf(originRot).mul(lastOrient).mul(tipRelRot);
+        Quaternionf tipLocal = tipParent.conjugate().mul(tipTarget);
+
+        tip.orient = influence >= 1F - EPS ? new Quaternionf(tipLocal) : bobjFkLocal(tip).slerp(tipLocal, influence);
     }
 
     private static void stretchBobj(BOBJModel model, Map<String, BOBJBone> bonesMap, List<String> chainIds, List<Vector3f> solved, Vector3f gap)

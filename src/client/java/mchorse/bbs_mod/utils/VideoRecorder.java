@@ -415,6 +415,28 @@ public class VideoRecorder
         return second;
     }
 
+    private void cleanupTemporaryAudioFiles(File filmAudio, File ambientAudio, String movieName, Path exportFolder)
+    {
+        this.deleteIfExists(filmAudio);
+        this.deleteIfExists(ambientAudio);
+
+        if (movieName == null || exportFolder == null)
+        {
+            return;
+        }
+
+        this.deleteIfExists(exportFolder.resolve(movieName + "_mix.wav").toFile());
+        this.deleteIfExists(exportFolder.resolve(movieName + "_ambient.wav").toFile());
+    }
+
+    private void deleteIfExists(File file)
+    {
+        if (file != null && file.isFile())
+        {
+            file.delete();
+        }
+    }
+
     /**
      * Stop recording
      */
@@ -478,6 +500,11 @@ public class VideoRecorder
             File mixed = this.mixAudioTracks(this.filmAudioFile, this.ambientAudioFile);
 
             this.mergeAudioTrack(this.findOutputVideo(), mixed);
+        }
+
+        if (!BBSSettings.videoSettings.audioSeparateFile.get())
+        {
+            this.cleanupTemporaryAudioFiles(this.filmAudioFile, this.ambientAudioFile, this.movieName, this.exportFolder);
         }
 
         this.recording = false;

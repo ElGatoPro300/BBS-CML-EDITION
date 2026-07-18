@@ -2,6 +2,7 @@ package mchorse.bbs_mod.mixin.client.iris;
 
 import mchorse.bbs_mod.utils.iris.QueueMap;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 
 import java.util.Map;
 
@@ -27,12 +28,16 @@ public class IrisMixin
     private static void onLoadExternalShaderpack(String name, CallbackInfoReturnable<Boolean> info)
     {
         ShaderCurves.reset();
+        ShaderOpacityPatch.setLoadingPackName(name);
+        ShaderOpacityPatch.ensureShadowOpacityVariable();
+        ShaderCurves.ensureSunPathRotationVariable();
     }
 
-    @Inject(method = "setShadersDisabled", at = @At("HEAD"), remap = false)
-    private static void onLoadExternalShaderpack(CallbackInfo info)
+    @Inject(method = "setShadersDisabled", at = @At("HEAD"), remap = false, require = 0)
+    private static void onSetShadersDisabled(CallbackInfo info)
     {
         ShaderCurves.reset();
+        ShaderOpacityPatch.clearLoadingPackName();
     }
 
     @Inject(method = "loadExternalShaderpack", at = @At(value = "RETURN", ordinal = 9), remap = false)

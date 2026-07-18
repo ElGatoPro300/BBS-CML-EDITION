@@ -178,24 +178,11 @@ public class UIFilmController extends UIElement
         {
             Area area = this.panel.preview.getViewport();
             UIContext context = this.getContext();
-            World world = MinecraftClient.getInstance().world;
-            Camera camera = this.panel.getCamera();
+            Vector3d hit = this.panel.replayEditor.rayTraceViewportFromContext(context, area);
 
-            if (world == null || camera == null || area.w <= 0 || area.h <= 0)
+            if (hit != null)
             {
-                return;
-            }
-
-            HitResult result = RayTracing.rayTrace(
-                world,
-                RayTracing.fromVector3d(camera.position),
-                RayTracing.fromVector3f(camera.getMouseDirection(context.mouseX, context.mouseY, area.x, area.y, area.w, area.h)),
-                512F
-            );
-
-            if (result.getType() == HitResult.Type.BLOCK)
-            {
-                this.panel.replayEditor.moveReplay(result.getPos().x, result.getPos().y, result.getPos().z);
+                this.panel.replayEditor.moveReplay(hit.x, hit.y, hit.z);
             }
         }).active(hasActor).category(category);
         this.keys().register(Keys.FILM_CONTROLLER_RESTART_ACTIONS, () ->
@@ -1221,23 +1208,13 @@ public class UIFilmController extends UIElement
         {
             if (this.panel.hasLastGizmoMatrix)
             {
-                if (BBSRendering.isIrisShadersEnabled())
-                {
-                    Gizmo.INSTANCE.lastGizmoMatrix.set(this.panel.lastGizmoMatrix);
-                    Gizmo.INSTANCE.hasGizmoMatrix = true;
-                    Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
-                }
-                else
-                {
-                    /* Without shaders the world pass does not bake BBSRendering.camera into
-                     * the captured matrix; premultiply it here so the UI draw matches the
-                     * shader path (same adjustment as renderPickingPreview). */
-                    this.gizmoInterfaceMatrix.set(BBSRendering.camera);
-                    this.gizmoInterfaceMatrix.mul(this.panel.lastGizmoMatrix);
-                    Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
-                    Gizmo.INSTANCE.hasGizmoMatrix = true;
-                    Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
-                }
+                /* Whether the world pass bakes BBSRendering.camera into the captured
+                 * matrix depends on the render path (Iris pack vs. vanilla), so let
+                 * the gizmo pick the composition that lands inside the frustum. */
+                Gizmo.composeVisualMatrix(this.panel.lastGizmoMatrix, BBSRendering.camera, this.panel.lastProjection, this.gizmoInterfaceMatrix);
+                Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
+                Gizmo.INSTANCE.hasGizmoMatrix = true;
+                Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
             }
         }
         else if (!Gizmo.INSTANCE.isDragging())
@@ -1592,6 +1569,11 @@ public class UIFilmController extends UIElement
         this.stencilMap.setup();
         this.stencilMap.setIncrement(!altPressed);
         this.stencilMap.allowedBones = null;
+
+        /* stencil.apply() sets glViewport to the film/video size; save so UI scale stays correct. */
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         this.stencil.apply();
 
         if (altPressed)
@@ -1667,7 +1649,12 @@ public class UIFilmController extends UIElement
         this.stencil.unbind(this.stencilMap);
         this.panel.replayEditor.updateGizmoHover();
 
-        MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
+        /* Rebind the main target without clearing — beginWrite(true) wiped the film
+         * preview every mouse move over the viewport (deferred translucents looked like flicker).
+         * beginWrite(false) alone may not restore glViewport, which made the whole UI look zoomed. */
+        BBSRendering.ensureMainFramebuffer();
+        MinecraftClient.getInstance().getFramebuffer().beginWrite(false);
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
     }
 
     private void ensureStencilFramebuffer()

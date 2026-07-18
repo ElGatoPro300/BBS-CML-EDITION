@@ -63,6 +63,12 @@ public abstract class Form extends ValueGroup
     public final ValueLookAt lookAt = new ValueLookAt("look_at", new LookAt());
     public final ValueInverseKinematics inverseKinematics = new ValueInverseKinematics("inverse_kinematics", new InverseKinematics());
     public final ValueBoolean shaderShadow = new ValueBoolean("shaderShadow", true);
+    /**
+     * When true under Iris, this form uses the clean deferred opacity path for its
+     * {@code color} alpha (same compositing as post-{@code #1b}) without affecting
+     * other models' pack shading.
+     */
+    public final ValueBoolean noshadingOpacity = new ValueBoolean("noshading_opacity", false);
 
     /* FS-style paint overlay: paintSettings controls color and intensity; paintColor is kept for backward compatibility */
     public final ValueColor paintColor = new ValueColor("paint_color", new Color().set(1F, 1F, 1F, 0F));
@@ -126,6 +132,7 @@ public abstract class Form extends ValueGroup
         this.name.invisible();
         this.uiScale.invisible();
         this.shaderShadow.invisible();
+        this.noshadingOpacity.invisible();
         this.render.invisible();
         this.add(this.visible);
         this.add(this.render);
@@ -154,6 +161,7 @@ public abstract class Form extends ValueGroup
         this.add(this.lookAt);
         this.add(this.inverseKinematics);
         this.add(this.shaderShadow);
+        this.add(this.noshadingOpacity);
         this.add(this.paintColor);
         this.add(this.paintSettings);
         this.add(this.glowingColor);
@@ -498,7 +506,7 @@ public abstract class Form extends ValueGroup
                     settings.r = legacy.r;
                     settings.g = legacy.g;
                     settings.b = legacy.b;
-                    settings.intensity = legacy.a;
+                    settings.intensity = PaintSettings.resolveLegacyPaintIntensity(legacy);
                     this.paintSettings.set(settings);
                 }
             }
@@ -510,7 +518,7 @@ public abstract class Form extends ValueGroup
                 settings.r = legacy.r;
                 settings.g = legacy.g;
                 settings.b = legacy.b;
-                settings.intensity = legacy.a;
+                settings.intensity = PaintSettings.resolveLegacyPaintIntensity(legacy);
                 this.paintSettings.set(settings);
             }
 

@@ -1,7 +1,13 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
+import mchorse.bbs_mod.film.replays.Replay;
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -52,8 +58,20 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
-            this.transform.translationScale(16F);
-            this.transform.poseLimbGizmoTuning();
+            boolean bobj = isBobjPoseLimbContext(editor, sheet);
+
+            /* Cubic groups store translate in model pixels (/16 on the render stack).
+             * BOBJ bones apply PoseTransform.translate directly in blocks. */
+            this.transform.translationScale(bobj ? 1F : 16F);
+
+            if (bobj)
+            {
+                this.transform.bobjPoseLimbGizmoTuning();
+            }
+            else
+            {
+                this.transform.poseLimbGizmoTuning();
+            }
             this.fix = new UITrackpad((v) ->
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.fix = MathUtils.clamp(v.floatValue(), 0F, 1F));
@@ -79,7 +97,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> this.setPaintIntensity(poseT, value.floatValue()));
             });
-            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
             this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
 
             this.glowingColor = new UIColor((c) ->
@@ -158,7 +176,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
     private void setPaintIntensity(PoseTransform poseTransform, float value)
     {
-        poseTransform.paintColor.a = value;
+        poseTransform.paintColor.a = PaintSettings.clampIntensity(value);
         poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
     }
 
@@ -186,6 +204,33 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         String propertyId = StringUtils.fileName(propertyPath);
 
         return propertyId.equals("pose") || propertyId.startsWith("pose_overlay");
+    }
+
+    /**
+     * Limb sheets keep {@code sheet.property == null} (path is {@code pose:bone}, not a
+     * Transform value on the form). Resolve BOBJ from the sheet's form when present, else
+     * from the film replay root.
+     */
+    public static boolean isBobjPoseLimbContext(UIKeyframes editor, UIKeyframeSheet sheet)
+    {
+        Form form = sheet != null && sheet.property != null ? FormUtils.getForm(sheet.property) : null;
+
+        if (!(form instanceof ModelForm) && editor != null)
+        {
+            UIFilmPanel panel = editor.getParent(UIFilmPanel.class);
+
+            if (panel != null && panel.replayEditor != null)
+            {
+                Replay replay = panel.replayEditor.getReplay();
+
+                if (replay != null)
+                {
+                    form = FormUtils.getRoot(replay.form.get());
+                }
+            }
+        }
+
+        return form instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
     }
 
     public static void keyframeOpenPoseLimbs(UIKeyframes editor, float tick, boolean defaults)

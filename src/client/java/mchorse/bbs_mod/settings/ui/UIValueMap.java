@@ -511,6 +511,14 @@ public class UIValueMap
             audioEnvironment.w(1F).h(20);
             list.add(audioEnvironment);
 
+            UIToggle audioSeparateFile = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE, value.audioSeparateFile.get(), (b) ->
+            {
+                value.audioSeparateFile.set(b.getValue());
+            });
+            audioSeparateFile.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE_TOOLTIP);
+            audioSeparateFile.w(1F).h(20);
+            list.add(audioSeparateFile);
+
             UITrackpad width = UIValueFactory.intUI(value.width, null);
             value.width.postCallback((changed, flag) -> width.setValue(value.width.get()));
             width.w(90);

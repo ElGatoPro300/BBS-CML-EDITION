@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.MolangHelper;
 import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
+import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.GLTFModelLoader;
@@ -49,6 +50,7 @@ public class ModelManager implements IWatchDogListener
     private final Set<String> relodableSuffixes = new HashSet<>();
 
     private ModelLoader loader = new ModelLoader(this);
+    private List<String> availableKeysCache;
 
     public ModelManager(AssetProvider provider)
     {
@@ -109,6 +111,11 @@ public class ModelManager implements IWatchDogListener
      */
     public List<String> getAvailableKeys()
     {
+        if (this.availableKeysCache != null)
+        {
+            return new ArrayList<>(this.availableKeysCache);
+        }
+
         List<Link> models = new ArrayList<>(BBSMod.getProvider().getLinksFromPath(Link.assets("models"), true));
         Set<String> keys = new HashSet<>();
 
@@ -132,7 +139,9 @@ public class ModelManager implements IWatchDogListener
             }
         }
 
-        return new ArrayList<>(keys);
+        this.availableKeysCache = new ArrayList<>(keys);
+
+        return new ArrayList<>(this.availableKeysCache);
     }
 
     public ModelInstance getModel(String id)
@@ -180,6 +189,18 @@ public class ModelManager implements IWatchDogListener
 
             ProceduralDefaults.ensureForModelInstance(model, this.provider, this.parser);
             model.setup();
+        }
+
+        ModelInstance existing = this.models.get(id);
+
+        if (existing != null)
+        {
+            existing.delete();
+
+            if (existing.model instanceof BOBJModel bobjModel)
+            {
+                bobjModel.delete();
+            }
         }
 
         this.models.put(id, model);
@@ -230,6 +251,8 @@ public class ModelManager implements IWatchDogListener
 
     public void reload()
     {
+        this.availableKeysCache = null;
+
         for (ModelInstance model : this.models.values())
         {
             if (model != null)
@@ -338,12 +361,18 @@ public class ModelManager implements IWatchDogListener
 
         if (this.isRelodable(link))
         {
+            this.availableKeysCache = null;
             String key = StringUtils.parentPath(link.path.substring(MODELS_PREFIX.length()));
             ModelInstance model = this.models.remove(key);
 
             if (model != null)
             {
                 model.delete();
+
+                if (model.model instanceof BOBJModel bobjModel)
+                {
+                    bobjModel.delete();
+                }
             }
         }
     }

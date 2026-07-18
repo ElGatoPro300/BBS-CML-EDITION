@@ -238,8 +238,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             }
 
-            stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-            stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+            MatrixStackUtils.invertUiNormalY(stack);
 
             BooleanHolder first = new BooleanHolder();
 

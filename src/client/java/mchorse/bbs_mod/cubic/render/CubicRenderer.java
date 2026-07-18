@@ -70,7 +70,7 @@ public class CubicRenderer
         }
     }
 
-    private static void renderGroupBranch(ICubicRenderer renderProcessor, BufferBuilder builder, MatrixStack stack, Model model, ModelGroup target)
+    public static void renderGroupBranch(ICubicRenderer renderProcessor, BufferBuilder builder, MatrixStack stack, Model model, ModelGroup target)
     {
         List<ModelGroup> path = new ArrayList<>();
         ModelGroup current = target;

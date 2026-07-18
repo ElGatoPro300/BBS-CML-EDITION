@@ -50,6 +50,10 @@ public class BOBJModelVAO
     private float[] tmpTangents;
     private int[] dominantBonePerTriangle;
 
+    private final Map<Integer, Link> fullOverrides = new HashMap<>();
+    private final Map<Integer, Float> partialOverrides = new HashMap<>();
+    private final Set<Integer> overridden = new HashSet<>();
+
     public BOBJModelVAO(BOBJLoader.CompiledData data, BOBJArmature armature)
     {
         this.data = data;
@@ -216,23 +220,23 @@ public class BOBJModelVAO
         this.processData(newVertices, newNormals);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.vertexBuffer);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, newVertices, GL15.GL_DYNAMIC_DRAW);
+        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, newVertices);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.normalBuffer);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, newNormals, GL15.GL_DYNAMIC_DRAW);
+        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, newNormals);
 
         if (BBSRendering.isIrisShadersEnabled())
         {
             BBSRendering.calculateTangents(this.tmpTangents, newVertices, newNormals, this.data.texData);
 
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.tangentBuffer);
-            GL15.glBufferData(GL15.GL_ARRAY_BUFFER, this.tmpTangents, GL15.GL_DYNAMIC_DRAW);
+            GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, this.tmpTangents);
         }
 
         if (stencilMap != null)
         {
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.lightBuffer);
-            GL15.glBufferData(GL15.GL_ARRAY_BUFFER, this.tmpLight, GL15.GL_DYNAMIC_DRAW);
+            GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, this.tmpLight);
         }
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -364,24 +368,46 @@ public class BOBJModelVAO
         }
     }
 
-    private void bindDrawTexture(Link defaultTexture)
+    /**
+     * BBS {@link ShaderProgram#bind()} snapshots Sampler* from {@link RenderSystem} at
+     * {@link ModelVAORenderer#setupUniforms}. Skin must be bound before that — binding after
+     * leaves Sampler0 on whatever Iris left (featureless tinted silhouette, no skin).
+     */
+    private void bindDrawTexture(Link texture)
     {
-        if (defaultTexture != null)
+        if (texture != null)
         {
-            BBSModClient.getTextures().bindTexture(defaultTexture);
+            BBSModClient.getTextures().bindTexture(texture);
         }
+    }
+
+    private void rebindShaderSamplers(ShaderProgram shader, MatrixStack stack, float r, float g, float b, float a, int light, int overlay)
+    {
+        ModelVAORenderer.setupUniforms(stack, shader);
+        RenderSystem.setShader(() -> shader);
+        shader.bind();
+        GL30.glBindVertexArray(this.vao);
+
+        GL30.glDisableVertexAttribArray(Attributes.COLOR);
+        GL30.glDisableVertexAttribArray(Attributes.OVERLAY_UV);
+        GL30.glDisableVertexAttribArray(Attributes.LIGHTMAP_UV);
+
+        GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
+        GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
+        GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
     }
 
     public void render(ShaderProgram shader, MatrixStack stack, float r, float g, float b, float a, StencilMap stencilMap, int light, int overlay, Link defaultTexture)
     {
         boolean hasShaders = BBSRendering.isIrisShadersEnabled();
 
-        GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
-        GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
-        GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
-
         int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int currentElementArrayBuffer = GL30.glGetInteger(GL30.GL_ELEMENT_ARRAY_BUFFER_BINDING);
+
+        if (defaultTexture != null)
+        {
+            this.bindDrawTexture(defaultTexture);
+        }
 
         ModelVAORenderer.setupUniforms(stack, shader);
 
@@ -389,6 +415,16 @@ public class BOBJModelVAO
         shader.bind();
 
         GL30.glBindVertexArray(this.vao);
+
+        /* Constant color/light/overlay must be set after VAO bind (same as ModelVAO). Setting
+         * them before bind loses form alpha under Iris deferred redraws — opaque silhouette. */
+        GL30.glDisableVertexAttribArray(Attributes.COLOR);
+        GL30.glDisableVertexAttribArray(Attributes.OVERLAY_UV);
+        GL30.glDisableVertexAttribArray(Attributes.LIGHTMAP_UV);
+
+        GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
+        GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
+        GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
 
         GL30.glEnableVertexAttribArray(Attributes.POSITION);
         GL30.glEnableVertexAttribArray(Attributes.TEXTURE_UV);
@@ -400,8 +436,8 @@ public class BOBJModelVAO
 
         if (stencilMap == null)
         {
-            Map<Integer, Link> fullOverrides = new HashMap<>();
-            Map<Integer, Float> partialOverrides = new HashMap<>();
+            this.fullOverrides.clear();
+            this.partialOverrides.clear();
 
             for (BOBJBone bone : this.armature.orderedBones)
             {
@@ -411,41 +447,30 @@ public class BOBJModelVAO
 
                     if (blend >= 1F)
                     {
-                        fullOverrides.put(bone.index, bone.texture);
+                        this.fullOverrides.put(bone.index, bone.texture);
                     }
                     else if (blend > 0F)
                     {
-                        partialOverrides.put(bone.index, blend);
+                        this.partialOverrides.put(bone.index, blend);
                     }
                 }
             }
 
-            if (fullOverrides.isEmpty() && partialOverrides.isEmpty())
+            if (this.fullOverrides.isEmpty() && this.partialOverrides.isEmpty())
             {
-                if (defaultTexture != null)
-                {
-                    this.bindDrawTexture(defaultTexture);
-                }
-
                 GL30.glDrawArrays(GL30.GL_TRIANGLES, 0, this.count);
             }
             else
             {
-                Set<Integer> overridden = new HashSet<>();
+                this.overridden.clear();
+                this.overridden.addAll(this.fullOverrides.keySet());
+                this.overridden.addAll(this.partialOverrides.keySet());
 
-                overridden.addAll(fullOverrides.keySet());
-                overridden.addAll(partialOverrides.keySet());
-
-                if (defaultTexture != null)
-                {
-                    this.bindDrawTexture(defaultTexture);
-                }
-
-                this.drawTriangles((bone) -> bone < 0 || !overridden.contains(bone));
+                this.drawTriangles((bone) -> bone < 0 || !this.overridden.contains(bone));
 
                 for (BOBJBone bone : this.armature.orderedBones)
                 {
-                    Float blend = partialOverrides.get(bone.index);
+                    Float blend = this.partialOverrides.get(bone.index);
 
                     if (blend != null)
                     {
@@ -458,6 +483,7 @@ public class BOBJModelVAO
 
                         try
                         {
+                            this.rebindShaderSamplers(shader, stack, r, g, b, a, light, overlay);
                             this.drawTriangles((boneIndex) -> boneIndex == bone.index);
                         }
                         finally
@@ -467,9 +493,10 @@ public class BOBJModelVAO
                     }
                 }
 
-                for (Map.Entry<Integer, Link> entry : fullOverrides.entrySet())
+                for (Map.Entry<Integer, Link> entry : this.fullOverrides.entrySet())
                 {
                     this.bindDrawTexture(entry.getValue());
+                    this.rebindShaderSamplers(shader, stack, r, g, b, a, light, overlay);
                     this.drawTriangles((bone) -> bone == entry.getKey());
                 }
             }

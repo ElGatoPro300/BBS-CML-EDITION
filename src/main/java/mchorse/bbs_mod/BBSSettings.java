@@ -69,6 +69,8 @@ public class BBSSettings
     public static ValueFloat axesScale;
     public static ValueFloat axesThickness;
     public static ValueFloat gizmoHitbox;
+    public static ValueBoolean gizmoConstantSize;
+    public static ValueFloat gizmoConstantSizeMin;
     public static ValueInt gizmoDefaultMode;
     public static ValueFloat gizmoGuideLength;
     public static ValueFloat gizmoGuideThickness;
@@ -78,6 +80,7 @@ public class BBSSettings
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
+    public static ValueBoolean gizmosWorldRendering;
     public static ValueBoolean gizmoYAxisHorizontal;
     public static ValueBoolean gizmoTrackball;
     public static ValueInt gizmoTrackballScale;
@@ -102,6 +105,7 @@ public class BBSSettings
     public static ValueInt chromaSkyColor;
     public static ValueBoolean chromaSkyTerrain;
     public static ValueBoolean chromaSkyClouds;
+    public static ValueBoolean chromaSkyModelBlocks;
     public static ValueFloat chromaSkyBillboard;
 
     public static ValueInt scrollbarShadow;
@@ -194,6 +198,7 @@ public class BBSSettings
     public static ValueBoolean coloredBackground;
     public static ValueFloat backgroundBrightness;
     public static ValueDouble worldGammaPercent;
+    public static ValueFloat worldSunPathRotation;
     public static ValueBoolean interfaceShadows;
 
     public static ValueString entitySelectorsPropertyWhitelist;
@@ -201,6 +206,9 @@ public class BBSSettings
     public static ValueBoolean damageControl;
 
     public static ValueBoolean shaderCurvesEnabled;
+    public static ValueBoolean complementaryOpacityFix;
+    public static ValueBoolean bslOpacityFix;
+    public static ValueFloat shaderShadowOpacity;
 
     public static ValueBoolean audioWaveformVisible;
     public static ValueInt audioWaveformDensity;
@@ -512,6 +520,7 @@ public class BBSSettings
         coloredBackground = builder.getBoolean("colored_background", true);
         backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
         worldGammaPercent = builder.getDouble("world_gamma_percent", 100D, 0D, 1500D);
+        worldSunPathRotation = builder.getFloat("world_sun_path_rotation", 0F, -180F, 180F);
         interfaceShadows = builder.getBoolean("interface_shadows", true);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
@@ -538,11 +547,17 @@ public class BBSSettings
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);
+        /* Keep form-editor gizmos / bone picking while model-block F7 world rendering is on. */
+        gizmosWorldRendering = builder.getBoolean("gizmos_world_rendering", true);
         axesScale = builder.getFloat("axes_scale", 1.5F, 0F, 100F);
         axesThickness = builder.getFloat("axes_thickness", 0.7F, 0.25F, 3F);
         /* Multiplier applied only to the invisible picking pass, so the clickable area can be
          * fatter than the visible handles (or thinner) independently of axes_thickness. */
         gizmoHitbox = builder.getFloat("gizmo_hitbox", 1.5F, 0.25F, 5F);
+        /* When enabled, gizmo size scales with camera distance to stay roughly constant on screen. */
+        gizmoConstantSize = builder.getBoolean("gizmo_constant_size", true);
+        /* Floor in Math.max(floor, dist * 0.12). 0 disables the floor so it can keep shrinking when close. */
+        gizmoConstantSizeMin = builder.getFloat("gizmo_constant_size_min", 0.5F, 0F, 10F);
         disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
         gizmoTrackball = builder.getBoolean("gizmo_trackball", true);
@@ -574,6 +589,7 @@ public class BBSSettings
         chromaSkyColor = builder.getInt("color", Colors.A75).color();
         chromaSkyTerrain = builder.getBoolean("terrain", true);
         chromaSkyClouds = builder.getBoolean("clouds", true);
+        chromaSkyModelBlocks = builder.getBoolean("model_blocks", false);
         chromaSkyBillboard = builder.getFloat("billboard", 0F, 0F, 256F);
 
         builder.category("scrollbars");
@@ -652,7 +668,7 @@ public class BBSSettings
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
         editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
-        editorSeparateReplayPropertiesPanel = builder.getBoolean("separate_replay_properties_panel", false);
+        editorSeparateReplayPropertiesPanel = builder.getBoolean("separate_replay_properties_panel", true);
         blockPickerDefaultMode = builder.getInt("block_picker_default_mode", 0, 0, 2);
         editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 2000);
         editorAnchoredReplaysPanelHeight.invisible();
@@ -699,6 +715,9 @@ public class BBSSettings
 
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
+        complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", false);
+        bslOpacityFix = builder.getBoolean("bsl_opacity_fix", false);
+        shaderShadowOpacity = builder.getFloat("shader_shadow_opacity", 1F, 0F, 1F);
 
         builder.category("fluid_simulation");
         fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);

@@ -2,12 +2,14 @@ package mchorse.bbs_mod.camera.clips.misc;
 
 import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.data.Position;
+import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.misc.ValueVector4f;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -47,6 +49,9 @@ public class ImageClip extends CameraClip
     public final KeyframeChannel<Double> windowX = new KeyframeChannel<>("windowX", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> windowY = new KeyframeChannel<>("windowY", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> opacity = new KeyframeChannel<>("opacity", KeyframeFactories.DOUBLE);
+    public final ValueBoolean useKeyframes = new ValueBoolean("use_keyframes", false);
+    public final ValueBoolean uniformSeeded = new ValueBoolean("uniform_seeded", false);
+    public final ImageUniform uniform = new ImageUniform("uniform");
 
     public final KeyframeChannel[] channels;
 
@@ -89,12 +94,30 @@ public class ImageClip extends CameraClip
         this.add(this.windowX);
         this.add(this.windowY);
         this.add(this.opacity);
+        this.add(this.useKeyframes);
+        this.add(this.uniformSeeded);
+        this.add(this.uniform);
+    }
+
+    @Override
+    public void fromData(BaseType data)
+    {
+        boolean hasUseKeyframes = data != null && data.isMap() && data.asMap().has("use_keyframes");
+
+        super.fromData(data);
+
+        /* Older films did not store this flag — keep keyframe mode enabled for compatibility. */
+        if (!hasUseKeyframes)
+        {
+            this.useKeyframes.set(true);
+        }
     }
 
     @Override
     protected void applyClip(ClipContext context, Position position)
     {
-        Link link = this.getTextureAt(context.relativeTick + context.transition);
+        float t = context.relativeTick + context.transition;
+        Link link = this.getTextureAt(t);
 
         if (link == null)
         {
@@ -102,9 +125,8 @@ public class ImageClip extends CameraClip
         }
 
         List<ImageOverlay> images = getImages(context);
-        float t = context.relativeTick + context.transition;
         float factor = this.envelope.factorEnabled(this.duration.get(), t);
-        float alpha = factor * (float) this.interp(this.opacity, t, 1D);
+        float alpha = factor * (float) this.valueDouble(this.opacity, this.uniform.opacity, t, 1D);
 
         if (alpha <= 0F)
         {
@@ -123,29 +145,87 @@ public class ImageClip extends CameraClip
             this.resizeCrop.get(),
             this.crop.get(),
             tinted,
-            (float) this.interp(this.offsetX, t, 0D),
-            (float) this.interp(this.offsetY, t, 0D),
-            (float) this.interp(this.rotation, t, 0D),
+            (float) this.valueDouble(this.offsetX, this.uniform.offsetX, t, 0D),
+            (float) this.valueDouble(this.offsetY, this.uniform.offsetY, t, 0D),
+            (float) this.valueDouble(this.rotation, this.uniform.rotation, t, 0D),
             textureBlend
         );
         this.overlay.updateLayout(
-            (int) Math.round(this.interp(this.x, t, 0D)),
-            (int) Math.round(this.interp(this.y, t, 0D)),
-            (int) Math.round(this.interp(this.width, t, 100D)),
-            (int) Math.round(this.interp(this.height, t, 100D)),
-            (float) this.interp(this.anchorX, t, 0.5D),
-            (float) this.interp(this.anchorY, t, 0.5D),
-            (float) this.interp(this.windowX, t, 0.5D),
-            (float) this.interp(this.windowY, t, 0.5D),
+            (int) Math.round(this.valueDouble(this.x, this.uniform.x, t, 0D)),
+            (int) Math.round(this.valueDouble(this.y, this.uniform.y, t, 0D)),
+            (int) Math.round(this.valueDouble(this.width, this.uniform.width, t, 100D)),
+            (int) Math.round(this.valueDouble(this.height, this.uniform.height, t, 100D)),
+            (float) this.valueDouble(this.anchorX, this.uniform.anchorX, t, 0.5D),
+            (float) this.valueDouble(this.anchorY, this.uniform.anchorY, t, 0.5D),
+            (float) this.valueDouble(this.windowX, this.uniform.windowX, t, 0.5D),
+            (float) this.valueDouble(this.windowY, this.uniform.windowY, t, 0.5D),
             alpha
         );
-        this.overlay.renderOrder = context.count;
+        this.overlay.renderOrder = context.applied;
         images.add(this.overlay);
+    }
+
+    /**
+     * Copy the current keyframed values into uniform storage the first time
+     * keyframe mode is disabled, without modifying the keyframe channels.
+     */
+    public void ensureUniformSeeded(float tick)
+    {
+        if (this.uniformSeeded.get())
+        {
+            return;
+        }
+
+        this.uniform.offsetX.set(this.interp(this.offsetX, tick, 0D));
+        this.uniform.offsetY.set(this.interp(this.offsetY, tick, 0D));
+        this.uniform.rotation.set(this.interp(this.rotation, tick, 0D));
+        this.uniform.blend.set(this.interp(this.blend, tick, 0D));
+        this.uniform.x.set(this.interp(this.x, tick, 0D));
+        this.uniform.y.set(this.interp(this.y, tick, 0D));
+        this.uniform.width.set(this.interp(this.width, tick, 100D));
+        this.uniform.height.set(this.interp(this.height, tick, 100D));
+        this.uniform.anchorX.set(this.interp(this.anchorX, tick, 0.5D));
+        this.uniform.anchorY.set(this.interp(this.anchorY, tick, 0.5D));
+        this.uniform.windowX.set(this.interp(this.windowX, tick, 0.5D));
+        this.uniform.windowY.set(this.interp(this.windowY, tick, 0.5D));
+        this.uniform.opacity.set(this.interp(this.opacity, tick, 1D));
+        this.uniformSeeded.set(true);
+    }
+
+    /**
+     * When enabling keyframe mode, fill any empty channels from uniform values
+     * so scrubbing/playback can interpolate. Existing keyframes are preserved.
+     */
+    public void ensureChannelsSeeded(float tick)
+    {
+        this.ensureUniformSeeded(tick);
+
+        this.seedDouble(this.offsetX, this.uniform.offsetX.get());
+        this.seedDouble(this.offsetY, this.uniform.offsetY.get());
+        this.seedDouble(this.rotation, this.uniform.rotation.get());
+        this.seedDouble(this.blend, this.uniform.blend.get());
+        this.seedDouble(this.x, this.uniform.x.get());
+        this.seedDouble(this.y, this.uniform.y.get());
+        this.seedDouble(this.width, this.uniform.width.get());
+        this.seedDouble(this.height, this.uniform.height.get());
+        this.seedDouble(this.anchorX, this.uniform.anchorX.get());
+        this.seedDouble(this.anchorY, this.uniform.anchorY.get());
+        this.seedDouble(this.windowX, this.uniform.windowX.get());
+        this.seedDouble(this.windowY, this.uniform.windowY.get());
+        this.seedDouble(this.opacity, this.uniform.opacity.get());
+    }
+
+    private void seedDouble(KeyframeChannel<Double> channel, double value)
+    {
+        if (channel.isEmpty())
+        {
+            channel.insert(0, value);
+        }
     }
 
     private Link getTextureAt(float t)
     {
-        if (!this.textureTrack.isEmpty())
+        if (this.useKeyframes.get() && !this.textureTrack.isEmpty())
         {
             return this.textureTrack.interpolate(t);
         }
@@ -155,11 +235,16 @@ public class ImageClip extends CameraClip
 
     private TextureBlend getTextureBlend(float t)
     {
-        float blendValue = (float) this.interp(this.blend, t, 0D);
+        float blendValue = (float) this.valueDouble(this.blend, this.uniform.blend, t, 0D);
 
         if (blendValue > 0F)
         {
             return new TextureBlend(this.blendFrom.get(), this.blendTo.get(), blendValue);
+        }
+
+        if (!this.useKeyframes.get())
+        {
+            return null;
         }
 
         KeyframeSegment<Link> segment = this.textureTrack.find(t);
@@ -174,6 +259,21 @@ public class ImageClip extends CameraClip
         }
 
         return null;
+    }
+
+    private double valueDouble(KeyframeChannel<Double> channel, ValueDouble uniform, float t, double fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interp(channel, t, fallback);
     }
 
     private double interp(KeyframeChannel<Double> channel, float t, double fallback)

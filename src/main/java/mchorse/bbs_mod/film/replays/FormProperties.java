@@ -10,6 +10,7 @@ import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.base.BaseKeyframeFactoryValue;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
@@ -273,6 +274,11 @@ public class FormProperties extends ValueGroup
                 this.applyIllusionTextureBlend(form, segment);
             }
 
+            if ("color".equals(id))
+            {
+                form.noshadingOpacity.setRuntimeValue(segment.getClosest().isNoshadingOpacity());
+            }
+
             if (blend < 1F)
             {
                 IKeyframeFactory factory = value.getFactory();
@@ -280,11 +286,11 @@ public class FormProperties extends ValueGroup
                 Object a = factory.copy(segment.createInterpolated());
                 Object interpolated = factory.interpolate(v, v, a, a, Interpolations.LINEAR, MathUtils.clamp(blend, 0F, 1F));
 
-                property.setRuntimeValue(factory.copy(interpolated));
+                property.setRuntimeValue(coerceRuntimeValue(property, factory.copy(interpolated)));
             }
             else
             {
-                property.setRuntimeValue(segment.createInterpolated());
+                property.setRuntimeValue(coerceRuntimeValue(property, segment.createInterpolated()));
             }
         }
         else
@@ -297,6 +303,11 @@ public class FormProperties extends ValueGroup
             if (id.startsWith("illusion"))
             {
                 form.illusionTextureBlend = null;
+            }
+
+            if ("color".equals(id))
+            {
+                form.noshadingOpacity.setRuntimeValue(null);
             }
 
             property.setRuntimeValue(null);
@@ -322,6 +333,27 @@ public class FormProperties extends ValueGroup
         }
 
         property.setRuntimeValue(channel.interpolate(tick, true));
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Object coerceRuntimeValue(BaseValueBasic property, Object value)
+    {
+        if (property instanceof ValueBoolean)
+        {
+            if (value instanceof Boolean)
+            {
+                return value;
+            }
+
+            if (value instanceof Number)
+            {
+                return ((Number) value).floatValue() > 0.001F;
+            }
+
+            return value != null;
+        }
+
+        return value;
     }
 
     private void applyTextureBlend(Form form, KeyframeSegment segment)
@@ -546,6 +578,25 @@ public class FormProperties extends ValueGroup
                     Boolean v = (Boolean) kf.getValue();
 
                     newProperty.insert(kf.getTick(), v ? 1F : 0F);
+                }
+
+                property = newProperty;
+            }
+
+            /* shaderShadow was briefly a float; migrate float keyframes back to boolean */
+            if (key.equals("shaderShadow") && property.getFactory() == KeyframeFactories.FLOAT)
+            {
+                KeyframeChannel newProperty = new KeyframeChannel(key, KeyframeFactories.BOOLEAN);
+
+                newProperty.setModel(true);
+
+                for (Object keyframe : property.getKeyframes())
+                {
+                    Keyframe kf = (Keyframe) keyframe;
+                    Object raw = kf.getValue();
+                    float f = raw instanceof Number ? ((Number) raw).floatValue() : 0F;
+
+                    newProperty.insert(kf.getTick(), f > 0.001F);
                 }
 
                 property = newProperty;

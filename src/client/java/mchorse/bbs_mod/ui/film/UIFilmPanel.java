@@ -156,6 +156,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private RunnerCameraController runner;
     private boolean lastRunning;
     private boolean clearingSelections;
+    private int lastFilledCursor = -1;
     private final Position position = new Position(0, 0, 0, 0, 0);
     private final Position lastPosition = new Position(0, 0, 0, 0, 0);
 
@@ -253,7 +254,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private static final int EDITOR_MIN_SIZE_FOR_PX_HANDLES = 10;
     private static final String ANCHORED_REPLAYS_PANEL_ID = "replaysPanel";
     private static final String ANCHORED_REPLAYS_PROPERTIES_PANEL_ID = "replaysPropertiesPanel";
-    private static final String EMBEDDED_GENERAL_TOGGLE_ID = "embeddedGeneral";
     private static final String PRESET_REPLAYS_PANEL_ENABLED = "replays_panel_enabled";
     private static final String PRESET_REPLAYS_PANEL_FLOATING = "replays_panel_floating";
     private static final String PRESET_REPLAYS_PANEL_X = "replays_panel_x";
@@ -1674,13 +1674,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             if (el != null)
             {
                 boolean collapsed = this.collapsedFloatingPanels.contains(panelId);
+                boolean hidden = this.hiddenPanels.contains(panelId);
                 Vector2i pos = this.floatingPanelPositions.get(panelId);
                 Vector2i size = this.floatingPanelSizes.get(panelId);
                 if (pos != null && size != null)
                 {
                     this.reflowFloatingPanelWithinEditor(panelId);
 
-                    if (collapsed)
+                    if (collapsed || hidden)
                     {
                         el.setVisible(false);
                     }
@@ -2685,8 +2686,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             case "replayEditor": return UIKeys.FILM_OPEN_REPLAY_EDITOR;
             case "actionEditor": return UIKeys.FILM_OPEN_ACTION_EDITOR;
             case ANCHORED_REPLAYS_PANEL_ID: return UIKeys.FILM_REPLAY_TITLE;
-            case ANCHORED_REPLAYS_PROPERTIES_PANEL_ID: return UIKeys.FILM_REPLAY_WINDOWED_GENERAL;
-            case EMBEDDED_GENERAL_TOGGLE_ID: return UIKeys.FILM_REPLAY_SECTION_GENERAL;
+            case ANCHORED_REPLAYS_PROPERTIES_PANEL_ID: return UIKeys.FILM_REPLAY_SECTION_GENERAL;
             case "editArea": return UIKeys.RAW_PROPERTIES;
             case "cameraEditArea": return UIKeys.FILM_WORKSPACE_CAMERA_PROPERTIES;
             case "actionEditArea": return UIKeys.FILM_WORKSPACE_ACTION_PROPERTIES;
@@ -2726,7 +2726,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public String[] getWindowPanelIds()
     {
-        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", "actionEditArea", "unifiedEditArea", ANCHORED_REPLAYS_PANEL_ID, EMBEDDED_GENERAL_TOGGLE_ID, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID};
+        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", "actionEditArea", "unifiedEditArea", ANCHORED_REPLAYS_PANEL_ID, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID};
     }
 
     public void applySeparateReplayPropertiesPanelSetting()
@@ -2737,25 +2737,24 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (!this.isSeparateReplayPropertiesPanelEnabled())
         {
-            this.floatingPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+            /* Same as unchecking Windows > General: keep the layout tree intact and embed
+               properties into Replays. Avoid removing the leaf so unrelated splitters/tabs
+               are not reshuffled. */
+            this.hiddenPanels.add(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
             this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-            this.hiddenPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-            this.floatingPanelPositions.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-            this.floatingPanelSizes.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-
-            if (root != null && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
-            {
-                next = EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-            }
-
-            if (this.anchoredReplaysPropertiesPanel != null)
-            {
-                this.anchoredReplaysPropertiesPanel.setVisible(false);
-            }
+            this.collapsedDockedPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
         }
-        else if (root != null && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID) && !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+        else
         {
-            next = this.migrateReplaysPropertiesPanel(root);
+            this.hiddenPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+
+            if (root != null
+                && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID)
+                && !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID)
+                && !this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+            {
+                next = this.migrateReplaysPropertiesPanel(root);
+            }
         }
 
         if (next != root)
@@ -2765,6 +2764,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.syncReplaysPropertiesLayoutMode();
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     private boolean isSeparateReplayPropertiesPanelEnabled()
@@ -2807,11 +2807,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return false;
         }
 
-        if (EMBEDDED_GENERAL_TOGGLE_ID.equals(panelId))
-        {
-            return this.anchoredReplaysPanel != null && this.anchoredReplaysPanel.isEmbeddedGeneralVisible();
-        }
-
         /* Hidden panels are still present in the layout tree (or may remain floating),
            but must be treated as not visible for the Window menu state. */
         if (this.hiddenPanels.contains(panelId))
@@ -2826,16 +2821,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         if (panelId == null)
         {
-            return;
-        }
-
-        if (EMBEDDED_GENERAL_TOGGLE_ID.equals(panelId))
-        {
-            if (this.anchoredReplaysPanel != null)
-            {
-                this.anchoredReplaysPanel.setEmbeddedGeneralVisible(visible);
-            }
-
             return;
         }
 
@@ -4127,17 +4112,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private EditorLayoutNode migrateReplaysPropertiesPanel(EditorLayoutNode root)
     {
-        if (!this.isSeparateReplayPropertiesPanelEnabled())
+        if (root == null
+            || !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID)
+            || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID)
+            || this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
         {
-            if (root != null && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
-            {
-                return EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-            }
-
             return root;
         }
 
-        if (root == null || !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+        /* Only auto-insert the General column when the setting prefers a separate panel.
+           Windows > General still controls visibility via hiddenPanels without stripping
+           leaves from the saved layout tree. */
+        if (!this.isSeparateReplayPropertiesPanelEnabled())
         {
             return root;
         }
@@ -4154,12 +4140,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return false;
         }
 
-        if (this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
-        {
-            return true;
-        }
-
-        return this.isSeparateReplayPropertiesPanelEnabled() && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+        return this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
     }
 
     private void syncReplaysPropertiesLayoutMode()
@@ -4974,6 +4955,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.save();
         UIUtils.playClick();
+
+        if (this.statusIcons != null)
+        {
+            this.statusIcons.flashAutosave();
+        }
     }
 
     @Override
@@ -5798,6 +5784,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         Clip clip = this.cameraEditor.getClip();
 
+        /* Keep keyframe-linked clip fields in sync while playing (runner advances ticks without setCursor). */
+        if (this.getCursor() != this.lastFilledCursor)
+        {
+            this.refreshCursorFields();
+        }
+
         /* Loop fixture */
         if (BBSSettings.editorLoop.get() && this.isRunning())
         {
@@ -6108,9 +6100,25 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.flightEditTime.mark();
         this.lastPosition.set(Position.ZERO);
 
+        int previous = this.runner.ticks;
+
         this.runner.ticks = Math.max(0, value);
 
         this.notifyServer(ActionState.SEEK);
+
+        if (previous != this.runner.ticks)
+        {
+            this.refreshCursorFields();
+        }
+    }
+
+    /**
+     * Refresh open clip side panels so keyframe-linked fields match the timeline cursor.
+     */
+    private void refreshCursorFields()
+    {
+        this.lastFilledCursor = this.runner.ticks;
+        this.fillData();
     }
 
     public boolean isRunning()
@@ -7929,6 +7937,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (viewport.isInside(context.mouseX(), context.mouseY()))
             {
+                if (this.replayEditor.handleViewportInteractionMouse(context, this.preview.getViewport()))
+                {
+                    return this;
+                }
+
                 if (this.controller.tryPickHoveredReplay(context))
                 {
                     return this;

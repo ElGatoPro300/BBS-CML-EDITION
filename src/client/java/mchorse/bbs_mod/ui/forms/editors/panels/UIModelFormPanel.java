@@ -11,7 +11,9 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorTransform;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIModelPoseEditor;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -30,8 +32,10 @@ import java.util.Set;
 public class UIModelFormPanel extends UIFormPanel<ModelForm>
 {
     public UIColor color;
+    public UIFormColorTransform colorTransform;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
+    public UIFormPaintTransform paintTransform;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
 
@@ -75,17 +79,24 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
             UIOverlay.addOverlay(this.getContext(), list);
         });
-        this.color = new UIColor((c) -> this.form.color.set(new Color().set(c))).withAlpha();
+        this.color = new UIColor((c) ->
+        {
+            Color color = this.form.color.get().copy();
+            Color value = new Color().set(c);
+
+            color.set(value.r, value.g, value.b, value.a);
+            this.form.color.set(color);
+        }).withAlpha();
         this.color.direction(Direction.LEFT);
         this.color.context((menu) -> menu.action(Icons.COLOR, UIKeys.KEYFRAMES_RESET_COLOR, this::resetMainColor));
+        this.colorTransform = new UIFormColorTransform(() -> this.form.color.get(), (color) -> this.form.color.set(color));
         this.paintColor = new UIColor((c) ->
         {
             Color color = new Color().set(c);
-
-            color.a = 1F;
-            this.form.paintColor.set(color);
-
             PaintSettings settings = this.form.paintSettings.get().copy();
+
+            color.a = settings.intensity;
+            this.form.paintColor.set(color);
 
             settings.r = color.r;
             settings.g = color.g;
@@ -99,18 +110,20 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.paintIntensity = new UITrackpad((value) ->
         {
             PaintSettings settings = this.form.paintSettings.get().copy();
+            float intensity = PaintSettings.clampIntensity(value.floatValue());
 
-            settings.intensity = value.floatValue();
+            settings.intensity = intensity;
             settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();
 
-            legacy.a = value.floatValue();
+            legacy.a = intensity;
             this.form.paintColor.set(legacy);
         });
-        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
         this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.paintTransform = new UIFormPaintTransform(() -> this.form.paintSettings.get(), (settings) -> this.form.paintSettings.set(settings));
         this.glowingColor = new UIColor((c) ->
         {
             Color color = new Color().set(c);
@@ -175,8 +188,10 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
         this.colorsAndGlowContent = UI.column(5, 0,
             this.color,
+            this.colorTransform,
             this.paintColor,
             this.paintIntensity,
+            this.paintTransform,
             this.glowingColor,
             this.glowIntensity
         );
@@ -275,12 +290,14 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrNormalIntensity.setValue(form.pbrNormalIntensity.get());
         this.pbrSpecularIntensity.setValue(form.pbrSpecularIntensity.get());
         this.color.setColor(form.color.get().getARGBColor());
+        this.colorTransform.syncFromForm();
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 
         paint.resolveColor(form.paintColor.get(), paintDisplay);
         this.paintColor.setColor(paintDisplay.getRGBColor());
         this.paintIntensity.setValue(paint.intensity);
+        this.paintTransform.syncFromForm();
         GlowSettings glow = form.glowSettings.get();
         Color glowDisplay = new Color();
 

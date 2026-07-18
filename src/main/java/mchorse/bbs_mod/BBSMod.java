@@ -163,7 +163,7 @@ import java.util.function.Consumer;
 public class BBSMod implements ModInitializer
 {
     public static final String MOD_ID = "bbs";
-    public static final String VERSION = "2.0-beta-2";
+    public static final String VERSION = "2.1-beta-1";
 
     public static final EventBus events = new EventBus();
 
@@ -644,6 +644,11 @@ public class BBSMod implements ModInitializer
                     trigger.trigger(serverPlayer, false);
                 }
 
+                return ActionResult.SUCCESS;
+            }
+
+            if (player.getStackInHand(hand).getItem() == STRUCTURE_PICKER_ITEM)
+            {
                 return ActionResult.SUCCESS;
             }
 
