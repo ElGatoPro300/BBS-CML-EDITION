@@ -353,10 +353,11 @@ public class ShaderOpacityPatch
 
     public static void onBeginTranslucents()
     {
+        /* Mark phase only. Soft forms stay queued until world-render end so color paint can
+         * flush onto the final framebuffer first (paint drawn during Iris beginTranslucents
+         * never survives the composite — known Iris/BBS paint limitation). Clouds/VL have
+         * already run, so a late soft-form redraw still sits in front without sky holes. */
         postDeferredPhase = true;
-        /* After Iris beginTranslucents — VL clouds/fog already run; translucent BBS forms
-         * draw here with depth so they sit in front of clouds without sky holes. */
-        flushPostDeferredForms();
     }
 
     public static void onWorldRenderBegin()
@@ -390,7 +391,9 @@ public class ShaderOpacityPatch
                 .thenComparing((PostDeferredEntry a, PostDeferredEntry b) -> Double.compare(b.distanceSq, a.distanceSq))
             );
 
-            preparePostDeferredFramebufferAndDepth();
+            /* Final FB (same target as paint overlays). Do not Iris-bindDefault here — at
+             * renderWorld end that target is no longer what the player sees. */
+            preparePostDeferredFramebufferAndDepth(false);
 
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
@@ -422,8 +425,11 @@ public class ShaderOpacityPatch
      * Complementary/BSL deferred can leave the live depth buffer unusable for occlusion. Iris
      * snapshots opaque depth into {@code depthtex1} at {@code beginTranslucents}; copy it back
      * so translucent BBS forms depth-test against models/terrain in front (render depth).
+     *
+     * @param bindIrisDefault when true, draw into Iris' translucent target (mid-pipeline only).
+     *                        At world-render end keep Minecraft/film FB so draws stay visible.
      */
-    private static void preparePostDeferredFramebufferAndDepth()
+    private static void preparePostDeferredFramebufferAndDepth(boolean bindIrisDefault)
     {
         try
         {
@@ -456,7 +462,15 @@ public class ShaderOpacityPatch
                     .copy(null, opaqueDepth, null, liveDepth, width, height);
             }
 
-            access.bbs$bindDefault();
+            if (bindIrisDefault)
+            {
+                access.bbs$bindDefault();
+            }
+            else
+            {
+                /* Depth copy may have switched FBOs — return to the visible target. */
+                mchorse.bbs_mod.client.BBSRendering.ensurePaintOverlayTargetFramebuffer();
+            }
         }
         catch (Throwable ignored)
         {

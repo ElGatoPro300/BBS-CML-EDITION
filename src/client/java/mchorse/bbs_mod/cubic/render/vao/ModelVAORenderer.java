@@ -323,12 +323,23 @@ public class ModelVAORenderer
         enqueuePaintOverlay(projection, modelView, draw);
     }
 
+    public static boolean hasQueuedPaintOverlays()
+    {
+        return !paintOverlayQueue.isEmpty();
+    }
+
     /**
-     * Runs deferred paint overlay draws after Iris has finished compositing the world frame.
-     * The BBS model shader cannot render correctly during Iris' entity/gbuffer pass, but it
-     * works on the final framebuffer at the end of {@code renderWorld}.
+     * Runs deferred paint overlay draws. Prefer the final framebuffer at world-render end
+     * ({@code restoreFramebuffer = true}). When compositing under soft post-deferred forms
+     * during Iris {@code beginTranslucents}, pass {@code false} so draws stay on Iris'
+     * already-bound translucent target (rebinding Minecraft's main FB loses paint).
      */
     public static void flushPaintOverlayQueue()
+    {
+        flushPaintOverlayQueue(true);
+    }
+
+    public static void flushPaintOverlayQueue(boolean restoreFramebuffer)
     {
         if (paintOverlayQueue.isEmpty())
         {
@@ -339,7 +350,7 @@ public class ModelVAORenderer
         {
             for (PaintOverlayEntry entry : paintOverlayQueue)
             {
-                ModelVAORenderer.runPaintOverlayEntry(entry, true);
+                ModelVAORenderer.runPaintOverlayEntry(entry, restoreFramebuffer);
             }
         }
         finally

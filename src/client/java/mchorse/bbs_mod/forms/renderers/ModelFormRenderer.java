@@ -866,6 +866,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         distanceSq = FormRenderDepth.getEntityDistanceSq(renderContext.entity, renderContext.camera, transition);
                     }
 
+                    /* depthMask true: soft mesh composites over paint flushed just before
+                     * this queue (same Iris translucent target). Writing depth also stops
+                     * self X-ray on multi-limb models. */
                     boolean depthWrite = true;
 
                     ShaderOpacityPatch.submitPostDeferredForm(sortDepth, distanceSq, depthWrite, () ->

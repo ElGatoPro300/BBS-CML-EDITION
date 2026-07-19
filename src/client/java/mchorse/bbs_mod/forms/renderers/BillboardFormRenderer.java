@@ -326,7 +326,9 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean emitGlowSnapshot = glowIntensity > 0F && !glowSettings.resolvePaintOnly();
-            boolean depthWrite = this.form.renderDepthEnabled.get();
+            /* Soft opacity-fix draws must not occlude final paint overlays. */
+            boolean depthWrite = this.form.renderDepthEnabled.get()
+                && color.a >= ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA;
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, deferContext == null ? null : deferContext.renderDepthFrame);
             double distanceSq = 0D;
             /* Iris entity_translucent (opacity-patched): pack lighting/shadows, soft alpha.

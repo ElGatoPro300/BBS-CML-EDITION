@@ -511,10 +511,10 @@ public class BBSRendering
             return;
         }
 
-        /* Billboard/model bases first (Iris post-deferred), then paint overlays so paint can
-         * depth-test against the redrawn base with a stronger polygon offset at distance. */
-        ShaderOpacityPatch.onWorldRenderEnd();
+        /* Paint first on the final framebuffer (Iris mid-pipeline paint never survives),
+         * then soft opacity-fix forms so they composite over painted actors. */
         ModelVAORenderer.flushPaintOverlayQueue();
+        ShaderOpacityPatch.onWorldRenderEnd();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();

@@ -230,7 +230,9 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean lighting = this.form.lighting.get();
-            boolean depthWrite = this.form.renderDepthEnabled.get();
+            /* Soft opacity-fix draws must not occlude final paint overlays. */
+            boolean depthWrite = this.form.renderDepthEnabled.get()
+                && c.a >= ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA;
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
             double distanceSq = 0D;
 
