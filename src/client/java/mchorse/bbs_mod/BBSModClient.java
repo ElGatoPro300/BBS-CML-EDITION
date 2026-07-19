@@ -729,7 +729,11 @@ public class BBSModClient implements ClientModInitializer
         ClientTickEvents.START_CLIENT_TICK.register((client) ->
         {
             BBSRendering.startTick();
-            TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
+
+            if (!client.isPaused())
+            {
+                TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
+            }
         });
 
         ClientTickEvents.END_WORLD_TICK.register((client) ->

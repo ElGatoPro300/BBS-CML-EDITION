@@ -318,6 +318,16 @@ public class BBSRendering
 
     public static void startTick()
     {
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        /* Client ticks still run while the pause menu is open, but world/block-entity ticks do
+         * not — clearing here would empty the set with nothing to refill it, killing model-block
+         * Iris shadows (and UI lists that reuse this cache) until unpause. */
+        if (mc != null && mc.isPaused())
+        {
+            return;
+        }
+
         capturedModelBlocks.clear();
         TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
     }

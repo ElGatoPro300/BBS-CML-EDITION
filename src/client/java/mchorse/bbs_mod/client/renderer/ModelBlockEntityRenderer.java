@@ -318,6 +318,11 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
      */
     public static void renderIntoShadowMap(ModelBlockEntity entity, MatrixStack shadowStack, VertexConsumerProvider consumers, float tickDelta, double camX, double camY, double camZ)
     {
+        if (entity == null || entity.isRemoved() || entity.getWorld() == null)
+        {
+            return;
+        }
+
         if (!canRenderStatic(entity))
         {
             return;
