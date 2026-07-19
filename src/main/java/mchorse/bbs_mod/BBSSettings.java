@@ -208,7 +208,12 @@ public class BBSSettings
     public static ValueBoolean damageControl;
 
     public static ValueBoolean shaderCurvesEnabled;
+    public static ValueBoolean irisOpacityFix;
+    /** Kept invisible for migrating saved Complementary/BSL toggles. */
+    @Deprecated
     public static ValueBoolean complementaryOpacityFix;
+    /** Kept invisible for migrating saved Complementary/BSL toggles. */
+    @Deprecated
     public static ValueBoolean bslOpacityFix;
     public static ValueBoolean shaderOpacityPatchesDefaultOnMigrated;
     public static ValueFloat shaderShadowOpacity;
@@ -791,5 +796,35 @@ public class BBSSettings
 
         BBSMod.events.post(new RegisterBBSSettingsEvent(builder));
         syncAppliedAppearance();
+    }
+
+    /**
+     * Fold legacy Complementary/BSL opacity toggles into {@link #irisOpacityFix}.
+     * Call after settings are loaded from disk.
+     */
+    public static void migrateIrisOpacityFix()
+    {
+        if (irisOpacityFix == null)
+        {
+            return;
+        }
+
+        boolean legacyOn = (complementaryOpacityFix != null && complementaryOpacityFix.get())
+            || (bslOpacityFix != null && bslOpacityFix.get());
+
+        if (legacyOn && !irisOpacityFix.get())
+        {
+            irisOpacityFix.set(true);
+        }
+
+        if (complementaryOpacityFix != null && complementaryOpacityFix.get())
+        {
+            complementaryOpacityFix.set(false);
+        }
+
+        if (bslOpacityFix != null && bslOpacityFix.get())
+        {
+            bslOpacityFix.set(false);
+        }
     }
 }

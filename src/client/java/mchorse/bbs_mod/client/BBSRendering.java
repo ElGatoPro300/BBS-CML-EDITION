@@ -524,10 +524,10 @@ public class BBSRendering
             return;
         }
 
-        /* Billboard/model bases first (Iris post-deferred), then paint overlays so paint can
-         * depth-test against the redrawn base with a stronger polygon offset at distance. */
-        ShaderOpacityPatch.onWorldRenderEnd();
+        /* Paint overlays first (and noshading soft forms in the same queue, after paint via
+         * sort). Iris soft forms (noshading off) already flushed at beginTranslucents. */
         ModelVAORenderer.flushPaintOverlayQueue();
+        ShaderOpacityPatch.onWorldRenderEnd();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
@@ -849,7 +849,7 @@ public class BBSRendering
     }
 
     /**
-     * With the Complementary/BSL opacity patch, translucent opacities are redrawn after
+     * With the Iris opacity fix, translucent opacities are redrawn after
      * VL clouds (post-deferred) so soft fades never punch the sky or get clouds composited
      * over the mesh. Near-opaque keeps the live Iris path with depth writes.
      */

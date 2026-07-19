@@ -950,8 +950,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         ? new Matrix4f(newStack.peek().getPositionMatrix())
                         : ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(newStack.peek().getPositionMatrix()));
                     Matrix3f normalMatrix = new Matrix3f(newStack.peek().getNormalMatrix());
+                    Matrix4f baseTransformSnapshot = baseTransform == null ? null : new Matrix4f(baseTransform);
                     Color colorSnapshot = color.copy();
                     Color paintSnapshot = paintColor.copy();
+                    Pose poseSnapshot = this.getPose().copy();
+                    float transitionSnapshot = transition;
                     float paintStrengthSnapshot = paintStrength;
                     boolean paintActiveSnapshot = paintActive;
                     boolean stripGlowSnapshot = stripMainPassGlow || shapeKeyPositiveOverlay;
@@ -983,6 +986,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(opacityAlpha);
                     Runnable deferredDraw = () ->
                     {
+                        /* Shared ModelInstance bones are overwritten by later draws — re-apply
+                         * the captured pose like other deferred Iris paths. */
+                        this.applyOverlayPosePipeline(target, model, transitionSnapshot, poseSnapshot, baseTransformSnapshot);
+
                         MatrixStack overlayStack = new MatrixStack();
 
                         overlayStack.peek().getPositionMatrix().set(positionMatrix);
@@ -1977,6 +1984,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             return true;
         }
 
+        return this.hasBonePaint(model);
+    }
+
+    private boolean hasBonePaint(ModelInstance model)
+    {
         if (model != null && model.getModel() != null)
         {
             for (ModelGroup group : model.getModel().getAllGroups())

@@ -294,7 +294,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
                 );
             };
 
-            if (opacityPatch)
+            if (opacityPatch && !noshadingPaintPath)
             {
                 ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, afterFluids, deferredDraw);
             }

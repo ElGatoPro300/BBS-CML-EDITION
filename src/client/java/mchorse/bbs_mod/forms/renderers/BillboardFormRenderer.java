@@ -522,7 +522,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                 }
             };
 
-            if (opacityPatch)
+            if (opacityPatch && !noshadingPaintPath)
             {
                 /* Same sorted post-deferred queue as models — render depth low→high, before VL. */
                 ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, afterFluids, deferredDraw);

@@ -109,22 +109,41 @@ public class ShaderOpacityPatch
         return name != null && name.toLowerCase(Locale.ROOT).contains("bsl");
     }
 
+    /**
+     * Global Iris translucency pipeline (post-deferred queue + generic Iris property patches).
+     */
     public static boolean isActive()
     {
-        String pack = resolvePackName();
-
-        if (pack.isEmpty())
-        {
-            return false;
-        }
-
-        if (BBSSettings.complementaryOpacityFix != null && BBSSettings.complementaryOpacityFix.get()
-            && isComplementaryPack(pack))
+        if (BBSSettings.irisOpacityFix != null && BBSSettings.irisOpacityFix.get())
         {
             return true;
         }
 
-        return BBSSettings.bslOpacityFix != null && BBSSettings.bslOpacityFix.get() && isBslPack(pack);
+        /* Legacy: old Complementary/BSL toggles before migration. */
+        if (BBSSettings.complementaryOpacityFix != null && BBSSettings.complementaryOpacityFix.get()
+            && isComplementaryPack(resolvePackName()))
+        {
+            return true;
+        }
+
+        return BBSSettings.bslOpacityFix != null && BBSSettings.bslOpacityFix.get()
+            && isBslPack(resolvePackName());
+    }
+
+    /**
+     * Pack-specific GLSL string rewrites (shadow caster dither, shadow opacity scaling).
+     * Only Complementary / BSL source layouts are known; other packs skip these.
+     */
+    public static boolean shouldApplyPackGlslPatches()
+    {
+        if (!isActive())
+        {
+            return false;
+        }
+
+        String pack = resolvePackName();
+
+        return isComplementaryPack(pack) || isBslPack(pack);
     }
 
     private static String resolvePackName()
@@ -418,8 +437,6 @@ public class ShaderOpacityPatch
                 .thenComparing((PostDeferredEntry a, PostDeferredEntry b) -> Double.compare(b.distanceSq, a.distanceSq))
             );
 
-            preparePostDeferredFramebufferAndDepth();
-
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
             RenderSystem.enableBlend();
@@ -449,8 +466,11 @@ public class ShaderOpacityPatch
      * Complementary/BSL deferred can leave the live depth buffer unusable for occlusion. Iris
      * snapshots opaque depth into {@code depthtex1} at {@code beginTranslucents}; copy it back
      * so translucent BBS forms depth-test against models/terrain in front (render depth).
+     *
+     * @param bindIrisDefault when true, draw into Iris' translucent target (mid-pipeline only).
+     *                        At world-render end keep Minecraft/film FB so draws stay visible.
      */
-    private static void preparePostDeferredFramebufferAndDepth()
+    private static void preparePostDeferredFramebufferAndDepth(boolean bindIrisDefault)
     {
         try
         {
@@ -483,7 +503,15 @@ public class ShaderOpacityPatch
                     .copy(null, opaqueDepth, null, liveDepth, width, height);
             }
 
-            access.bbs$bindDefault();
+            if (bindIrisDefault)
+            {
+                access.bbs$bindDefault();
+            }
+            else
+            {
+                /* Depth copy may have switched FBOs — return to the visible target. */
+                mchorse.bbs_mod.client.BBSRendering.ensurePaintOverlayTargetFramebuffer();
+            }
         }
         catch (Throwable ignored)
         {
@@ -620,7 +648,7 @@ public class ShaderOpacityPatch
      */
     public static String processShadowOpacity(String source)
     {
-        if (!isActive() || source == null || source.isEmpty())
+        if (!shouldApplyPackGlslPatches() || source == null || source.isEmpty())
         {
             return source;
         }
@@ -646,7 +674,7 @@ public class ShaderOpacityPatch
 
     public static void ensureShadowOpacityVariable()
     {
-        if (!isActive())
+        if (!shouldApplyPackGlslPatches())
         {
             return;
         }

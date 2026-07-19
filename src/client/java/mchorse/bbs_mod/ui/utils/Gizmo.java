@@ -574,7 +574,11 @@ public class Gizmo
         return dest;
     }
 
-    private static boolean isOriginVisible(Matrix4f view, Matrix4f projection)
+    /**
+     * True when the gizmo origin is in front of the camera with a sane clip depth.
+     * Off-screen X/Y is allowed — only behind-camera / degenerate projections fail.
+     */
+    private static boolean isOriginInFront(Matrix4f view, Matrix4f projection)
     {
         Vector4f clip = new Vector4f(0F, 0F, 0F, 1F).mul(view).mul(projection);
 
