@@ -266,12 +266,16 @@ public abstract class BaseFilmController
                     return;
                 }
 
+                /* Form Opacity is applied once in the form renderer (applyFormOpacity). Do not
+                 * multiply it here or caster alpha becomes opacity² and ground shadows fade too fast. */
+                if (form.getFormOpacity() <= 0.001F)
+                {
+                    return;
+                }
+
                 PaintSettings paint = form.paintSettings.get();
                 Color legacyPaint = form.paintColor.get();
-                /* Opacity track scales caster alpha (Color.a is blend intensity after the
-                 * color/opacity split). Iris hard shadow maps dither on this via
-                 * ShaderOpacityPatch.processShadowCasterAlpha. */
-                float shadowAlpha = Colors.getA(formContext.color) * form.getFormOpacity() * context.shadowOpacity;
+                float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
 
                 if (shadowAlpha <= 0.001F)
                 {

@@ -646,8 +646,8 @@ public class ShaderOpacityPatch
 
     /**
      * Complementary/BSL shadow map programs: dither-discard by <b>vertex color alpha only</b>
-     * so form Opacity and replay shadow_opacity fade per-actor ground shadows. Does not
-     * multiply texture alpha (that previously made leaves/grass shadows holey).
+     * so form Opacity and replay shadow_opacity fade per-actor ground shadows linearly
+     * (coverage ≈ alpha). Does not multiply texture alpha (that made leaves/grass holey).
      */
     public static String processShadowCasterAlpha(String source)
     {
