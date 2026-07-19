@@ -19,6 +19,7 @@ import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.math.MatrixStack;
 
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
@@ -39,6 +40,9 @@ import javax.imageio.ImageIO;
 
 public class ModelVAORenderer
 {
+    private static final Matrix3f IDENTITY_NORMAL = new Matrix3f();
+    private static final Matrix4f IDENTITY_MODEL_VIEW = new Matrix4f();
+
     /* FS-style paint overlay uniform state (rgb + strength). Set by form renderers before a draw and reset after.
      * "base" holds the whole-form paint; "current" is what the uniform uses and can be overridden per model group (bone). */
     private static float baseR;
@@ -862,6 +866,22 @@ public class ModelVAORenderer
 
     public static void setupUniforms(MatrixStack stack, ShaderProgram shader)
     {
+        setupUniforms(stack, shader, false);
+    }
+
+    /**
+     * CPU shape-key path writes positions/normals already transformed by the render stack.
+     * ModelViewMat must not multiply that stack again (or meshes vanish at the origin when
+     * {@code drawWithGlobalProgram} keeps only the camera matrix), and NormalMat must stay
+     * identity or diffuse lighting is applied twice.
+     */
+    public static void setupUniformsCpuPretransformed(ShaderProgram shader)
+    {
+        setupUniforms(null, shader, true);
+    }
+
+    private static void setupUniforms(MatrixStack stack, ShaderProgram shader, boolean cpuPretransformed)
+    {
         for (int i = 0; i < 12; i++)
         {
             shader.addSampler("Sampler" + i, RenderSystem.getShaderTexture(i));
@@ -874,7 +894,22 @@ public class ModelVAORenderer
 
         if (shader.modelViewMat != null)
         {
-            ModelVAORenderer.setModelViewUniform(stack, shader);
+            if (cpuPretransformed)
+            {
+                if (usesCapturedModelView())
+                {
+                    /* Captured draws already baked the full transform into the vertex buffer. */
+                    shader.modelViewMat.set(IDENTITY_MODEL_VIEW);
+                }
+                else
+                {
+                    shader.modelViewMat.set(new Matrix4f(RenderSystem.getModelViewMatrix()));
+                }
+            }
+            else
+            {
+                ModelVAORenderer.setModelViewUniform(stack, shader);
+            }
         }
 
         /* NormalMat is present by default in Iris' shaders, but when there is no Iris,
@@ -885,7 +920,14 @@ public class ModelVAORenderer
 
         if (normalUniform != null)
         {
-            normalUniform.set(stack.peek().getNormalMatrix());
+            if (cpuPretransformed)
+            {
+                normalUniform.set(IDENTITY_NORMAL);
+            }
+            else
+            {
+                normalUniform.set(stack.peek().getNormalMatrix());
+            }
         }
 
         GlUniform paintUniform = shader.getUniform("PaintColor");
