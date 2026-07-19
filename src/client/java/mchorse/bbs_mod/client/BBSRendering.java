@@ -511,8 +511,10 @@ public class BBSRendering
             return;
         }
 
-        ModelVAORenderer.flushPaintOverlayQueue();
+        /* Billboard/model bases first (Iris post-deferred), then paint overlays so paint can
+         * depth-test against the redrawn base with a stronger polygon offset at distance. */
         ShaderOpacityPatch.onWorldRenderEnd();
+        ModelVAORenderer.flushPaintOverlayQueue();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();

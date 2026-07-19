@@ -15,6 +15,16 @@ import org.lwjgl.opengl.GL11;
  */
 public class FlatPaintOverlayPass
 {
+    /** Default bias — enough for immediate/live overlays over coplanar bases. */
+    public static final float DEFAULT_FACTOR = -1F;
+    public static final float DEFAULT_UNITS = -2F;
+    /**
+     * Stronger than deferred billboard base ({@code -1.5/-1.5}). Paint flushes after the Iris
+     * base redraw; the factor term dominates at distance and must clearly beat the base offset.
+     */
+    public static final float DEFERRED_BILLBOARD_FACTOR = -4F;
+    public static final float DEFERRED_BILLBOARD_UNITS = -8F;
+
     private FlatPaintOverlayPass()
     {
     }
@@ -25,6 +35,11 @@ public class FlatPaintOverlayPass
     }
 
     public static void render(Runnable draw)
+    {
+        render(DEFAULT_FACTOR, DEFAULT_UNITS, draw);
+    }
+
+    public static void render(float factor, float units, Runnable draw)
     {
         if (draw == null)
         {
@@ -41,8 +56,7 @@ public class FlatPaintOverlayPass
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        /* Stronger units bias keeps coplanar paint overlays stable when the camera is very close. */
-        GL11.glPolygonOffset(-1F, -2F);
+        GL11.glPolygonOffset(factor, units);
 
         ShaderProgram program = BBSShaders.getFlatPaintOverlayProgram();
 

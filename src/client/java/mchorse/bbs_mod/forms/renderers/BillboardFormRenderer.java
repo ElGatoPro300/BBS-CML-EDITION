@@ -371,6 +371,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
                 try
                 {
+                    /* Dual-sided: FACE_Z_BIAS separates front/back; single-sided + cull left
+                     * the reverse face permanently invisible under Iris deferred redraw. */
                     this.drawBillboardFaces(
                         deferredFormat,
                         deferredTexture,
@@ -383,7 +385,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                         lightSnapshot,
                         linear,
                         mipmap,
-                        true
+                        false
                     );
 
                     if (emitGlowSnapshot)
@@ -471,6 +473,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             }
             else
             {
+                /* After Iris base redraw (see BBSRendering.onWorldRenderEnd order) with a
+                 * stronger polygon offset so paint stays in front at distance. */
                 this.submitDeferredBillboardPaintOverlay(texture, textureLink, shader, matrices, resolvedPaint, color.a, glowSettings, legacyGlow, glowIntensity);
             }
         }
@@ -495,15 +499,15 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         MatrixStack.Entry entry = matrices.peek();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
-        boolean dualSided = !singleSided
-            && !ModelVAORenderer.isPaintOverlayPass()
-            && !ModelVAORenderer.isDeferredTranslucentPass();
+        /* Allow both faces during deferred Iris redraw — FACE_Z_BIAS prevents front/back
+         * self z-fight. Only skip dual geometry on the paint-overlay pass. */
+        boolean dualSided = !singleSided && !ModelVAORenderer.isPaintOverlayPass();
 
         BBSModClient.getTextures().bindTexture(texture);
         RenderSystem.setShader(shader);
         texture.bind();
         texture.setFilterMipmap(linear, mipmap);
-        /* Deferred translucent / paint-overlay / depth-occlusion: single-sided to avoid z-fight. */
+
         if (dualSided)
         {
             RenderSystem.disableCull();
@@ -593,26 +597,31 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             overlayStack.peek().getPositionMatrix().set(positionMatrix);
             overlayStack.peek().getNormalMatrix().set(normalMatrix);
 
-            this.renderPaintOverlay(deferredTexture, shader, overlayStack, OverlayTexture.DEFAULT_UV, paintOverlay, 1F, localQuad, localUvQuad, paintTransform, glowSettings, legacyGlow, glowIntensity);
+            this.renderPaintOverlay(deferredTexture, shader, overlayStack, OverlayTexture.DEFAULT_UV, paintOverlay, 1F, localQuad, localUvQuad, paintTransform, glowSettings, legacyGlow, glowIntensity, FlatPaintOverlayPass.DEFERRED_BILLBOARD_FACTOR, FlatPaintOverlayPass.DEFERRED_BILLBOARD_UNITS);
         });
     }
 
     private void renderPaintOverlay(Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, Color resolvedPaint, float alpha, EffectTransform transform)
     {
-        this.renderPaintOverlay(texture, shader, matrices, overlay, resolvedPaint, alpha, quad, uvQuad, transform, null, null, 0F);
+        this.renderPaintOverlay(texture, shader, matrices, overlay, resolvedPaint, alpha, quad, uvQuad, transform, null, null, 0F, FlatPaintOverlayPass.DEFAULT_FACTOR, FlatPaintOverlayPass.DEFAULT_UNITS);
     }
 
     private void renderPaintOverlay(Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, Color resolvedPaint, float alpha, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity)
     {
-        this.renderPaintOverlay(texture, shader, matrices, overlay, resolvedPaint, alpha, quad, uvQuad, transform, glowSettings, legacyGlow, glowIntensity);
+        this.renderPaintOverlay(texture, shader, matrices, overlay, resolvedPaint, alpha, quad, uvQuad, transform, glowSettings, legacyGlow, glowIntensity, FlatPaintOverlayPass.DEFAULT_FACTOR, FlatPaintOverlayPass.DEFAULT_UNITS);
     }
 
     private void renderPaintOverlay(Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, Color resolvedPaint, float alpha, Quad drawQuad, Quad drawUvQuad, EffectTransform transform)
     {
-        this.renderPaintOverlay(texture, shader, matrices, overlay, resolvedPaint, alpha, drawQuad, drawUvQuad, transform, null, null, 0F);
+        this.renderPaintOverlay(texture, shader, matrices, overlay, resolvedPaint, alpha, drawQuad, drawUvQuad, transform, null, null, 0F, FlatPaintOverlayPass.DEFAULT_FACTOR, FlatPaintOverlayPass.DEFAULT_UNITS);
     }
 
     private void renderPaintOverlay(Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, Color resolvedPaint, float alpha, Quad drawQuad, Quad drawUvQuad, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity)
+    {
+        this.renderPaintOverlay(texture, shader, matrices, overlay, resolvedPaint, alpha, drawQuad, drawUvQuad, transform, glowSettings, legacyGlow, glowIntensity, FlatPaintOverlayPass.DEFAULT_FACTOR, FlatPaintOverlayPass.DEFAULT_UNITS);
+    }
+
+    private void renderPaintOverlay(Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, Color resolvedPaint, float alpha, Quad drawQuad, Quad drawUvQuad, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float polygonOffsetFactor, float polygonOffsetUnits)
     {
         Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
 
@@ -628,7 +637,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         texture.bind();
         texture.setFilterMipmap(this.form.linear.get(), this.form.mipmap.get());
 
-        FlatPaintOverlayPass.render(null, () ->
+        FlatPaintOverlayPass.render(polygonOffsetFactor, polygonOffsetUnits, () ->
         {
             BufferBuilder paintBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
             int paintLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
@@ -688,17 +697,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             BufferBuilder glowBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
 
             RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
-            /* Deferred translucent already single-sided; world glow keeps both faces. */
-            boolean dualSided = !ModelVAORenderer.isDeferredTranslucentPass();
-
-            if (dualSided)
-            {
-                RenderSystem.disableCull();
-            }
-            else
-            {
-                RenderSystem.enableCull();
-            }
+            RenderSystem.disableCull();
 
             this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
             this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
@@ -708,16 +707,13 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             this.fillGlow(glowBuilder, glowMatrix, drawQuad.p4.x, drawQuad.p4.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p4.x, drawUvQuad.p4.y);
             this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
 
-            if (dualSided)
-            {
-                this.fillGlow(glowBuilder, glowMatrix, drawQuad.p1.x, drawQuad.p1.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p1.x, drawUvQuad.p1.y);
-                this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
-                this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p1.x, drawQuad.p1.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p1.x, drawUvQuad.p1.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
 
-                this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
-                this.fillGlow(glowBuilder, glowMatrix, drawQuad.p4.x, drawQuad.p4.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p4.x, drawUvQuad.p4.y);
-                this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
-            }
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p4.x, drawQuad.p4.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p4.x, drawUvQuad.p4.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
 
             BufferRenderer.drawWithGlobalProgram(glowBuilder.end());
 
