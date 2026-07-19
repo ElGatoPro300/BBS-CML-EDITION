@@ -65,9 +65,10 @@ public abstract class Form extends ValueGroup
     public final ValueInverseKinematics inverseKinematics = new ValueInverseKinematics("inverse_kinematics", new InverseKinematics());
     public final ValueBoolean shaderShadow = new ValueBoolean("shaderShadow", true);
     /**
-     * When true under Iris, this form uses the clean deferred opacity path for its
-     * {@code color} alpha (same compositing as post-{@code #1b}) without affecting
-     * other models' pack shading.
+     * Opacity-track "No shading" (Iris opacity-fix tradeoff): ON = redraw soft form after
+     * paint so paint behind stays visible (pack body shadows lost). OFF = Iris soft path
+     * keeps pack sun shadows on the mesh (paint behind stays depth-clipped). Legacy films
+     * may still store this flag on Color keyframes.
      */
     public final ValueBoolean noshadingOpacity = new ValueBoolean("noshading_opacity", false);
 

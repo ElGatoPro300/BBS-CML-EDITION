@@ -372,8 +372,10 @@ public class ShaderOpacityPatch
     }
 
     /**
-     * After translucent terrain (water/lava/portals). Flush every queued form here so soft
-     * opacity blends over fluids and opaque film depth still lands after VL clouds.
+     * After translucent terrain (water/lava/portals). Default soft forms (Opacity
+     * "No shading" off) flush here with depth so pack body shadows stay; end-of-frame
+     * paint stays clipped behind them. Noshading soft forms skip this queue and redraw
+     * after paint in {@link mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer}'s deferred queue.
      */
     public static void onAfterTranslucentTerrain()
     {

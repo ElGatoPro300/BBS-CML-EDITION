@@ -1453,7 +1453,7 @@
     "bbs.ui.forms.editors.paint_shape_circle": "Circle",
     "bbs.ui.forms.editors.paint_shape_triangle": "Triangle",
     "bbs.ui.forms.editors.color_noshading_opacity": "Noshading opacity",
-    "bbs.ui.forms.editors.color_noshading_opacity-tooltip": "Uses the clean deferred opacity path for this form's color only. Keeps color RGB (does not force black). Does not change lighting on other models or wipe clouds.",
+    "bbs.ui.forms.editors.color_noshading_opacity-tooltip": "With Iris opacity fix: OFF keeps sun shadows on this soft form (paint color behind it stays clipped). ON redraws this form after paint so paint shows through transparency, but pack lighting/shadows on the mesh are lost.",
     "bbs.ui.forms.editors.paint_sync": "Sync with model",
     "bbs.ui.forms.editors.paint_sync-tooltip": "Change this option if there is a display problem with paint.",
     "bbs.ui.forms.editors.paint_fix_bug": "Fix bug",

@@ -572,6 +572,10 @@ public class ModelVAORenderer
                 }
             }
 
+            /* Paint/glow overlays first, then full soft-model redraws (Opacity "No shading"
+             * path) so translucency composites over painted actors behind the soft form. */
+            paintOverlayQueue.sort((a, b) -> Boolean.compare(a.fullModel, b.fullModel));
+
             for (PaintOverlayEntry entry : paintOverlayQueue)
             {
                 ModelVAORenderer.runPaintOverlayEntry(entry, restoreFramebuffer);

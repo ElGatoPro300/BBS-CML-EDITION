@@ -878,10 +878,10 @@ public class BBSRendering
     }
 
     /**
-     * Opt-in: clean deferred (BBS / no pack shading) opacity path at any translucent
-     * alpha without yanking neighbors off Iris lighting. Still applies when the
-     * Complementary/BSL opacity patch is active — that patch keeps normal opacity on
-     * Iris; No shading explicitly opts this form into the flat unlit redraw instead.
+     * Opt-in Opacity-track "No shading": redraw this soft form on the BBS deferred queue
+     * after paint overlays (paint visible through soft; pack body sun shadows lost).
+     * When off, soft forms stay on Iris post-deferred (body shadows kept; paint clipped).
+     * Still applies when the Complementary/BSL opacity patch is active.
      */
     public static boolean needsIrisNoshadingOpacityDeferral(float alpha, boolean noshadingOpacity)
     {

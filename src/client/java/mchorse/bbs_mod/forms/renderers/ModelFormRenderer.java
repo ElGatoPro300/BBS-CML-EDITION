@@ -817,7 +817,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 boolean hasGlowSnapshot = hasGlow;
                 boolean emitGlowSnapshot = emitGlowAfterDeferred;
                 GlowSettings albedoGlow = emitGlowAfterDeferred ? mainPassGlow : glow;
-                /* Soft opacity redraw (frame-end / noshading): write depth so limbs do not X-ray. */
+                /* Soft opacity redraw (frame-end / noshading): write depth so limbs do not X-ray.
+                 * Noshading soft forms share this queue with paint; flushPaintOverlayQueue sorts
+                 * paint overlays before fullModel so depth write does not clip paint behind. */
                 boolean deferredDepthWrite = ShaderOpacityPatch.shouldWriteDepthForOpacity(opacityAlpha);
 
                 if (colorSnapshot.a > 0.001F)
