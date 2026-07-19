@@ -4,6 +4,9 @@ import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
+import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -33,6 +36,10 @@ public class LetterboxClip extends CameraClip
     public final KeyframeChannel<Double> offsetX = new KeyframeChannel<>("offsetX", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> offsetY = new KeyframeChannel<>("offsetY", KeyframeFactories.DOUBLE);
 
+    public final ValueBoolean useKeyframes = new ValueBoolean("use_keyframes", false);
+    public final ValueBoolean uniformSeeded = new ValueBoolean("uniform_seeded", false);
+    public final LetterboxUniform uniform = new LetterboxUniform("uniform");
+
     public final KeyframeChannel[] channels;
 
     private LetterboxEffect effect = new LetterboxEffect();
@@ -51,7 +58,9 @@ public class LetterboxClip extends CameraClip
             this.height,
             this.smoothness,
             this.rotation,
-            this.zoom
+            this.zoom,
+            this.offsetX,
+            this.offsetY
         };
 
         this.add(this.color);
@@ -63,17 +72,16 @@ public class LetterboxClip extends CameraClip
         this.add(this.zoom);
         this.add(this.offsetX);
         this.add(this.offsetY);
-
-        this.color.insert(0, DEFAULT_COLOR.copy());
-        this.height.insert(0, DEFAULT_HEIGHT);
-        this.width.insert(0, DEFAULT_WIDTH);
-        this.zoom.insert(0, DEFAULT_ZOOM);
+        this.add(this.useKeyframes);
+        this.add(this.uniformSeeded);
+        this.add(this.uniform);
     }
 
     @Override
     public void fromData(BaseType data)
     {
         Map<String, BaseType> legacy = null;
+        boolean hasUseKeyframes = data != null && data.isMap() && data.asMap().has("use_keyframes");
 
         if (data != null && data.isMap())
         {
@@ -81,6 +89,12 @@ public class LetterboxClip extends CameraClip
         }
 
         super.fromData(data);
+
+        /* Older films did not store this flag — keep keyframe mode enabled for compatibility. */
+        if (!hasUseKeyframes)
+        {
+            this.useKeyframes.set(true);
+        }
 
         if (legacy != null)
         {
@@ -121,9 +135,16 @@ public class LetterboxClip extends CameraClip
 
         if (data != null && data.isNumeric())
         {
-            channel.insert(0, Color.rgba(data.asNumeric().intValue()));
+            Color migrated = Color.rgba(data.asNumeric().intValue());
+
+            this.uniform.color.set(migrated.copy());
+
+            if (this.useKeyframes.get())
+            {
+                channel.insert(0, migrated.copy());
+            }
         }
-        else
+        else if (this.useKeyframes.get())
         {
             channel.insert(0, fallback.copy());
         }
@@ -135,24 +156,22 @@ public class LetterboxClip extends CameraClip
         float t = context.relativeTick + context.transition;
         float factor = this.envelope.factorEnabled(this.duration.get(), t);
 
-        float thickness = this.height.isEmpty()
-            ? (this.size.isEmpty() ? (float) DEFAULT_HEIGHT : (float) (double) this.size.interpolate(t))
-            : (float) (double) this.height.interpolate(t);
+        float thickness = this.resolveHeight(t);
         float sz = thickness * 0.25F;
 
         if (sz > 0F)
         {
-            float barWidth = this.width.isEmpty() ? (float) DEFAULT_WIDTH : (float) (double) this.width.interpolate(t);
-            float smooth = (this.smoothness.isEmpty() ? 0F : (float) (double) this.smoothness.interpolate(t)) * 0.25F;
-            float rot = this.rotation.isEmpty() ? 0F : (float) (double) this.rotation.interpolate(t);
-            float zm = this.zoom.isEmpty() ? (float) DEFAULT_ZOOM : (float) (double) this.zoom.interpolate(t);
-            float offX = this.offsetX.isEmpty() ? 0F : (float) (double) this.offsetX.interpolate(t);
-            float offY = this.offsetY.isEmpty() ? 0F : (float) (double) this.offsetY.interpolate(t);
+            float barWidth = (float) this.valueDouble(this.width, this.uniform.width, t, DEFAULT_WIDTH);
+            float smooth = (float) this.valueDouble(this.smoothness, this.uniform.smoothness, t, 0D) * 0.25F;
+            float rot = (float) this.valueDouble(this.rotation, this.uniform.rotation, t, 0D);
+            float zm = (float) this.valueDouble(this.zoom, this.uniform.zoom, t, DEFAULT_ZOOM);
+            float offX = (float) this.valueDouble(this.offsetX, this.uniform.offsetX, t, 0D);
+            float offY = (float) this.valueDouble(this.offsetY, this.uniform.offsetY, t, 0D);
 
             this.effect.size = sz * factor;
             this.effect.width = barWidth;
             this.effect.smoothness = smooth;
-            this.effect.color = Colors.setA(this.interpColor(this.color, t, DEFAULT_COLOR).getARGBColor(), 1F);
+            this.effect.color = Colors.setA(this.valueColor(this.color, this.uniform.color, t, DEFAULT_COLOR).getARGBColor(), 1F);
             this.effect.rotation = rot;
             this.effect.zoom = Math.max(0.01F, zm);
             this.effect.offsetX = offX;
@@ -160,6 +179,138 @@ public class LetterboxClip extends CameraClip
 
             getEffects(context).add(this.effect);
         }
+    }
+
+    private float resolveHeight(float t)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return (float) (double) this.uniform.height.get();
+        }
+
+        if (!this.height.isEmpty())
+        {
+            return (float) (double) this.height.interpolate(t);
+        }
+
+        /* Legacy films used the size channel before height existed. */
+        if (!this.size.isEmpty())
+        {
+            return (float) (double) this.size.interpolate(t);
+        }
+
+        return this.uniformSeeded.get() ? (float) (double) this.uniform.height.get() : (float) DEFAULT_HEIGHT;
+    }
+
+    /**
+     * Copy the current keyframed values into uniform storage the first time
+     * keyframe mode is disabled, without modifying the keyframe channels.
+     */
+    public void ensureUniformSeeded(float tick)
+    {
+        if (this.uniformSeeded.get())
+        {
+            return;
+        }
+
+        this.uniform.color.set(this.interpColor(this.color, tick, DEFAULT_COLOR).copy());
+        this.uniform.width.set(this.interpDouble(this.width, tick, DEFAULT_WIDTH));
+        this.uniform.height.set(this.resolveHeightForSeed(tick));
+        this.uniform.smoothness.set(this.interpDouble(this.smoothness, tick, 0D));
+        this.uniform.rotation.set(this.interpDouble(this.rotation, tick, 0D));
+        this.uniform.zoom.set(this.interpDouble(this.zoom, tick, DEFAULT_ZOOM));
+        this.uniform.offsetX.set(this.interpDouble(this.offsetX, tick, 0D));
+        this.uniform.offsetY.set(this.interpDouble(this.offsetY, tick, 0D));
+        this.uniformSeeded.set(true);
+    }
+
+    /**
+     * When enabling keyframe mode, fill any empty channels from uniform values
+     * so scrubbing/playback can interpolate. Existing keyframes are preserved.
+     */
+    public void ensureChannelsSeeded(float tick)
+    {
+        this.ensureUniformSeeded(tick);
+
+        this.seedColor(this.color, this.uniform.color.get());
+        this.seedDouble(this.width, this.uniform.width.get());
+        this.seedDouble(this.height, this.uniform.height.get());
+        this.seedDouble(this.smoothness, this.uniform.smoothness.get());
+        this.seedDouble(this.rotation, this.uniform.rotation.get());
+        this.seedDouble(this.zoom, this.uniform.zoom.get());
+        this.seedDouble(this.offsetX, this.uniform.offsetX.get());
+        this.seedDouble(this.offsetY, this.uniform.offsetY.get());
+    }
+
+    private double resolveHeightForSeed(float tick)
+    {
+        if (!this.height.isEmpty())
+        {
+            return this.height.interpolate(tick);
+        }
+
+        if (!this.size.isEmpty())
+        {
+            return this.size.interpolate(tick);
+        }
+
+        return DEFAULT_HEIGHT;
+    }
+
+    private void seedDouble(KeyframeChannel<Double> channel, double value)
+    {
+        if (channel.isEmpty())
+        {
+            channel.insert(0, value);
+        }
+    }
+
+    private void seedColor(KeyframeChannel<Color> channel, Color value)
+    {
+        if (channel.isEmpty())
+        {
+            channel.insert(0, value.copy());
+        }
+    }
+
+    private double valueDouble(KeyframeChannel<Double> channel, ValueDouble uniform, float t, double fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interpDouble(channel, t, fallback);
+    }
+
+    private Color valueColor(KeyframeChannel<Color> channel, ValueColor uniform, float t, Color fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interpColor(channel, t, fallback);
+    }
+
+    private double interpDouble(KeyframeChannel<Double> channel, float t, double fallback)
+    {
+        if (channel.isEmpty())
+        {
+            return fallback;
+        }
+
+        return channel.interpolate(t);
     }
 
     private Color interpColor(KeyframeChannel<Color> channel, float t, Color fallback)
