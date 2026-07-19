@@ -43,10 +43,12 @@ public class UIModelPoseEditor extends UIPoseEditor
         }
         else
         {
-            editor.poseModelGizmoTuning()
-                .invertModelPoseTrackballXZ()
-                .invertModelPoseTrackballDragY();
+            editor.poseModelGizmoTuning();
         }
+
+        /* Trackball mouse sense is applied in UIModelEditorRenderer.prepareGizmoDrag. */
+        editor.setInvertTrackballDragY(false);
+        editor.clearTrackballEulerInverts();
 
         return editor;
     }

@@ -14,6 +14,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPoseSectionCollapse;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
@@ -37,6 +38,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
     public UIColor color;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
+    public UIPoseSectionCollapse glowSection;
     public UITrackpad max;
     public UITrackpad anchorX;
     public UITrackpad anchorY;
@@ -112,6 +114,16 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         });
         this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
         this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
+        this.glowSection = new UIPoseSectionCollapse(
+            UIKeys.FORMS_EDITORS_GLOW,
+            Colors.ORANGE,
+            UI.column(
+                UI.label(UIKeys.FORMS_EDITORS_GLOWING_COLOR).marginTop(4),
+                this.glowingColor,
+                UI.label(UIKeys.FORMS_EDITORS_GLOW_INTENSITY),
+                this.glowIntensity
+            )
+        );
         this.max = new UITrackpad((value) -> this.form.max.set(value.intValue()));
         this.max.limit(-1, Integer.MAX_VALUE, true).increment(10);
         this.anchorX = new UITrackpad((value) -> this.form.anchorX.set(value.floatValue()));
@@ -219,7 +231,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
             this.gradientOffset.setValue(0.5F);
         });
 
-        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.nametag, this.color, this.glowingColor, this.glowIntensity, this.max);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.nametag, this.color, this.glowSection, this.max);
 
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_ANCHOR).marginTop(8), UI.row(this.anchorX, this.anchorY), this.anchorLines);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_SHADOW_OFFSET).marginTop(8), this.shadowX, this.shadowY);

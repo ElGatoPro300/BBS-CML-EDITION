@@ -110,6 +110,40 @@ public class UIFormColorAdjustments extends UIElement
         this.hueTransform.registerUndo(editor);
     }
 
+    /**
+     * Wire per-trackpad "Reset this value" (sets that grade channel to 0).
+     */
+    public void wireResetThisValue(BiConsumer<UITrackpad, Runnable> wire)
+    {
+        wire.accept(this.brightness, () -> this.resetChannel((color) -> color.brightness = 0F));
+        wire.accept(this.contrast, () -> this.resetChannel((color) -> color.contrast = 0F));
+        wire.accept(this.saturation, () -> this.resetChannel((color) -> color.saturation = 0F));
+        wire.accept(this.hue, () -> this.resetChannel((color) -> color.hue = 0F));
+    }
+
+    public void resetGrade()
+    {
+        this.resetChannel((color) ->
+        {
+            color.brightness = 0F;
+            color.contrast = 0F;
+            color.saturation = 0F;
+            color.hue = 0F;
+            color.brightnessTransform = new EffectTransform();
+            color.contrastTransform = new EffectTransform();
+            color.saturationTransform = new EffectTransform();
+            color.hueTransform = new EffectTransform();
+        });
+    }
+
+    private void resetChannel(Consumer<Color> editor)
+    {
+        Color copy = this.color.get().copy();
+
+        editor.accept(copy);
+        this.setter.accept(copy);
+    }
+
     public void setExpanded(boolean expanded)
     {
         if (this.expanded == expanded && this.shell.isOpen() == expanded)

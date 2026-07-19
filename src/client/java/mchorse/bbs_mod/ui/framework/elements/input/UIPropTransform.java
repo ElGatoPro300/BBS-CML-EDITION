@@ -429,6 +429,11 @@ public class UIPropTransform extends UITransform
         this.invertGizmoViewRing = invertGizmoViewRing;
     }
 
+    public void setInvertTrackballDragY(boolean invertTrackballDragY)
+    {
+        this.invertTrackballDragY = invertTrackballDragY;
+    }
+
     public void setFilmMatchPoseTrackball(boolean filmMatchPoseTrackball)
     {
         this.filmMatchPoseTrackball = filmMatchPoseTrackball;

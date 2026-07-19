@@ -1054,7 +1054,9 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         float b = 1F + (formColor.b - 1F) * mask;
 
         builder.vertex(matrix, x, y, z).color(r, g, b, mask).texture(u, v).overlay(overlay).light(light).normal(entry, 0F, 0F, nz);
+    }
 
+    /**
      * Local Z just outside the base face that points toward the camera. {@code viewModel}
      * is the same matrix used to transform overlay verts (camera × stack when deferred).
      */

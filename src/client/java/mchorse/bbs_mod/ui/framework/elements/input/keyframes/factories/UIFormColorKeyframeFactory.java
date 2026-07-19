@@ -4,6 +4,7 @@ import mchorse.bbs_mod.film.replays.FormProperties;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.LabelForm;
+import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -19,6 +20,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
@@ -30,11 +32,12 @@ import java.util.function.Consumer;
 
 /**
  * Film Color track: Blend Color (RGB + intensity + Transform) and Paint Color (RGB + intensity + Transform).
- * Label/text forms only expose Blend Color itself.
+ * Label/text forms only expose Blend Color itself. Trail forms hide Color grade but keep transforms.
  */
 public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
 {
     private final boolean simpleBlendColorOnly;
+    private final boolean hideColorGrade;
 
     private UIColor blendColor;
     private UITrackpad blendIntensity;
@@ -50,6 +53,7 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
         super(keyframe, editor);
 
         this.simpleBlendColorOnly = this.isSimpleBlendColorOnly();
+        this.hideColorGrade = this.isTrailForm();
 
         this.blendColor = new UIColor((c) -> this.applyColorEdit((color) ->
         {
@@ -74,26 +78,6 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
             this.blendIntensity.limit(0F, 1F).values(0.1D, 0.05D, 0.2D);
             this.blendIntensity.tooltip(UIKeys.FORMS_EDITORS_BLEND_INTENSITY);
             this.wireUndo(this.blendIntensity);
-
-            this.blendAdjustments = new UIFormColorAdjustments(
-                () -> this.getOrCreateColor(this.keyframe.getValue()),
-                (color) -> this.applyColorEdit((target) ->
-                {
-                    target.brightness = color.brightness;
-                    target.contrast = color.contrast;
-                    target.hue = color.hue;
-                    target.saturation = color.saturation;
-                    target.brightnessTransform = color.brightnessTransform == null ? new EffectTransform() : color.brightnessTransform.copy();
-                    target.contrastTransform = color.contrastTransform == null ? new EffectTransform() : color.contrastTransform.copy();
-                    target.hueTransform = color.hueTransform == null ? new EffectTransform() : color.hueTransform.copy();
-                    target.saturationTransform = color.saturationTransform == null ? new EffectTransform() : color.saturationTransform.copy();
-                })
-            );
-            this.wireUndo(this.blendAdjustments.brightness);
-            this.wireUndo(this.blendAdjustments.contrast);
-            this.wireUndo(this.blendAdjustments.hue);
-            this.wireUndo(this.blendAdjustments.saturation);
-            this.blendAdjustments.registerUndo(editor);
 
             this.blendTransform = new UIEffectTransformCollapse((apply) -> this.applyColorEdit((color) ->
             {
@@ -133,44 +117,170 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
             this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY), this.paintIntensity);
             this.scroll.add(this.paintTransform);
             this.scroll.add(this.spectrum.marginTop(8));
-            this.scroll.add(this.blendAdjustments.marginTop(4));
+
+            this.wireResetThisValue(this.blendIntensity, () -> this.applyColorEdit((color) -> color.a = 0F));
+            this.wireResetThisValue(this.paintIntensity, () -> this.applyPaintEdit((settings) -> settings.intensity = 0F));
+
+            if (!this.hideColorGrade)
+            {
+                this.blendAdjustments = new UIFormColorAdjustments(
+                    () -> this.getOrCreateColor(this.keyframe.getValue()),
+                    (color) -> this.applyColorEdit((target) ->
+                    {
+                        target.brightness = color.brightness;
+                        target.contrast = color.contrast;
+                        target.hue = color.hue;
+                        target.saturation = color.saturation;
+                        target.brightnessTransform = color.brightnessTransform == null ? new EffectTransform() : color.brightnessTransform.copy();
+                        target.contrastTransform = color.contrastTransform == null ? new EffectTransform() : color.contrastTransform.copy();
+                        target.hueTransform = color.hueTransform == null ? new EffectTransform() : color.hueTransform.copy();
+                        target.saturationTransform = color.saturationTransform == null ? new EffectTransform() : color.saturationTransform.copy();
+                    })
+                );
+                this.wireUndo(this.blendAdjustments.brightness);
+                this.wireUndo(this.blendAdjustments.contrast);
+                this.wireUndo(this.blendAdjustments.hue);
+                this.wireUndo(this.blendAdjustments.saturation);
+                this.blendAdjustments.registerUndo(editor);
+                this.blendAdjustments.wireResetThisValue(this::wireResetThisValue);
+                this.scroll.add(this.blendAdjustments.marginTop(4));
+            }
         }
         else
         {
             this.scroll.add(this.spectrum.marginTop(8));
         }
 
+        this.context((menu) ->
+        {
+            menu.action(Icons.CLOSE, UIKeys.FORMS_EDITORS_COLOR_RESET_ALL, this::resetAll);
+
+            if (!this.simpleBlendColorOnly)
+            {
+                menu.action(Icons.REFRESH, UIKeys.FORMS_EDITORS_COLOR_RESET_BLEND, this::resetBlendColor);
+                menu.action(Icons.REFRESH, UIKeys.FORMS_EDITORS_COLOR_RESET_PAINT, this::resetPaintColor);
+
+                if (!this.hideColorGrade)
+                {
+                    menu.action(Icons.REFRESH, UIKeys.FORMS_EDITORS_COLOR_RESET_GRADE, this::resetColorGrade);
+                }
+            }
+            else
+            {
+                menu.action(Icons.REFRESH, UIKeys.FORMS_EDITORS_COLOR_RESET_BLEND, this::resetBlendColor);
+            }
+        });
+
         this.update();
     }
 
-    private boolean isSimpleBlendColorOnly()
+    private Form getEditingForm()
     {
         if (this.editor == null)
         {
-            return false;
+            return null;
         }
 
         UIKeyframeSheet sheet = this.editor.getGraph().getSheet(this.keyframe);
 
         if (sheet != null && sheet.property != null)
         {
-            return FormUtils.getForm(sheet.property) instanceof LabelForm;
+            return FormUtils.getForm(sheet.property);
         }
 
         UIReplaysEditor replays = this.editor.getParent(UIReplaysEditor.class);
 
         if (replays == null || replays.getReplay() == null)
         {
-            return false;
+            return null;
         }
 
-        return replays.getReplay().form.get() instanceof LabelForm;
+        return replays.getReplay().form.get();
+    }
+
+    private boolean isSimpleBlendColorOnly()
+    {
+        return this.getEditingForm() instanceof LabelForm;
+    }
+
+    private boolean isTrailForm()
+    {
+        return this.getEditingForm() instanceof TrailForm;
     }
 
     private void wireUndo(UITrackpad trackpad)
     {
         trackpad.getEvents().register(UITrackpadDragStartEvent.class, (e) -> this.editor.cacheKeyframes());
         trackpad.getEvents().register(UITrackpadDragEndEvent.class, (e) -> this.editor.submitKeyframes());
+    }
+
+    private void wireResetThisValue(UITrackpad trackpad, Runnable reset)
+    {
+        trackpad.context((menu) -> menu.action(Icons.REFRESH, UIKeys.FORMS_EDITORS_COLOR_RESET_THIS_VALUE, () ->
+        {
+            if (this.editor != null)
+            {
+                this.editor.cacheKeyframes();
+            }
+
+            reset.run();
+
+            if (this.editor != null)
+            {
+                this.editor.submitKeyframes();
+            }
+
+            this.update();
+        }));
+    }
+
+    private void resetAll()
+    {
+        this.resetBlendColor();
+
+        if (!this.simpleBlendColorOnly)
+        {
+            this.resetPaintColor();
+
+            if (!this.hideColorGrade)
+            {
+                this.resetColorGrade();
+            }
+        }
+    }
+
+    private void resetBlendColor()
+    {
+        this.applyColorEdit((color) ->
+        {
+            color.set(1F, 1F, 1F, 1F);
+            color.transform = new EffectTransform();
+        });
+        this.update();
+    }
+
+    private void resetPaintColor()
+    {
+        this.applyPaintEdit((settings) ->
+        {
+            settings.r = 1F;
+            settings.g = 1F;
+            settings.b = 1F;
+            settings.intensity = 0F;
+            settings.transform = new EffectTransform();
+        });
+        this.update();
+    }
+
+    private void resetColorGrade()
+    {
+        if (this.blendAdjustments == null)
+        {
+            return;
+        }
+
+        this.blendAdjustments.resetGrade();
+        this.update();
     }
 
     @Override
@@ -193,7 +303,12 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
         PaintSettings paint = this.getPaintSettingsAtTick(this.keyframe.getTick());
 
         this.blendIntensity.setValue(MathUtils.clamp(value.a, 0F, 1F));
-        this.blendAdjustments.syncFromForm();
+
+        if (this.blendAdjustments != null)
+        {
+            this.blendAdjustments.syncFromForm();
+        }
+
         this.blendTransform.setEffectTransform(value.transform);
         this.paintColor.setColor(new Color().set(paint.r, paint.g, paint.b, 1F).getRGBColor());
         this.paintIntensity.setValue(paint.intensity);

@@ -5,6 +5,7 @@ import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorAdjustments;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
@@ -12,10 +13,12 @@ import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIItemStack;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPoseSectionCollapse;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 
@@ -28,6 +31,8 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
     public UIFormPaintTransform paintTransform;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
+    public UIPoseSectionCollapse colorSection;
+    public UIPoseSectionCollapse glowSection;
     public UIButton modelTransform;
     public UIToggle sameAnimationWhenDropped;
     public UIItemStack itemStackEditor;
@@ -105,6 +110,30 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         });
         this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
         this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
+        this.colorSection = new UIPoseSectionCollapse(
+            UIKeys.FILM_REPLAY_TRACK_COLOR,
+            UIReplaysEditor.getColor("color"),
+            UI.column(
+                UI.label(UIKeys.FORMS_EDITORS_BLEND_COLOR).marginTop(4),
+                this.color,
+                UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR).marginTop(4),
+                this.paintColor,
+                UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY),
+                this.paintIntensity,
+                this.paintTransform,
+                this.colorAdjustments.marginTop(4)
+            )
+        );
+        this.glowSection = new UIPoseSectionCollapse(
+            UIKeys.FORMS_EDITORS_GLOW,
+            Colors.ORANGE,
+            UI.column(
+                UI.label(UIKeys.FORMS_EDITORS_GLOWING_COLOR).marginTop(4),
+                this.glowingColor,
+                UI.label(UIKeys.FORMS_EDITORS_GLOW_INTENSITY),
+                this.glowIntensity
+            )
+        );
         this.modelTransform = new UIButton(IKey.EMPTY, (b) ->
         {
             this.getContext().replaceContextMenu((menu) ->
@@ -127,7 +156,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         this.sameAnimationWhenDropped.tooltip(UIKeys.FORMS_EDITORS_ITEM_SAME_ANIMATION_WHEN_DROPPED_TOOLTIP);
         this.itemStackEditor = new UIItemStack((itemStack) -> this.form.stack.set(itemStack.copy()));
 
-        this.options.add(this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.colorAdjustments, this.glowingColor, this.glowIntensity, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
+        this.options.add(this.colorSection, this.glowSection, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
     }
 
     private void setModelTransform(ModelTransformationMode value)

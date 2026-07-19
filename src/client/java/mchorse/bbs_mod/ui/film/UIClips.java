@@ -142,6 +142,8 @@ public class UIClips extends UIElement
     private List<Clip> otherClips = Collections.emptyList();
     private Set<Integer> snappingPoints = new HashSet<>();
     private List<Vector3i> grabbedData = new ArrayList<>();
+    /** Grab-start tick/layer/duration for {@link #otherClips} (ripple resize). */
+    private List<Vector3i> otherClipData = new ArrayList<>();
 
     private UICopyPasteController copyPasteController;
 
@@ -1657,6 +1659,7 @@ public class UIClips extends UIElement
                 this.grabbedClips = this.getClipsFromSelection();
                 this.otherClips = new ArrayList<>(this.clips.get());
                 this.otherClips.removeIf(this.grabbedClips::contains);
+                this.otherClipData.clear();
                 this.snappingPoints.clear();
                 this.snappingPoints.add(this.delegate.getCursor());
 
@@ -1685,6 +1688,7 @@ public class UIClips extends UIElement
 
                 for (Clip otherClip : this.otherClips)
                 {
+                    this.otherClipData.add(new Vector3i(otherClip.tick.get(), otherClip.layer.get(), otherClip.duration.get()));
                     this.snappingPoints.add(otherClip.tick.get());
                     this.snappingPoints.add(otherClip.tick.get() + otherClip.duration.get());
                 }
@@ -1823,7 +1827,8 @@ public class UIClips extends UIElement
         this.otherClips = Collections.emptyList();
         this.snappingPoints.clear();
         this.grabbedData.clear();
-        
+        this.otherClipData.clear();
+
         this.vertical.dragging = false;
     }
 
@@ -1998,28 +2003,44 @@ public class UIClips extends UIElement
 
     private void dragRightEdge(List<Clip> others, int dx, int dy)
     {
-        Vector3i data = grabbedData.get(grabbedData.size() - 1);
-        Clip clip = grabbedClips.get(grabbedClips.size() - 1);
+        Vector3i data = this.grabbedData.get(this.grabbedData.size() - 1);
+        Clip clip = this.grabbedClips.get(this.grabbedClips.size() - 1);
         int tick = data.x();
         int duration = data.z();
-        int newDuration = duration + dx;
-        int snapped = this.snap(tick + newDuration);
-        int maxRight = others.stream()
-            .filter((o) -> this.sameLayer(o, clip) && o.tick.get() >= tick + duration)
-            .mapToInt((o) -> o.tick.get())
-            .min()
-            .orElse(Integer.MAX_VALUE);
+        int originalEnd = tick + duration;
+        int snapped = this.snap(tick + duration + dx);
+        int newDuration = Math.max(1, snapped - tick);
+        int desiredEnd = tick + newDuration;
 
-        newDuration = snapped - tick;
-
-        if (tick + newDuration >= maxRight)
+        /* Push same-layer clips ahead instead of clamping/overlapping.
+         * Alt keeps others empty so free overlap still works. */
+        if (!others.isEmpty() && this.otherClipData.size() == this.otherClips.size())
         {
-            newDuration = maxRight - tick;
-        }
+            int nextStart = Integer.MAX_VALUE;
 
-        if (newDuration < 1)
-        {
-            newDuration = 1;
+            for (int i = 0; i < this.otherClips.size(); i++)
+            {
+                Clip other = this.otherClips.get(i);
+                Vector3i od = this.otherClipData.get(i);
+
+                if (this.sameLayer(other, clip) && od.x() >= originalEnd)
+                {
+                    nextStart = Math.min(nextStart, od.x());
+                }
+            }
+
+            int overflow = desiredEnd > nextStart ? desiredEnd - nextStart : 0;
+
+            for (int i = 0; i < this.otherClips.size(); i++)
+            {
+                Clip other = this.otherClips.get(i);
+                Vector3i od = this.otherClipData.get(i);
+
+                if (this.sameLayer(other, clip) && od.x() >= originalEnd)
+                {
+                    this.setClipData(other, od.x() + overflow, od.y(), od.z());
+                }
+            }
         }
 
         this.setClipData(clip, tick, data.y(), newDuration);

@@ -5,6 +5,7 @@ import mchorse.bbs_mod.forms.forms.BillboardForm;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorAdjustments;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
@@ -12,12 +13,14 @@ import mchorse.bbs_mod.ui.forms.editors.utils.UICropOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPoseSectionCollapse;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
 {
@@ -35,6 +38,8 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
     public UIFormPaintTransform paintTransform;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
+    public UIPoseSectionCollapse colorSection;
+    public UIPoseSectionCollapse glowSection;
 
     public UITrackpad offsetX;
     public UITrackpad offsetY;
@@ -129,6 +134,30 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
         });
         this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
         this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
+        this.colorSection = new UIPoseSectionCollapse(
+            UIKeys.FILM_REPLAY_TRACK_COLOR,
+            UIReplaysEditor.getColor("color"),
+            UI.column(
+                UI.label(UIKeys.FORMS_EDITORS_BLEND_COLOR).marginTop(4),
+                this.color,
+                UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR).marginTop(4),
+                this.paintColor,
+                UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY),
+                this.paintIntensity,
+                this.paintTransform,
+                this.colorAdjustments.marginTop(4)
+            )
+        );
+        this.glowSection = new UIPoseSectionCollapse(
+            UIKeys.FORMS_EDITORS_GLOW,
+            Colors.ORANGE,
+            UI.column(
+                UI.label(UIKeys.FORMS_EDITORS_GLOWING_COLOR).marginTop(4),
+                this.glowingColor,
+                UI.label(UIKeys.FORMS_EDITORS_GLOW_INTENSITY),
+                this.glowIntensity
+            )
+        );
 
         this.offsetX = new UITrackpad((value) -> this.form.offsetX.set(value.floatValue()));
         this.offsetX.tooltip(UIKeys.FORMS_EDITORS_BILLBOARD_OFFSET_X);
@@ -143,7 +172,7 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
         this.pbrSpecularIntensity = new UITrackpad((value) -> this.form.pbrSpecularIntensity.set(value.floatValue()));
         this.pbrSpecularIntensity.tooltip(UIKeys.FORMS_EDITOR_MODEL_PBR_SPECULAR_INTENSITY);
 
-        this.options.add(this.pick, this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.colorAdjustments, this.glowingColor, this.glowIntensity, this.billboard, this.linear, this.mipmap);
+        this.options.add(this.pick, this.colorSection, this.glowSection, this.billboard, this.linear, this.mipmap);
 
         if (BBSSettings.modelPbrPanelControls != null && BBSSettings.modelPbrPanelControls.get())
         {

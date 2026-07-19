@@ -589,6 +589,13 @@ public class ServerNetwork
 
                 sendStopFilm(player, filmId);
             }
+            else if (state == ActionState.RESTORE)
+            {
+                ActionPlayer actionPlayer = actions.getPlayer(filmId);
+                ServerWorld world = actionPlayer != null ? actionPlayer.getWorld() : player.getServerWorld();
+
+                actions.restoreDamage(world);
+            }
             else if (state == ActionState.STOP)
             {
                 actions.stop(filmId);

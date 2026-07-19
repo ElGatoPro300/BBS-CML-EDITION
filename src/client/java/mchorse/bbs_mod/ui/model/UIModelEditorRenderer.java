@@ -614,17 +614,18 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
         if (this.formTransformGizmoDrag)
         {
-            /* General transform: same trackball / view-ring tuning as model-editor pose. */
+            /* General transform: natural view-ring + trackball sense (follow mouse). */
             transform.setInvertGizmoViewRing(false);
             transform.setInvertGizmoTrackball(false);
+            transform.setInvertTrackballDragY(false);
             transform.clearTrackballEulerInverts();
-            transform.invertModelPoseTrackballXZ();
         }
         else
         {
-            /* Pose trackball: same ray path as General transform; no X/Z euler sign flips. */
+            /* Pose: same natural sense as General transform — follow mouse drag. */
             transform.setInvertGizmoViewRing(false);
             transform.setInvertGizmoTrackball(false);
+            transform.setInvertTrackballDragY(false);
             transform.clearTrackballEulerInverts();
             transform.setFilmMatchPoseTrackball(true);
             transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(

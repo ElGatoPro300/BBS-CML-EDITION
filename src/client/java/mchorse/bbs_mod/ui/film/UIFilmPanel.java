@@ -234,7 +234,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private int lastDragMouseY;
     private boolean tabReordering;
     private String tabReorderPanelId;
-    private int tabReorderCurrentIndex;
+    private int tabReorderFromIndex;
+    private int tabReorderDropPreview = -1;
+    private int tabReorderGapX;
+    private int tabReorderGapW;
     private EditorLayoutNode.TabbedNode tabReorderTabbedNode;
     private UITabBar tabReorderTabBar;
     private static final int HOME_BANNER_HEIGHT = 108;
@@ -1846,7 +1849,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.tabReordering = false;
         this.tabReorderPanelId = null;
-        this.tabReorderCurrentIndex = 0;
+        this.tabReorderFromIndex = 0;
+        this.tabReorderDropPreview = -1;
+        this.tabReorderGapX = 0;
+        this.tabReorderGapW = 0;
         this.tabReorderTabbedNode = null;
         this.tabReorderTabBar = null;
     }
@@ -1869,32 +1875,41 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return null;
     }
 
-    private int getTabIndexAtMouse(UITabBar tabBar, int mouseX)
+    /**
+     * Drop index among remaining visible tabs (dragged omitted), 0..count inclusive.
+     */
+    private int getTabDropPreviewIndex(UITabBar tabBar, int mouseX)
     {
-        if (tabBar == null)
+        if (tabBar == null || this.tabReorderPanelId == null)
         {
             return -1;
         }
 
-        UITab lastTab = null;
+        int remaining = 0;
 
         for (IUIElement child : tabBar.getChildren())
         {
-            if (child instanceof UITab)
+            if (!(child instanceof UITab))
             {
-                UITab tab = (UITab) child;
-                int mid = tab.area.x + tab.area.w / 2;
-
-                if (mouseX < mid)
-                {
-                    return tab.index;
-                }
-
-                lastTab = tab;
+                continue;
             }
+
+            UITab tab = (UITab) child;
+
+            if (this.hiddenPanels.contains(tab.panelId) || this.tabReorderPanelId.equals(tab.panelId))
+            {
+                continue;
+            }
+
+            if (mouseX < tab.area.x + tab.area.w / 2)
+            {
+                return remaining;
+            }
+
+            remaining += 1;
         }
 
-        return lastTab == null ? -1 : lastTab.index;
+        return remaining;
     }
 
     private void updateTabReorder(int mouseX, int mouseY)
@@ -1913,26 +1928,43 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.tabReorderTabBar = tabBar;
 
-        int targetIndex = this.getTabIndexAtMouse(tabBar, mouseX);
+        int preview = this.getTabDropPreviewIndex(tabBar, mouseX);
 
-        if (targetIndex < 0 || targetIndex == this.tabReorderCurrentIndex)
+        if (preview >= 0)
+        {
+            this.tabReorderDropPreview = preview;
+        }
+    }
+
+    private void finishTabReorder()
+    {
+        if (this.tabReorderPanelId == null)
+        {
+            this.clearTabReorderState();
+
+            return;
+        }
+
+        int from = this.tabReorderFromIndex;
+        int to = this.tabReorderDropPreview;
+
+        String panelId = this.tabReorderPanelId;
+
+        this.clearTabReorderState();
+
+        if (to < 0)
         {
             return;
         }
 
         EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
-        EditorLayoutNode newRoot = EditorLayoutNode.copyWithReorderedTabs(root, this.tabReorderPanelId, this.tabReorderCurrentIndex, targetIndex);
+        EditorLayoutNode newRoot = EditorLayoutNode.copyWithReorderedTabs(root, panelId, from, to);
 
-        if (newRoot == root)
+        if (newRoot != root)
         {
-            return;
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(newRoot);
+            this.setupEditorFlex(true, false, true);
         }
-
-        this.tabReorderCurrentIndex = targetIndex;
-        BBSSettings.editorLayoutSettings.setFilmLayoutRoot(newRoot);
-        this.tabReorderTabbedNode = this.findTabbedNodeContaining(newRoot, this.tabReorderPanelId);
-        this.setupEditorFlex(true, false, true);
-        this.tabReorderTabBar = this.findTabBarForPanel(this.tabReorderPanelId);
     }
 
     private void startTabReorderFromFloat(String panelId, int mouseX, int mouseY)
@@ -7608,16 +7640,108 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         @Override
         public void render(UIContext context)
         {
+            if (this.panel.tabReordering && this.panel.tabReorderTabBar == this && this.panel.tabReorderPanelId != null)
+            {
+                if (!this.panel.isInsideTabBarArea(this, context.mouseX, context.mouseY))
+                {
+                    this.panel.startTabReorderFromFloat(this.panel.tabReorderPanelId, context.mouseX, context.mouseY);
+                }
+                else
+                {
+                    this.panel.updateTabReorder(context.mouseX, context.mouseY);
+                }
+            }
+
             this.layoutTabs(context);
             context.batcher.clip(this.area, context);
+            this.renderDropGap(context);
             super.render(context);
+            this.renderDragGhost(context);
             context.batcher.unclip(context);
+        }
+
+        private void renderDropGap(UIContext context)
+        {
+            if (!this.panel.tabReordering || this.panel.tabReorderTabBar != this || this.panel.tabReorderDropPreview < 0 || this.panel.tabReorderGapW <= 0)
+            {
+                return;
+            }
+
+            int x1 = this.panel.tabReorderGapX;
+            int y1 = this.area.y;
+            int x2 = x1 + this.panel.tabReorderGapW;
+            int y2 = this.area.ey();
+            int halo = Colors.setA(BBSSettings.primaryColor.get(), 0.35F);
+            int border = Colors.setA(BBSSettings.primaryColor.get(), 0.65F);
+
+            context.batcher.gradientVBox(x1, y1, x2, y2, 0, halo);
+            context.batcher.outline(x1, y1, x2, y2, border);
+        }
+
+        private void renderDragGhost(UIContext context)
+        {
+            if (!this.panel.tabReordering || this.panel.tabReorderTabBar != this || this.panel.tabReorderPanelId == null)
+            {
+                return;
+            }
+
+            UITab dragged = null;
+
+            for (IUIElement child : this.getChildren())
+            {
+                if (child instanceof UITab tab && this.panel.tabReorderPanelId.equals(tab.panelId))
+                {
+                    dragged = tab;
+                    break;
+                }
+            }
+
+            if (dragged == null)
+            {
+                return;
+            }
+
+            int w = Math.max(this.panel.tabReorderGapW, 40);
+            int h = this.area.h;
+            int x = context.mouseX - w / 2;
+            int y = this.area.y;
+
+            context.batcher.box(x, y, x + w, y + h, 0xCC2A2A30);
+            context.batcher.outline(x, y, x + w, y + h, 0xFF15151A);
+
+            Icon icon = dragged.resolveIcon();
+            String label = dragged.resolveName().get();
+            int color = 0xFF000000 | BBSSettings.primaryColor.get();
+
+            context.batcher.icon(icon, color, x + 11, y + h / 2, 0.5F, 0.5F);
+            context.batcher.text(label, x + 22, y + (h - context.batcher.getFont().getHeight()) / 2, color);
         }
 
         private void layoutTabs(UIContext context)
         {
             int x = this.area.x - this.scroll;
             int total = 0;
+            boolean reordering = this.panel.tabReordering && this.panel.tabReorderTabBar == this && this.panel.tabReorderPanelId != null;
+            int dropPreview = this.panel.tabReorderDropPreview;
+            int draggedWidth = 0;
+            int remainingIndex = 0;
+
+            this.panel.tabReorderGapX = 0;
+            this.panel.tabReorderGapW = 0;
+
+            if (reordering)
+            {
+                for (IUIElement child : this.getChildren())
+                {
+                    if (child instanceof UITab tab && this.panel.tabReorderPanelId.equals(tab.panelId))
+                    {
+                        IKey nameKey = tab.resolveName();
+
+                        draggedWidth = 22 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
+                        break;
+                    }
+                }
+            }
 
             for (IUIElement child : this.getChildren())
             {
@@ -7629,39 +7753,47 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                        them back into view while the Window menu says they're hidden, and their
                        presence affects scroll/width calculations. */
                     boolean hidden = this.panel.hiddenPanels.contains(tab.panelId);
-                    tab.setVisible(!hidden);
+                    boolean isDragged = reordering && this.panel.tabReorderPanelId.equals(tab.panelId);
+
+                    tab.setVisible(!hidden && !isDragged);
 
                     if (hidden)
                     {
                         continue;
                     }
 
+                    IKey nameKey = tab.resolveName();
+                    int w = isDragged ? draggedWidth : (22 + context.batcher.getFont().getWidth(nameKey.get()) + 8);
+
+                    if (isDragged)
+                    {
+                        tab.area.set(this.area.x - 1000, this.area.y, w, this.area.h);
+                        continue;
+                    }
+
+                    if (reordering && dropPreview >= 0 && remainingIndex == dropPreview && draggedWidth > 0)
+                    {
+                        this.panel.tabReorderGapX = x;
+                        this.panel.tabReorderGapW = draggedWidth;
+                        x += draggedWidth;
+                        total += draggedWidth;
+                    }
+
                     tab.area.x = x;
                     tab.area.y = this.area.y;
                     tab.area.h = this.area.h;
-                    
-                    IKey nameKey = IKey.raw(tab.panelId);
-                    switch (tab.panelId) {
-                        case "cameraTimeline": nameKey = UIKeys.FILM_CAMERA_TIMELINE; break;
-                        case "replayTimeline": nameKey = UIKeys.FILM_REPLAY_TIMELINE; break;
-                        case "actionTimeline": nameKey = UIKeys.FILM_ACTION_TIMELINE; break;
-                        case "cameraEditor": nameKey = UIKeys.FILM_OPEN_CAMERA_EDITOR; break;
-                        case "replayEditor": nameKey = UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
-                        case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
-                        case ANCHORED_REPLAYS_PANEL_ID: nameKey = UIKeys.FILM_REPLAY_TITLE; break;
-                        case ANCHORED_REPLAYS_PROPERTIES_PANEL_ID: nameKey = UIKeys.FILM_REPLAY_SECTION_GENERAL; break;
-                        case "editArea": nameKey = UIKeys.RAW_PROPERTIES; break;
-                        case "cameraEditArea": nameKey = UIKeys.FILM_WORKSPACE_CAMERA_PROPERTIES; break;
-                        case "actionEditArea": nameKey = UIKeys.FILM_WORKSPACE_ACTION_PROPERTIES; break;
-                        case "unifiedEditArea": nameKey = UIKeys.FILM_WORKSPACE_UNIFIED_PROPERTIES; break;
-                        case "preview": nameKey = UIKeys.RAW_VIEWPORT; break;
-                        case "main": nameKey = UIKeys.RAW_TIMELINE; break;
-                    }
-                    int w = 22 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
                     tab.area.w = w;
                     x += w;
                     total += w;
+                    remainingIndex += 1;
                 }
+            }
+
+            if (reordering && dropPreview >= 0 && remainingIndex == dropPreview && draggedWidth > 0)
+            {
+                this.panel.tabReorderGapX = x;
+                this.panel.tabReorderGapW = draggedWidth;
+                total += draggedWidth;
             }
 
             this.totalWidth = total;
@@ -7727,6 +7859,19 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
 
             return null;
+        }
+
+        @Override
+        protected boolean subMouseReleased(UIContext context)
+        {
+            if (this.panel.tabReordering && this.panel.tabReorderTabBar == this)
+            {
+                this.panel.finishTabReorder();
+
+                return true;
+            }
+
+            return super.subMouseReleased(context);
         }
 
         @Override
@@ -7800,6 +7945,50 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.index = index;
         }
 
+        private IKey resolveName()
+        {
+            IKey name = IKey.raw(this.panelId);
+
+            if (this.panelId.equals("cameraTimeline")) name = UIKeys.FILM_CAMERA_TIMELINE;
+            else if (this.panelId.equals("replayTimeline")) name = UIKeys.FILM_REPLAY_TIMELINE;
+            else if (this.panelId.equals("actionTimeline")) name = UIKeys.FILM_ACTION_TIMELINE;
+            else if (this.panelId.equals("cameraEditor")) name = UIKeys.FILM_OPEN_CAMERA_EDITOR;
+            else if (this.panelId.equals("replayEditor")) name = UIKeys.FILM_OPEN_REPLAY_EDITOR;
+            else if (this.panelId.equals("actionEditor")) name = UIKeys.FILM_OPEN_ACTION_EDITOR;
+            else if (this.panelId.equals(ANCHORED_REPLAYS_PANEL_ID)) name = UIKeys.FILM_REPLAY_TITLE;
+            else if (this.panelId.equals(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID)) name = UIKeys.FILM_REPLAY_SECTION_GENERAL;
+            else if (this.panelId.equals("editArea")) name = UIKeys.RAW_PROPERTIES;
+            else if (this.panelId.equals("cameraEditArea")) name = UIKeys.FILM_WORKSPACE_CAMERA_PROPERTIES;
+            else if (this.panelId.equals("actionEditArea")) name = UIKeys.FILM_WORKSPACE_ACTION_PROPERTIES;
+            else if (this.panelId.equals("unifiedEditArea")) name = UIKeys.FILM_WORKSPACE_UNIFIED_PROPERTIES;
+            else if (this.panelId.equals("preview")) name = UIKeys.RAW_VIEWPORT;
+            else if (this.panelId.equals("main")) name = UIKeys.RAW_TIMELINE;
+
+            return name;
+        }
+
+        private Icon resolveIcon()
+        {
+            Icon icon = Icons.FILM;
+
+            if (this.panelId.equals("cameraTimeline")) icon = Icons.FRUSTUM;
+            else if (this.panelId.equals("replayTimeline")) icon = Icons.SCENE;
+            else if (this.panelId.equals("actionTimeline")) icon = Icons.ACTION;
+            else if (this.panelId.equals("cameraEditor")) icon = Icons.FRUSTUM;
+            else if (this.panelId.equals("replayEditor")) icon = Icons.SCENE;
+            else if (this.panelId.equals("actionEditor")) icon = Icons.ACTION;
+            else if (this.panelId.equals(ANCHORED_REPLAYS_PANEL_ID)) icon = Icons.EDITOR;
+            else if (this.panelId.equals(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID)) icon = Icons.EDIT;
+            else if (this.panelId.equals("editArea")) icon = Icons.EDIT;
+            else if (this.panelId.equals("cameraEditArea")) icon = Icons.EDIT;
+            else if (this.panelId.equals("actionEditArea")) icon = Icons.EDIT;
+            else if (this.panelId.equals("unifiedEditArea")) icon = Icons.EDIT;
+            else if (this.panelId.equals("preview")) icon = Icons.CAMERA;
+            else if (this.panelId.equals("main")) icon = Icons.STOPWATCH;
+
+            return icon;
+        }
+
         private UITabBar getTabBar()
         {
             IUIElement parent = this.getParent();
@@ -7817,16 +8006,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             if (this.panel.tabReordering && this.panel.tabReorderPanelId != null && this.panel.tabReorderPanelId.equals(this.panelId))
             {
-                UITabBar tabBar = this.panel.tabReorderTabBar != null ? this.panel.tabReorderTabBar : this.getTabBar();
-
-                if (!this.panel.isInsideTabBarArea(tabBar, context.mouseX, context.mouseY))
-                {
-                    this.panel.startTabReorderFromFloat(this.panelId, context.mouseX, context.mouseY);
-                }
-                else
-                {
-                    this.panel.updateTabReorder(context.mouseX, context.mouseY);
-                }
+                /* Dragged tab is hidden; reorder updates run on the tab bar. */
             }
             else if (this.panel.mouseHeldPanelId != null && this.panel.mouseHeldPanelId.equals(this.panelId) && this.panel.draggingPanelId == null)
             {
@@ -7843,7 +8023,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         this.panel.mouseHeldPanelId = null;
                         this.panel.tabReordering = true;
                         this.panel.tabReorderPanelId = this.panelId;
-                        this.panel.tabReorderCurrentIndex = this.index;
+                        this.panel.tabReorderFromIndex = this.index;
+                        this.panel.tabReorderDropPreview = this.index;
                         this.panel.tabReorderTabbedNode = this.tabbedNode;
                         this.panel.tabReorderTabBar = tabBar;
                     }
@@ -7866,6 +8047,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.panel.updateDropTargetFromMouse(context.mouseX, context.mouseY);
             }
 
+            if (!this.isVisible())
+            {
+                return;
+            }
+
             boolean active = this.tabbedNode.activeTab == this.index;
             boolean hovered = this.getParent() != null && this.getParent().area.isInside(context) && this.area.isInside(context);
             if (active)
@@ -7879,24 +8065,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xDD17171B);
                 context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
             }
-            
-            // Render icon and name based on panelId
-            Icon icon = Icons.FILM;
-            IKey name = IKey.raw(this.panelId);
-            if (this.panelId.equals("cameraTimeline")) { icon = Icons.FRUSTUM; name = UIKeys.FILM_CAMERA_TIMELINE; }
-            else if (this.panelId.equals("replayTimeline")) { icon = Icons.SCENE; name = UIKeys.FILM_REPLAY_TIMELINE; }
-            else if (this.panelId.equals("actionTimeline")) { icon = Icons.ACTION; name = UIKeys.FILM_ACTION_TIMELINE; }
-            else if (this.panelId.equals("cameraEditor")) { icon = Icons.FRUSTUM; name = UIKeys.FILM_OPEN_CAMERA_EDITOR; }
-            else if (this.panelId.equals("replayEditor")) { icon = Icons.SCENE; name = UIKeys.FILM_OPEN_REPLAY_EDITOR; }
-            else if (this.panelId.equals("actionEditor")) { icon = Icons.ACTION; name = UIKeys.FILM_OPEN_ACTION_EDITOR; }
-            else if (this.panelId.equals(ANCHORED_REPLAYS_PANEL_ID)) { icon = Icons.EDITOR; name = UIKeys.FILM_REPLAY_TITLE; }
-            else if (this.panelId.equals(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID)) { icon = Icons.EDIT; name = UIKeys.FILM_REPLAY_SECTION_GENERAL; }
-            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = UIKeys.RAW_PROPERTIES; }
-            else if (this.panelId.equals("cameraEditArea")) { icon = Icons.EDIT; name = UIKeys.FILM_WORKSPACE_CAMERA_PROPERTIES; }
-            else if (this.panelId.equals("actionEditArea")) { icon = Icons.EDIT; name = UIKeys.FILM_WORKSPACE_ACTION_PROPERTIES; }
-            else if (this.panelId.equals("unifiedEditArea")) { icon = Icons.EDIT; name = UIKeys.FILM_WORKSPACE_UNIFIED_PROPERTIES; }
-            else if (this.panelId.equals("preview")) { icon = Icons.CAMERA; name = UIKeys.RAW_VIEWPORT; }
-            else if (this.panelId.equals("main")) { icon = Icons.STOPWATCH; name = UIKeys.RAW_TIMELINE; }
+
+            Icon icon = this.resolveIcon();
+            IKey name = this.resolveName();
 
             int color = hovered || active ? (0xFF000000 | BBSSettings.primaryColor.get()) : 0xFFFFFFFF;
             int textY = this.area.y + (this.area.h - context.batcher.getFont().getHeight()) / 2;
@@ -7949,10 +8120,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             if (this.panel.tabReordering && this.panel.tabReorderPanelId != null && this.panel.tabReorderPanelId.equals(this.panelId))
             {
-                ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-
-                layout.setFilmLayoutRoot(layout.getFilmLayoutRoot());
-                this.panel.clearTabReorderState();
+                this.panel.finishTabReorder();
 
                 return true;
             }

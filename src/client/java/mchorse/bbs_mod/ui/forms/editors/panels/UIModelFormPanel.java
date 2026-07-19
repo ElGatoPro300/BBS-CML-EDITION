@@ -4,20 +4,21 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorAdjustments;
-import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorTransform;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIModelPoseEditor;
-import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
-import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UIEffectTransformCollapse;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPoseSectionCollapse;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
@@ -27,6 +28,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.shapes.UIShapeKeys;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.Set;
 
@@ -34,12 +36,15 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 {
     public UIColor color;
     public UIFormColorAdjustments colorAdjustments;
-    public UIFormColorTransform colorTransform;
+    public UIEffectTransformCollapse colorTransform;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
-    public UIFormPaintTransform paintTransform;
+    public UIEffectTransformCollapse paintTransform;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
+
+    public UIPoseSectionCollapse colorSection;
+    public UIPoseSectionCollapse glowSection;
 
     public UIModelPoseEditor poseEditor;
     public UIShapeKeys shapeKeys;
@@ -48,9 +53,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
     public UIButton pickModel;
     public UIButton pick;
-    public UIButton colorsAndGlowButton;
-
-    private UIElement colorsAndGlowContent;
 
     public UIModelFormPanel(UIForm editor)
     {
@@ -96,10 +98,18 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             this.form.color.setRuntimeValue(null);
             this.form.color.set(color);
         });
-        this.colorTransform = new UIFormColorTransform(() -> this.form.color.get(), (color) ->
+        this.colorTransform = new UIEffectTransformCollapse((apply) ->
         {
+            Color copy = this.form.color.get().copy();
+
+            if (copy.transform == null)
+            {
+                copy.transform = new EffectTransform();
+            }
+
+            apply.accept(copy.transform);
             this.form.color.setRuntimeValue(null);
-            this.form.color.set(color);
+            this.form.color.set(copy);
         });
         this.paintColor = new UIColor((c) ->
         {
@@ -134,7 +144,18 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         });
         this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
         this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
-        this.paintTransform = new UIFormPaintTransform(() -> this.form.paintSettings.get(), (settings) -> this.form.paintSettings.set(settings));
+        this.paintTransform = new UIEffectTransformCollapse((apply) ->
+        {
+            PaintSettings settings = this.form.paintSettings.get().copy();
+
+            if (settings.transform == null)
+            {
+                settings.transform = new EffectTransform();
+            }
+
+            apply.accept(settings.transform);
+            this.form.paintSettings.set(settings);
+        });
         this.glowingColor = new UIColor((c) ->
         {
             Color color = new Color().set(c);
@@ -161,6 +182,31 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         });
         this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
         this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
+        this.colorSection = new UIPoseSectionCollapse(
+            UIKeys.FILM_REPLAY_TRACK_COLOR,
+            UIReplaysEditor.getColor("color"),
+            UI.column(
+                UI.label(UIKeys.FORMS_EDITORS_BLEND_COLOR).marginTop(4),
+                this.color,
+                this.colorTransform,
+                UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR).marginTop(4),
+                this.paintColor,
+                UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY),
+                this.paintIntensity,
+                this.paintTransform,
+                this.colorAdjustments.marginTop(4)
+            )
+        );
+        this.glowSection = new UIPoseSectionCollapse(
+            UIKeys.FORMS_EDITORS_GLOW,
+            Colors.ORANGE,
+            UI.column(
+                UI.label(UIKeys.FORMS_EDITORS_GLOWING_COLOR).marginTop(4),
+                this.glowingColor,
+                UI.label(UIKeys.FORMS_EDITORS_GLOW_INTENSITY),
+                this.glowIntensity
+            )
+        );
         this.poseEditor = new UIModelPoseEditor();
         this.poseEditor.setDefaultTextureSupplier(() ->
         {
@@ -197,20 +243,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrSpecularIntensity = new UITrackpad((value) -> this.form.pbrSpecularIntensity.set(value.floatValue()));
         this.pbrSpecularIntensity.tooltip(UIKeys.FORMS_EDITOR_MODEL_PBR_SPECULAR_INTENSITY);
 
-        this.colorsAndGlowContent = UI.column(5, 0,
-            this.color,
-            this.colorTransform,
-            this.paintColor,
-            this.paintIntensity,
-            this.paintTransform,
-            this.colorAdjustments,
-            this.glowingColor,
-            this.glowIntensity
-        );
-
-        this.colorsAndGlowButton = new UIButton(UIKeys.FORMS_EDITORS_COLORS_AND_GLOW, (b) -> this.openColorsAndGlowOverlay());
-        this.colorsAndGlowButton.w(1F);
-
         this.options.add(this.pickModel);
         if (BBSSettings.pickLimbTexture.get())
         {
@@ -221,14 +253,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             this.options.add(this.pbrNormalIntensity, this.pbrSpecularIntensity);
         }
 
-        this.options.add(this.colorsAndGlowButton, this.poseEditor);
-    }
-
-    private void openColorsAndGlowOverlay()
-    {
-        UIGeneralSectionOverlayPanel panel = new UIGeneralSectionOverlayPanel(UIKeys.FORMS_EDITORS_COLORS_AND_GLOW, this.colorsAndGlowContent).resizable();
-
-        UIOverlay.addOverlay(this.getContext(), panel, 280, 320);
+        this.options.add(this.colorSection, this.glowSection, this.poseEditor);
     }
 
     private void resetMainColor()
@@ -242,6 +267,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
         this.form.color.set(white.copy());
         this.color.setColor(white.getARGBColor());
+        this.colorTransform.setEffectTransform(new EffectTransform());
         this.colorAdjustments.syncFromForm();
         this.editor.startEdit(this.form);
     }
@@ -260,6 +286,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.form.paintSettings.set(settings);
         this.paintColor.setColor(legacy.getRGBColor());
         this.paintIntensity.setValue(settings.intensity);
+        this.paintTransform.setEffectTransform(new EffectTransform());
         this.editor.startEdit(this.form);
     }
 
@@ -304,14 +331,16 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrSpecularIntensity.setValue(form.pbrSpecularIntensity.get());
         this.color.setColor(form.color.get().getARGBColor());
         this.colorAdjustments.syncFromForm();
-        this.colorTransform.syncFromForm();
+        Color formColor = form.color.get();
+
+        this.colorTransform.setEffectTransform(formColor.transform == null ? new EffectTransform() : formColor.transform);
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 
         paint.resolveColor(form.paintColor.get(), paintDisplay);
         this.paintColor.setColor(paintDisplay.getRGBColor());
         this.paintIntensity.setValue(paint.intensity);
-        this.paintTransform.syncFromForm();
+        this.paintTransform.setEffectTransform(paint.transform == null ? new EffectTransform() : paint.transform);
         GlowSettings glow = form.glowSettings.get();
         Color glowDisplay = new Color();
 

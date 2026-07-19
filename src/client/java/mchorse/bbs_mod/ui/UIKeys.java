@@ -289,6 +289,7 @@ public class UIKeys
     public static final IKey CONFIG_APPLY = L10n.lang("bbs.ui.config.apply");
     public static final IKey CONFIG_CANCEL = L10n.lang("bbs.ui.config.cancel");
     public static final IKey CONFIG_APPLIED = L10n.lang("bbs.ui.config.applied");
+    public static final IKey CONFIG_RELOAD = L10n.lang("bbs.ui.config.reload");
     public static final IKey CONTEXT_MENU_KEY = L10n.lang("bbs.ui.context.key");
     public static final IKey CONTEXT_MENU_KEY_CATEGORY = L10n.lang("bbs.ui.context.key_category");
     public static final IKey COMING_SOON = L10n.lang("bbs.ui.coming_soon");
@@ -506,6 +507,7 @@ public class UIKeys
     public static final IKey FILM_PREVIEW_TOGGLE_SHADERS = L10n.lang("bbs.ui.film.preview.toggle_shaders");
     public static final IKey FILM_PREVIEW_SHADER_SETTINGS = L10n.lang("bbs.ui.film.preview.shader_settings");
     public static final IKey FILM_PREVIEW_CHANGE_SHADER = L10n.lang("bbs.ui.film.preview.change_shader");
+    public static final IKey FILM_PREVIEW_RESTORE_BLOCKS = L10n.lang("bbs.ui.film.preview.restore_blocks");
     public static final IKey FILM_PREVIEW_VIEWPORT_TOOLBAR_HINT = L10n.lang("bbs.ui.film.preview.viewport_toolbar.hint");
     public static final IKey FILM_PREVIEW_GIZMO_TOOLBAR_HINT = L10n.lang("bbs.ui.film.preview.gizmo_toolbar.hint");
     public static final IKey FILM_TITLE = L10n.lang("bbs.ui.film.title");
@@ -673,6 +675,11 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_COLOR_SATURATION = L10n.lang("bbs.ui.forms.editors.color_saturation");
     public static final IKey FORMS_EDITORS_COLOR_TRANSFORM = L10n.lang("bbs.ui.forms.editors.color_transform");
     public static final IKey FORMS_EDITORS_COLOR_TRANSFORM_HIDE = L10n.lang("bbs.ui.forms.editors.color_transform_hide");
+    public static final IKey FORMS_EDITORS_COLOR_RESET_THIS_VALUE = L10n.lang("bbs.ui.forms.editors.color_reset_this_value");
+    public static final IKey FORMS_EDITORS_COLOR_RESET_ALL = L10n.lang("bbs.ui.forms.editors.color_reset_all");
+    public static final IKey FORMS_EDITORS_COLOR_RESET_BLEND = L10n.lang("bbs.ui.forms.editors.color_reset_blend");
+    public static final IKey FORMS_EDITORS_COLOR_RESET_PAINT = L10n.lang("bbs.ui.forms.editors.color_reset_paint");
+    public static final IKey FORMS_EDITORS_COLOR_RESET_GRADE = L10n.lang("bbs.ui.forms.editors.color_reset_grade");
     public static final IKey FORMS_EDITORS_PAINT_INTENSITY = L10n.lang("bbs.ui.forms.editors.paint_intensity");
     public static final IKey FORMS_EDITORS_PAINT_SHAPE = L10n.lang("bbs.ui.forms.editors.paint_shape");
     public static final IKey FORMS_EDITORS_PAINT_SHAPE_BOX = L10n.lang("bbs.ui.forms.editors.paint_shape_box");

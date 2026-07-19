@@ -67,6 +67,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
     };
     private UIButton applyButton;
     private UIButton cancelButton;
+    private UIIcon reload;
     private boolean trackingSession;
     private boolean applyingSession;
     private boolean hasPendingChanges;
@@ -114,6 +115,13 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         this.applyButton.relative(this).x(1F, -12).y(1F, -36).w(84).h(20).anchor(1F, 1F);
         this.cancelButton.relative(this.applyButton).x(0F, -6).w(84).h(20).anchor(0F, 1F);
         this.add(this.applyButton, this.cancelButton);
+
+        this.reload = new UIIcon(Icons.REFRESH, (b) -> this.applySettings());
+        this.reload.tooltip(UIKeys.CONFIG_RELOAD, Direction.LEFT);
+        this.icons.removeAll();
+        this.icons.relative(this).x(1F, -40).y(0).w(40).h(20);
+        this.icons.row(0);
+        this.icons.add(this.reload, this.close);
 
         this.rebuildTabs();
         this.markContainer();
@@ -613,6 +621,10 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         if (this.close.area.isInside(context))
         {
             this.close.area.render(context.batcher, Colors.RED | Colors.A100);
+        }
+        else if (this.reload.area.isInside(context))
+        {
+            this.reload.area.render(context.batcher, Colors.setA(BBSSettings.primaryColor.get(), 0.75F));
         }
 
         // Resize handles
