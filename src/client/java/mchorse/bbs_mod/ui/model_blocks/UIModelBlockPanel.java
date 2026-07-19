@@ -2265,7 +2265,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         /* Don't draw/pick this panel's own gizmo while the block's nested form/model editor is
          * open on top - that editor has its own gizmo (rendered in its own viewport), and
          * showing both at once would double up and fight over the same drag. */
-        if (this.modelBlock == null || this.isEditing(this.modelBlock))
+        if (this.modelBlock == null || this.isEditing(this.modelBlock) || !UIBaseMenu.renderAxes)
         {
             this.gizmoStencil.clearPicking();
             this.gizmoController.updateHover();

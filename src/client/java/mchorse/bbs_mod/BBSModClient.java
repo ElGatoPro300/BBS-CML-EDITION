@@ -583,6 +583,13 @@ public class BBSModClient implements ClientModInitializer
                 panel.applySeparateReplayPropertiesPanelSetting();
             }
         });
+        BBSSettings.editorEmbeddedKeyframeSidePanel.postCallback((v, f) ->
+        {
+            if (dashboard != null && dashboard.getPanels().panel instanceof UIFilmPanel panel)
+            {
+                panel.applyEmbeddedKeyframeSidePanelSetting();
+            }
+        });
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK

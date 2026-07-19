@@ -993,7 +993,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             return;
         }
 
-        int anchor = Math.round(anchorTick);
+        float anchor = anchorTick;
 
         if (sheets.size() == 1)
         {
@@ -1092,7 +1092,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             return;
         }
 
-        int anchor = Math.round(anchorTick);
+        float anchor = anchorTick;
 
         if (keyframes.size() == 1)
         {

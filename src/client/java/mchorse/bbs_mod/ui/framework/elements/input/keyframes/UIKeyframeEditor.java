@@ -49,6 +49,7 @@ public class UIKeyframeEditor extends UIElement
     private UIElement target;
     private boolean stackedLayout;
     private boolean overlayPanel;
+    private Runnable pickListener;
     private int sidePanelWidth = SIDE_PANEL_WIDTH;
     private int bottomPanelHeight = BOTTOM_PANEL_HEIGHT;
     private UIDraggable sidePanelResizer;
@@ -123,15 +124,49 @@ public class UIKeyframeEditor extends UIElement
 
     public UIKeyframeEditor target(UIElement target)
     {
-        this.target = target;
+        if (this.target == target)
+        {
+            this.view.resetFlex().full(this).w(1F);
 
+            return this;
+        }
+
+        if (this.editor != null)
+        {
+            this.editor.removeFromParent();
+        }
+
+        this.target = target;
         this.view.resetFlex().full(this).w(1F);
+
+        if (this.editor != null)
+        {
+            if (this.target != null)
+            {
+                this.target.add(this.editor);
+            }
+            else
+            {
+                this.add(this.editor);
+            }
+        }
+
+        this.applyLayout();
+        this.resize();
+
+        return this;
+    }
+
+    public UIKeyframeEditor pickListener(Runnable pickListener)
+    {
+        this.pickListener = pickListener;
 
         return this;
     }
 
     public UIKeyframeEditor overlayPanel(boolean overlayPanel)
     {
+        this.unfocusEditorInputs();
         this.overlayPanel = overlayPanel;
         this.applyLayout();
         this.resize();
@@ -188,6 +223,44 @@ public class UIKeyframeEditor extends UIElement
 
         this.applyLayout();
         this.resize();
+
+        if (this.pickListener != null)
+        {
+            this.pickListener.run();
+        }
+    }
+
+    /**
+     * True when a focused text/trackpad input belongs to the open keyframe
+     * property panel. Used to avoid mid-typing refreshes that reset fields.
+     */
+    public boolean isEditorInputFocused()
+    {
+        if (this.editor == null)
+        {
+            return false;
+        }
+
+        UIContext context = this.getContext();
+
+        if (context == null || !(context.activeElement instanceof UIElement focused))
+        {
+            return false;
+        }
+
+        UIElement current = focused;
+
+        while (current != null)
+        {
+            if (current == this.editor)
+            {
+                return true;
+            }
+
+            current = current.getParent();
+        }
+
+        return false;
     }
 
     private void applyLayout()
@@ -334,9 +407,25 @@ public class UIKeyframeEditor extends UIElement
 
     public void setStackedLayout(boolean stackedLayout)
     {
+        this.unfocusEditorInputs();
         this.stackedLayout = stackedLayout;
         this.applyLayout();
         this.resize();
+    }
+
+    /**
+     * Layout / embed toggles can leave a trackpad textbox marked focused while
+     * {@link UIContext#activeElement} is cleared or the widget tree moves.
+     * Clearing focus avoids frozen numeric fields until the keyframe is re-picked.
+     */
+    private void unfocusEditorInputs()
+    {
+        UIContext context = this.getContext();
+
+        if (context != null)
+        {
+            context.unfocus();
+        }
     }
 
     public void setChannel(KeyframeChannel channel, int color)

@@ -13,6 +13,7 @@ import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
@@ -100,6 +101,16 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
     public void resize()
     {
         this.poseEditor.removeAll();
+
+        /* Rebuilding the pose editor tree while a child trackpad is focused
+         * leaves a stale textbox focus that freezes further edits. */
+        UIContext context = this.getContext();
+
+        if (context != null && context.activeElement instanceof UIElement focused
+            && focused.getParent(UIPoseFactoryEditor.class) == this.poseEditor)
+        {
+            context.unfocus();
+        }
 
         boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
         boolean pickLimbTexture = BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get();

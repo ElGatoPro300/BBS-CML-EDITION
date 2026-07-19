@@ -64,6 +64,7 @@ import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplayPropertiesPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
@@ -2524,6 +2525,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public void focusLinkedPropertiesTab(String panelId)
     {
+        /* Undo/redo restores keyframe selection across all editors (including the replay
+         * keyframe editor). That re-pick must not steal the properties tab while the user
+         * is editing an embedded Image/Subtitle (or other camera) keyframe view. */
+        if (this.undoHandler != null && this.undoHandler.isUndoing())
+        {
+            return;
+        }
+
         this.clearSelectionsExcept(panelId);
 
         String linkedPanelId = this.getLinkedPropertiesPanelId(panelId);
@@ -2773,6 +2782,64 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return BBSSettings.editorSeparateReplayPropertiesPanel == null || BBSSettings.editorSeparateReplayPropertiesPanel.get();
     }
 
+    public void applyEmbeddedKeyframeSidePanelSetting()
+    {
+        if (this.cameraEditor != null && this.cameraEditor.clips != null)
+        {
+            this.cameraEditor.clips.applyEmbeddedKeyframePropertiesMode();
+        }
+
+        if (this.actionEditor != null && this.actionEditor.clips != null)
+        {
+            this.actionEditor.clips.applyEmbeddedKeyframePropertiesMode();
+        }
+    }
+
+    /**
+     * Select the general Properties tab (or unified properties) used by replay
+     * keyframes and by embedded clip keyframe editors when the side-panel
+     * overlay setting is disabled.
+     */
+    public void focusEmbeddedKeyframePropertiesTab()
+    {
+        if (this.undoHandler != null && this.undoHandler.isUndoing())
+        {
+            return;
+        }
+
+        String panelId = this.shouldRedirectProperties() ? "unifiedEditArea" : "editArea";
+
+        this.focusPanelTab(panelId);
+    }
+
+    /**
+     * Activate {@code panelId} inside its tab group without clearing timeline
+     * selections or re-entering through {@link #focusLinkedPropertiesTab}.
+     */
+    public void focusPanelTab(String panelId)
+    {
+        if (panelId == null)
+        {
+            return;
+        }
+
+        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+        boolean changed = root != null && this.selectPanelInTabbedNode(root, panelId);
+
+        if (changed)
+        {
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
+        }
+
+        UIElement panel = this.panelById.get(panelId);
+        boolean needsRefresh = panel != null && !panel.isVisible();
+
+        if (changed || needsRefresh)
+        {
+            this.setupEditorFlex(true, false, true);
+        }
+    }
+
     public IKey getWindowPanelTitle(String panelId)
     {
         return this.getPanelTitle(panelId);
@@ -2799,6 +2866,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.replayEditor.keyframeEditor.target(unified ? this.unifiedEditArea : this.editArea);
         }
+
+        this.applyEmbeddedKeyframeSidePanelSetting();
     }
 
     public boolean isWindowPanelVisible(String panelId)
@@ -4297,6 +4366,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         layout.setLayoutLocked(!layout.isLayoutLocked());
         this.flushBbsSettings();
         this.clearPanelDragState();
+
+        if (layout.isLayoutLocked())
+        {
+            TimelineToolbar.cancelAllDockDrags(this);
+        }
+
         this.updateLayoutLockTooltip();
         this.setupEditorFlex(true);
     }
@@ -6126,8 +6201,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
      */
     private void refreshCursorFields()
     {
-        this.lastFilledCursor = this.runner.ticks;
+        /* Update lastFilledCursor only after a successful fill. If fillData throws
+         * mid-panel (e.g. bad keyframe factory types), the next frame must retry
+         * so later fields are not left permanently stale. */
         this.fillData();
+        this.lastFilledCursor = this.runner.ticks;
     }
 
     public boolean isRunning()

@@ -691,6 +691,13 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
 
         lineBuilder.render(context.batcher, SolidColorLineRenderer.get(Colors.COLOR.set(Colors.setA(sheet.color, 1F))));
 
+        /* Empty channels (e.g. cinematic tracks before any key is inserted) have nothing
+         * to draw as quads — ending an empty BufferBuilder crashes on 1.21+. */
+        if (keyframes.isEmpty())
+        {
+            return;
+        }
+
         /* Render track bars (horizontal lines) */
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 

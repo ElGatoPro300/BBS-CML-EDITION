@@ -1348,7 +1348,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
     }
 
-    public void insertKeyframeColumn(int tick)
+    public void insertKeyframeColumn(float tick)
     {
         Replay replay = this.getReplay();
         IEntity entity = this.filmPanel.getController().getCurrentEntity();
@@ -1366,7 +1366,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         });
     }
 
-    public void insertKeyframeColumnInterpolated(int tick)
+    public void insertKeyframeColumnInterpolated(float tick)
     {
         Replay replay = this.getReplay();
 

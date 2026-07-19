@@ -132,6 +132,7 @@ public class BBSSettings
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
     public static ValueBoolean editorFilmOverlayVisible;
+    public static ValueBoolean editorFisheyeWidenFov;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
     public static ValueBoolean editorFlightFreeLook;
@@ -170,6 +171,7 @@ public class BBSSettings
     public static ValueInt replayContextOptions;
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
+    public static ValueBoolean editorEmbeddedKeyframeSidePanel;
     public static ValueBoolean editorMinutesBackup;
     public static ValueBoolean editorTimelineToolbar;
     public static ValueBoolean modelPbrPanelControls;
@@ -228,6 +230,8 @@ public class BBSSettings
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
 
+    public static ValueBoolean saveAsCompatible;
+
     public static ValueLink textureDefaultPath;
     public static ValueInt texturePickerItemSize;
 
@@ -238,6 +242,25 @@ public class BBSSettings
     public static ValueBoolean usingInMemoryClipboard;
     public static ValueBoolean discordPresence;
     public static ValueString discordApplicationId;
+
+    /**
+     * When enabled (default), films dual-write legacy-friendly data for fields
+     * that newer builds store as floats/doubles (e.g. subtitle lineHeight/maxWidth).
+     */
+    public static boolean isSaveAsCompatible()
+    {
+        return saveAsCompatible == null || saveAsCompatible.get();
+    }
+
+    /**
+     * When enabled (default), embedded clip keyframe editors show properties
+     * in an overlay side/bottom panel. When disabled, properties go to the
+     * general Properties layout tab (same host as replay keyframes).
+     */
+    public static boolean isEmbeddedKeyframeSidePanelEnabled()
+    {
+        return editorEmbeddedKeyframeSidePanel == null || editorEmbeddedKeyframeSidePanel.get();
+    }
 
     public static int primaryColor()
     {
@@ -619,6 +642,7 @@ public class BBSSettings
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
         editorFilmOverlayVisible = builder.getBoolean("film_overlay_visible", true);
+        editorFisheyeWidenFov = builder.getBoolean("fisheye_widen_fov", true);
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
@@ -630,6 +654,7 @@ public class BBSSettings
         editorClipPreview = builder.getBoolean("clip_preview", true);
         editorRewind = builder.getBoolean("rewind", true);
         editorHorizontalClipEditor = builder.getBoolean("horizontal_clip_editor", true);
+        editorEmbeddedKeyframeSidePanel = builder.getBoolean("embedded_keyframe_side_panel", true);
         editorMinutesBackup = builder.getBoolean("minutes_backup", true);
         editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
         editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
@@ -721,6 +746,9 @@ public class BBSSettings
 
         builder.category("fluid_simulation");
         fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
+
+        builder.category("compatibility");
+        saveAsCompatible = builder.getBoolean("save_as_compatible", true);
 
         builder.category("audio");
         audioWaveformVisible = builder.getBoolean("waveform_visible", true);

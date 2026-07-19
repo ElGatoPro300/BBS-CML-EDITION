@@ -143,6 +143,11 @@ public class BBSRendering
 
     private static int width;
     private static int height;
+    /**
+     * Scale used for this frame's fisheye FOV widen (1 = off). Color grade reads this
+     * so the UV warp matches the projection even if effect lists were rebuilt.
+     */
+    private static float lensOverscanScale = 1F;
 
     private static final UIBaseMenu replayHudMenu = new UIBaseMenu() {};
 
@@ -190,6 +195,16 @@ public class BBSRendering
     public static int getVideoHeight()
     {
         return height == 0 ? BBSSettings.videoSettings.height.get() : height;
+    }
+
+    public static float getLensOverscanScale()
+    {
+        return lensOverscanScale;
+    }
+
+    public static void setLensOverscanScale(float scale)
+    {
+        lensOverscanScale = scale > 1.0001F ? scale : 1F;
     }
 
     public static int getVideoFrameRate()
@@ -377,8 +392,8 @@ public class BBSRendering
         }
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        int w = mc.getWindow().getFramebufferWidth();
-        int h = mc.getWindow().getFramebufferHeight();
+        int w = Math.max(2, mc.getWindow().getFramebufferWidth());
+        int h = Math.max(2, mc.getWindow().getFramebufferHeight());
 
         if (framebuffer.textureWidth == w && framebuffer.textureHeight == h)
         {
@@ -402,8 +417,8 @@ public class BBSRendering
 
         if (toggleFramebuffer)
         {
-            int w = mc.getWindow().getFramebufferWidth();
-            int h = mc.getWindow().getFramebufferHeight();
+            int w = Math.max(2, mc.getWindow().getFramebufferWidth());
+            int h = Math.max(2, mc.getWindow().getFramebufferHeight());
 
             resizeExtraFramebuffers();
 
@@ -1367,6 +1382,10 @@ public class BBSRendering
             return;
         }
 
+        /* Safety net: Subtitle's text FBO can shrink glViewport; restore after the pass. */
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         RenderSystem.disableDepthTest();
 
         MatrixStack matrices = batcher.getContext().getMatrices();
@@ -1407,6 +1426,7 @@ public class BBSRendering
         }
 
         bossBars.clear();
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
         RenderSystem.enableDepthTest();
     }
 }

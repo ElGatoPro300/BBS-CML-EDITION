@@ -29,7 +29,7 @@ public class GizmoController
      *  so the caller can fall through to its normal (bone/form) pick handling. */
     public boolean tryStartHandleDrag(UIContext context, UIPropTransform transform)
     {
-        if (transform == null)
+        if (transform == null || !Gizmo.isInteractive())
         {
             return false;
         }
@@ -63,6 +63,13 @@ public class GizmoController
 
     public void updateHover()
     {
+        if (!Gizmo.isInteractive())
+        {
+            Gizmo.INSTANCE.setHoveredIndex(-1);
+
+            return;
+        }
+
         StencilFormFramebuffer stencil = this.surface.getGizmoStencil();
         int index = stencil.hasPicked() ? stencil.getIndex() : -1;
 

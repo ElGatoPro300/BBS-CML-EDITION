@@ -249,7 +249,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             FormColorBlend.blendFormGlowBrighten(color, glowSettings, legacyGlow);
         }
 
-        if (this.form.billboard.get())
+        /* World/entity billboard: face the camera and ignore authored rotation.
+         * Form/model editor preview (modelRenderer) must keep the real transform so
+         * gizmo handles and General translate/rotate/scale fields match what you see. */
+        if (this.form.billboard.get() && (deferContext == null || !deferContext.modelRenderer))
         {
             Matrix4f modelMatrix = matrices.peek().getPositionMatrix();
             Vector3f scale = new Vector3f();
