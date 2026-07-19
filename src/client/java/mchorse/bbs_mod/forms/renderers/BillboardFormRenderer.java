@@ -60,10 +60,12 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
     private static final Matrix4f matrix = new Matrix4f();
     /* Base billboard faces sit slightly off the mid-plane so front/back do not z-fight. */
     private static final float FACE_Z_BIAS = 0.0005F;
-    /* Paint/glow overlays sit further outward along each face normal so back faces are not
-     * pushed through the base geometry (a shared +Z translate caused near-camera z-fighting). */
-    private static final float PAINT_FACE_Z_BIAS = 0.0015F;
-    private static final float GLOW_FACE_Z_BIAS = 0.002F;
+    /* Paint/glow sit just outside the camera-facing base face (not mid-plane, not ±dual).
+     * Mid-plane lost depth to the nearer base face when close/angled; dual faces split the
+     * silhouette. Camera-facing single plane + polygon offset stays in front from either side. */
+    private static final float OVERLAY_FACE_EXTRA = 0.0015F;
+    private static final Vector3f OVERLAY_TO_CAMERA = new Vector3f();
+    private static final Vector3f OVERLAY_LOCAL_Z = new Vector3f();
 
     public BillboardFormRenderer(BillboardForm form)
     {
@@ -641,24 +643,19 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         {
             BufferBuilder paintBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
             int paintLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
+            float paintZ = this.resolveOverlayFaceZ(paintMatrix);
+            float paintNz = paintZ >= 0F ? 1F : -1F;
 
+            /* One camera-facing plane, both sides via disableCull. */
             RenderSystem.disableCull();
 
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p3.x, drawQuad.p3.y, PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p3.x, drawUvQuad.p3.y, overlay, paintLight, entry, 1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p2.x, drawQuad.p2.y, PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p2.x, drawUvQuad.p2.y, overlay, paintLight, entry, 1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p1.x, drawQuad.p1.y, PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p1.x, drawUvQuad.p1.y, overlay, paintLight, entry, 1F, transform);
+            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p3.x, drawQuad.p3.y, paintZ, paintOverlay, drawUvQuad.p3.x, drawUvQuad.p3.y, overlay, paintLight, entry, paintNz, transform);
+            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p2.x, drawQuad.p2.y, paintZ, paintOverlay, drawUvQuad.p2.x, drawUvQuad.p2.y, overlay, paintLight, entry, paintNz, transform);
+            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p1.x, drawQuad.p1.y, paintZ, paintOverlay, drawUvQuad.p1.x, drawUvQuad.p1.y, overlay, paintLight, entry, paintNz, transform);
 
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p3.x, drawQuad.p3.y, PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p3.x, drawUvQuad.p3.y, overlay, paintLight, entry, 1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p4.x, drawQuad.p4.y, PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p4.x, drawUvQuad.p4.y, overlay, paintLight, entry, 1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p2.x, drawQuad.p2.y, PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p2.x, drawUvQuad.p2.y, overlay, paintLight, entry, 1F, transform);
-
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p1.x, drawQuad.p1.y, -PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p1.x, drawUvQuad.p1.y, overlay, paintLight, entry, -1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p2.x, drawQuad.p2.y, -PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p2.x, drawUvQuad.p2.y, overlay, paintLight, entry, -1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p3.x, drawQuad.p3.y, -PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p3.x, drawUvQuad.p3.y, overlay, paintLight, entry, -1F, transform);
-
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p2.x, drawQuad.p2.y, -PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p2.x, drawUvQuad.p2.y, overlay, paintLight, entry, -1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p4.x, drawQuad.p4.y, -PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p4.x, drawUvQuad.p4.y, overlay, paintLight, entry, -1F, transform);
-            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p3.x, drawQuad.p3.y, -PAINT_FACE_Z_BIAS, paintOverlay, drawUvQuad.p3.x, drawUvQuad.p3.y, overlay, paintLight, entry, -1F, transform);
+            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p3.x, drawQuad.p3.y, paintZ, paintOverlay, drawUvQuad.p3.x, drawUvQuad.p3.y, overlay, paintLight, entry, paintNz, transform);
+            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p4.x, drawQuad.p4.y, paintZ, paintOverlay, drawUvQuad.p4.x, drawUvQuad.p4.y, overlay, paintLight, entry, paintNz, transform);
+            this.fillPaint(paintBuilder, paintMatrix, drawQuad.p2.x, drawQuad.p2.y, paintZ, paintOverlay, drawUvQuad.p2.x, drawUvQuad.p2.y, overlay, paintLight, entry, paintNz, transform);
 
             BufferRenderer.drawWithGlobalProgram(paintBuilder.end());
 
@@ -675,6 +672,23 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         float mask = EffectTransformMath.maskBillboard(x, y, z, transform);
 
         builder.vertex(matrix, x, y, z).color(color.r, color.g, color.b, color.a * mask).texture(u, v).overlay(overlay).light(light).normal(entry, 0F, 0F, nz);
+    }
+
+    /**
+     * Local Z just outside the base face that points toward the camera. {@code viewModel}
+     * is the same matrix used to transform overlay verts (camera × stack when deferred).
+     */
+    private float resolveOverlayFaceZ(Matrix4f viewModel)
+    {
+        /* Translation ≈ billboard origin in view space; toward camera is -origin. */
+        OVERLAY_TO_CAMERA.set(-viewModel.m30(), -viewModel.m31(), -viewModel.m32());
+        /* Third column = local +Z axis in view space. */
+        OVERLAY_LOCAL_Z.set(viewModel.m20(), viewModel.m21(), viewModel.m22());
+
+        float facing = OVERLAY_LOCAL_Z.dot(OVERLAY_TO_CAMERA);
+        float sign = facing >= 0F ? 1F : -1F;
+
+        return sign * (FACE_Z_BIAS + OVERLAY_FACE_EXTRA);
     }
 
     private void renderGlowOverlay(Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, GlowSettings glowSettings, Color legacyGlow, float alpha, float glowIntensity)
@@ -697,23 +711,18 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             BufferBuilder glowBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
 
             RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+            float glowZ = this.resolveOverlayFaceZ(glowMatrix);
+
+            /* One camera-facing plane, both sides via disableCull — same as paint. */
             RenderSystem.disableCull();
 
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p1.x, drawQuad.p1.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p1.x, drawUvQuad.p1.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, glowZ, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, glowZ, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p1.x, drawQuad.p1.y, glowZ, glowColor, drawUvQuad.p1.x, drawUvQuad.p1.y);
 
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p4.x, drawQuad.p4.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p4.x, drawUvQuad.p4.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
-
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p1.x, drawQuad.p1.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p1.x, drawUvQuad.p1.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
-
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p4.x, drawQuad.p4.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p4.x, drawUvQuad.p4.y);
-            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, -GLOW_FACE_Z_BIAS, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p3.x, drawQuad.p3.y, glowZ, glowColor, drawUvQuad.p3.x, drawUvQuad.p3.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p4.x, drawQuad.p4.y, glowZ, glowColor, drawUvQuad.p4.x, drawUvQuad.p4.y);
+            this.fillGlow(glowBuilder, glowMatrix, drawQuad.p2.x, drawQuad.p2.y, glowZ, glowColor, drawUvQuad.p2.x, drawUvQuad.p2.y);
 
             BufferRenderer.drawWithGlobalProgram(glowBuilder.end());
 

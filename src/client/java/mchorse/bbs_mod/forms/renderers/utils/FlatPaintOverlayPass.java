@@ -15,9 +15,9 @@ import org.lwjgl.opengl.GL11;
  */
 public class FlatPaintOverlayPass
 {
-    /** Default bias — enough for immediate/live overlays over coplanar bases. */
-    public static final float DEFAULT_FACTOR = -1F;
-    public static final float DEFAULT_UNITS = -2F;
+    /** Default bias — clears the camera-facing base face when close / angled. */
+    public static final float DEFAULT_FACTOR = -2F;
+    public static final float DEFAULT_UNITS = -4F;
     /**
      * Stronger than deferred billboard base ({@code -1.5/-1.5}). Paint flushes after the Iris
      * base redraw; the factor term dominates at distance and must clearly beat the base offset.
