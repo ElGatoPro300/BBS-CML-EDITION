@@ -160,9 +160,13 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
             {
                 sheet.defaultInsertValue = DEFAULT_COLOR.copy();
             }
-            else if ("width".equals(sheet.id) || "height".equals(sheet.id))
+            else if ("width".equals(sheet.id))
             {
                 sheet.defaultInsertValue = 1D;
+            }
+            else if ("height".equals(sheet.id) || "size".equals(sheet.id))
+            {
+                sheet.defaultInsertValue = 0.4D;
             }
         }
 

@@ -19,6 +19,9 @@ import java.util.Map;
 public class LetterboxClip extends CameraClip
 {
     private static final Color DEFAULT_COLOR = Color.rgba(Colors.A100);
+    private static final double DEFAULT_HEIGHT = 0.4D;
+    private static final double DEFAULT_WIDTH = 1D;
+    private static final double DEFAULT_ZOOM = 1D;
 
     public final KeyframeChannel<Color> color = new KeyframeChannel<>("color", KeyframeFactories.COLOR);
     public final KeyframeChannel<Double> size = new KeyframeChannel<>("size", KeyframeFactories.DOUBLE);
@@ -62,6 +65,9 @@ public class LetterboxClip extends CameraClip
         this.add(this.offsetY);
 
         this.color.insert(0, DEFAULT_COLOR.copy());
+        this.height.insert(0, DEFAULT_HEIGHT);
+        this.width.insert(0, DEFAULT_WIDTH);
+        this.zoom.insert(0, DEFAULT_ZOOM);
     }
 
     @Override
@@ -130,16 +136,16 @@ public class LetterboxClip extends CameraClip
         float factor = this.envelope.factorEnabled(this.duration.get(), t);
 
         float thickness = this.height.isEmpty()
-            ? (this.size.isEmpty() ? 0F : (float) (double) this.size.interpolate(t))
+            ? (this.size.isEmpty() ? (float) DEFAULT_HEIGHT : (float) (double) this.size.interpolate(t))
             : (float) (double) this.height.interpolate(t);
         float sz = thickness * 0.25F;
 
         if (sz > 0F)
         {
-            float barWidth = this.width.isEmpty() ? 1F : (float) (double) this.width.interpolate(t);
+            float barWidth = this.width.isEmpty() ? (float) DEFAULT_WIDTH : (float) (double) this.width.interpolate(t);
             float smooth = (this.smoothness.isEmpty() ? 0F : (float) (double) this.smoothness.interpolate(t)) * 0.25F;
             float rot = this.rotation.isEmpty() ? 0F : (float) (double) this.rotation.interpolate(t);
-            float zm = this.zoom.isEmpty() ? 1F : (float) (double) this.zoom.interpolate(t);
+            float zm = this.zoom.isEmpty() ? (float) DEFAULT_ZOOM : (float) (double) this.zoom.interpolate(t);
             float offX = this.offsetX.isEmpty() ? 0F : (float) (double) this.offsetX.interpolate(t);
             float offY = this.offsetY.isEmpty() ? 0F : (float) (double) this.offsetY.interpolate(t);
 
