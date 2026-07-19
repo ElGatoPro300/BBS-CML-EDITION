@@ -1592,6 +1592,11 @@ public class UIFilmController extends UIElement
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         this.stencil.apply();
 
+        /* Closest bone along the cursor ray must win; glow/gizmo passes can leave depthMask off. */
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(true);
+
         if (altPressed)
         {
             for (Map.Entry<Integer, IEntity> entry : this.getEntities().entrySet())

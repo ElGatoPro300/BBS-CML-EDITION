@@ -517,6 +517,13 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     ModelVAORenderer.setFormColorTint(stencilFormColor.r, stencilFormColor.g, stencilFormColor.b, stencilFormColor.a);
                 }
 
+                /* Picking must write depth so the closest limb along the cursor ray wins.
+                 * Glow/paint passes can leave depthMask false; without this, later-drawn
+                 * bones (often torso) overwrite nearer ones (head) in the pick FBO. */
+                RenderSystem.enableDepthTest();
+                RenderSystem.depthFunc(GL11.GL_LEQUAL);
+                RenderSystem.depthMask(true);
+
                 ModelVAORenderer.clearPaint();
                 ModelVAORenderer.clearGlowing();
                 this.renderModelGeometry(newStack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);

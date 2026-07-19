@@ -219,6 +219,11 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             this.beginStencilViewport(fboW, fboH);
             this.setupViewport(context);
 
+            /* Restore depth writes so the closest bone along the cursor ray wins picking. */
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            RenderSystem.depthMask(true);
+
             FormUtilsClient.render(this.form, formContext.stencilMap(this.stencilMap));
 
             Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());

@@ -68,6 +68,8 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 
+import org.lwjgl.opengl.GL11;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -515,6 +517,12 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
             this.beginStencilViewport(fboW, fboH);
             this.setupViewport(context);
+
+            /* Restore depth writes: the visual pass (glow/paint/gizmos) may have left
+             * depthMask false, which makes stencil picking prefer later-drawn bones. */
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            RenderSystem.depthMask(true);
 
             this.renderer.render(formContext.stencilMap(this.stencilMap));
 
