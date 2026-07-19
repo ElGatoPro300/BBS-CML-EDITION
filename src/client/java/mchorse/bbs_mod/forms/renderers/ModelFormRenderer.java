@@ -569,7 +569,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
 
-        boolean shadowPass = renderContext != null && renderContext.isShadowPass;
+        boolean shadowPass = BBSRendering.isIrisShadowPass()
+            || (renderContext != null && renderContext.isShadowPass);
         boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
         boolean paintActive = this.hasAnyPaint(model);
         boolean bbsModelShader = this.usesBbsModelShader(model);
@@ -1889,7 +1890,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 return;
             }
 
-            FormColorBlend.finishShadowOpacity(color, context.isShadowPass);
+            FormColorBlend.finishShadowOpacity(color, context.isShadowPass || BBSRendering.isIrisShadowPass());
 
             this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition(), context.renderEquipment, context.world, context);
         }
@@ -1918,7 +1919,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         {
             color.mul(this.form.color.get());
         }
-        FormColorBlend.finishShadowOpacity(color, context.isShadowPass);
+        FormColorBlend.finishShadowOpacity(color, context.isShadowPass || BBSRendering.isIrisShadowPass());
 
         if (texture != null)
         {
