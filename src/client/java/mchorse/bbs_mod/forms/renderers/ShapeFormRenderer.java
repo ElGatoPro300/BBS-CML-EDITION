@@ -258,6 +258,8 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean lighting = this.form.lighting.get();
+            /* Noshading opacity: redraw after paint via BBS translucent queue, not Iris post-deferred. */
+            boolean noshadingPaintPath = BBSRendering.needsIrisNoshadingOpacityDeferral(c.a, this.form.noshadingOpacity.get());
             boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(c.a);
             boolean depthWrite = afterFluids
                 ? ShaderOpacityPatch.shouldWriteDepthForOpacity(c.a)

@@ -575,10 +575,11 @@ public class Gizmo
     }
 
     /**
-     * True when the gizmo origin is in front of the camera with a sane clip depth.
-     * Off-screen X/Y is allowed — only behind-camera / degenerate projections fail.
+     * True when the gizmo origin projects into a slightly padded clip frustum
+     * (sane depth and roughly on-screen). Used to pick between composed vs baked
+     * visual matrices under Iris world passes.
      */
-    private static boolean isOriginInFront(Matrix4f view, Matrix4f projection)
+    private static boolean isOriginVisible(Matrix4f view, Matrix4f projection)
     {
         Vector4f clip = new Vector4f(0F, 0F, 0F, 1F).mul(view).mul(projection);
 

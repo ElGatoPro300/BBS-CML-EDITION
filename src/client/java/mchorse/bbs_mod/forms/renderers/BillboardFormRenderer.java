@@ -398,6 +398,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean emitGlowSnapshot = glowIntensity > 0F && !glowSettings.resolvePaintOnly();
+            /* Noshading opacity: redraw after paint via BBS translucent queue, not Iris post-deferred. */
+            boolean noshadingPaintPath = BBSRendering.needsIrisNoshadingOpacityDeferral(color.a, this.form.noshadingOpacity.get());
             boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(color.a);
             boolean depthWrite = afterFluids
                 ? ShaderOpacityPatch.shouldWriteDepthForOpacity(color.a)
