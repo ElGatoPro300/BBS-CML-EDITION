@@ -230,9 +230,12 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean lighting = this.form.lighting.get();
-            /* Soft opacity-fix draws must not occlude final paint overlays. */
+            /* Noshading: soft redraw after paint. Default Iris path: depthWrite true. */
+            boolean noshadingPaintPath = BBSRendering.needsIrisNoshadingOpacityDeferral(c.a, this.form.noshadingOpacity.get());
             boolean depthWrite = this.form.renderDepthEnabled.get()
-                && c.a >= ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA;
+                && (noshadingPaintPath
+                    ? c.a >= ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA
+                    : true);
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
             double distanceSq = 0D;
 
@@ -265,7 +268,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
                 );
             };
 
-            if (opacityPatch)
+            if (opacityPatch && !noshadingPaintPath)
             {
                 ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, deferredDraw);
             }

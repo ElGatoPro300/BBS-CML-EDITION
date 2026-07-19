@@ -358,7 +358,9 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 EffectTransform paintTransformQueued = paintTransformSnapshot;
                 Vector3f paintMaskHalfQueued = paintMaskHalfSnapshot;
                 double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
-                boolean depthWrite = !ShaderOpacityPatch.isActive();
+                /* Iris opacity-fix path (noshading off): depthWrite true — body shadows,
+                 * paint clipped. Noshading uses submitDeferredTranslucentModel instead. */
+                boolean depthWrite = true;
 
                 ShaderOpacityPatch.submitPostDeferredForm(sortDepth, 0D, depthWrite, () ->
                 {

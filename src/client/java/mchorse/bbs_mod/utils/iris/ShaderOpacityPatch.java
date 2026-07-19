@@ -354,10 +354,10 @@ public class ShaderOpacityPatch
     public static void onBeginTranslucents()
     {
         postDeferredPhase = true;
-        /* Soft forms on Iris' translucent target — pack lighting / sun shadows on the mesh.
-         * BBS paint overlays must NOT flush here (deferred MRTs drop them). They run at
-         * world-render end on the final FB; soft forms use depthWrite false so they do not
-         * depth-reject that paint. */
+        /* Default soft forms (noshading opacity off): redraw on Iris translucent target so
+         * pack lighting / sun shadows stay on the mesh. Paint overlays flush later and stay
+         * depth-clipped behind these forms. Forms with noshading opacity skip this queue and
+         * redraw after paint at frame end instead (paint under soft, no pack body shadows). */
         flushPostDeferredForms(true);
     }
 

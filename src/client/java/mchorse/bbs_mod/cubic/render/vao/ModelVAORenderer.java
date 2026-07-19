@@ -348,6 +348,10 @@ public class ModelVAORenderer
 
         try
         {
+            /* Paint/glow overlays first, then full soft-model redraws (noshading opacity path)
+             * so translucency composites over painted actors. */
+            paintOverlayQueue.sort((a, b) -> Boolean.compare(a.fullModel, b.fullModel));
+
             for (PaintOverlayEntry entry : paintOverlayQueue)
             {
                 ModelVAORenderer.runPaintOverlayEntry(entry, restoreFramebuffer);

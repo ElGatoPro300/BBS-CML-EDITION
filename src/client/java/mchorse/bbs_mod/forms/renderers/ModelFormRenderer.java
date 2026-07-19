@@ -720,7 +720,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 boolean hasGlowSnapshot = hasGlow;
                 boolean emitGlowSnapshot = emitGlowAfterDeferred;
                 GlowSettings albedoGlow = emitGlowAfterDeferred ? mainPassGlow : glow;
-                /* Write depth so deferred low-alpha meshes do not X-ray their own limbs. */
+                /* Write depth for self-occlusion. Noshading soft forms flush after paint in
+                 * the same queue (paint sorted first), so this does not clip paint. */
                 boolean deferredDepthWrite = true;
 
                 if (colorSnapshot.a > 0.001F)
@@ -866,10 +867,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         distanceSq = FormRenderDepth.getEntityDistanceSq(renderContext.entity, renderContext.camera, transition);
                     }
 
-                    /* depthMask false when opacity fix is on: soft forms keep Iris lighting/
-                     * body shadows, but must not stamp depth that rejects end-of-frame paint
-                     * overlays (BBS paint cannot write Iris MRTs mid-pipeline). */
-                    boolean depthWrite = !ShaderOpacityPatch.isActive();
+                    /* Default (noshading off): depthWrite true on Iris translucent target so
+                     * body shadows stay when soft; end-of-frame paint is depth-clipped behind.
+                     * Noshading path never reaches here (uses BBS deferred after paint). */
+                    boolean depthWrite = true;
 
                     ShaderOpacityPatch.submitPostDeferredForm(sortDepth, distanceSq, depthWrite, () ->
                     {

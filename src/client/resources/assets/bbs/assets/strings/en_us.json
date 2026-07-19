@@ -1311,7 +1311,7 @@
     "bbs.ui.forms.editors.block.repeat_z": "Z",
     "bbs.ui.forms.editors.block.title": "Block",
     "bbs.ui.forms.editors.color_noshading_opacity": "Noshading opacity",
-    "bbs.ui.forms.editors.color_noshading_opacity-tooltip": "Uses the clean deferred opacity path for this form's color only. Keeps color RGB (does not force black). Does not change lighting on other models or wipe clouds.",
+    "bbs.ui.forms.editors.color_noshading_opacity-tooltip": "With Iris opacity fix: OFF keeps sun shadows on this soft form (color paint behind it stays clipped). ON redraws this form after paint so color paint shows through correctly, but pack lighting/shadows on the mesh are lost.",
     "bbs.ui.forms.editors.colors_and_glow": "Colors and glow",
     "bbs.ui.forms.editors.extruded.title": "Extruded",
     "bbs.ui.forms.editors.general": "General",

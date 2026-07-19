@@ -511,10 +511,10 @@ public class BBSRendering
             return;
         }
 
-        /* Soft forms flush at Iris beginTranslucents (pack lighting / body shadows). Paint
-         * overlays always flush here on the final framebuffer (BBS paint cannot target Iris MRTs). */
-        ShaderOpacityPatch.onWorldRenderEnd();
+        /* Paint overlays first (and noshading soft forms in the same queue, after paint via
+         * sort). Iris soft forms (noshading off) already flushed at beginTranslucents. */
         ModelVAORenderer.flushPaintOverlayQueue();
+        ShaderOpacityPatch.onWorldRenderEnd();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();

@@ -326,9 +326,13 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             GlowSettings glowSettingsSnapshot = glowSettings;
             Color legacyGlowSnapshot = legacyGlow;
             boolean emitGlowSnapshot = glowIntensity > 0F && !glowSettings.resolvePaintOnly();
-            /* Soft opacity-fix draws must not occlude final paint overlays. */
+            /* Noshading: soft redraw after paint (depthWrite false). Default Iris path: write
+             * depth so paint stays clipped and pack body shadows remain. */
+            boolean noshadingPaintPath = BBSRendering.needsIrisNoshadingOpacityDeferral(color.a, this.form.noshadingOpacity.get());
             boolean depthWrite = this.form.renderDepthEnabled.get()
-                && color.a >= ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA;
+                && (noshadingPaintPath
+                    ? color.a >= ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA
+                    : true);
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, deferContext == null ? null : deferContext.renderDepthFrame);
             double distanceSq = 0D;
             /* Iris entity_translucent (opacity-patched): pack lighting/shadows, soft alpha.
@@ -418,13 +422,14 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                 }
             };
 
-            if (opacityPatch)
+            if (opacityPatch && !noshadingPaintPath)
             {
-                /* Same sorted post-deferred queue as models — render depth low→high, before VL. */
+                /* Default: Iris post-deferred (body shadows / paint clipped). */
                 ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, deferredDraw);
             }
             else
             {
+                /* Noshading or no opacity patch: BBS queue after paint at frame end. */
                 ModelVAORenderer.submitDeferredTranslucentModel(deferredDraw, depthWrite, true);
             }
         }

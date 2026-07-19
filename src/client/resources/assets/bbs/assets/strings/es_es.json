@@ -1329,6 +1329,8 @@
     "bbs.ui.forms.editors.model.actions": "Acciones",
     "bbs.ui.forms.editors.model.pose": "Pose",
     "bbs.ui.forms.editors.paint_color": "Color de pintura",
+    "bbs.ui.forms.editors.color_noshading_opacity": "Noshading opacity",
+    "bbs.ui.forms.editors.color_noshading_opacity-tooltip": "Con el arreglo de opacidad Iris: OFF mantiene las sombras del sol en esta form suave (el color paint de detrás queda recortado). ON redibuja esta form después del paint para que se vea bien a través de la transparencia, pero se pierde la iluminación/sombras del pack en la malla.",
     "bbs.ui.forms.editors.paint_culling-tooltip": "Cuando está activada, la pintura solo afecta a las superficies exteriores visibles. Cuando está desactivada, también se pintan las caras interiores y las caras posteriores.",
     "bbs.ui.forms.editors.paint_fix_bug": "Arreglar bug",
     "bbs.ui.forms.editors.paint_fix_bug-tooltip": "Corrige los artefactos de renderizado de puntos al aplicar pintura.",

@@ -1408,7 +1408,7 @@
     "bbs.ui.forms.editors.paint_shape_circle": "دایره",
     "bbs.ui.forms.editors.paint_shape_triangle": "مثلث",
     "bbs.ui.forms.editors.color_noshading_opacity": "Noshading opacity",
-    "bbs.ui.forms.editors.color_noshading_opacity-tooltip": "مسیر تمیز opacity برای رنگ همین فرم؛ RGB سفید می‌ماند، نور مدل‌های دیگر و ابرها را خراب نمی‌کند.",
+    "bbs.ui.forms.editors.color_noshading_opacity-tooltip": "با Iris opacity fix: خاموش = سایه خورشید روی فرم نرم می‌ماند (paint پشت آن بریده می‌شود). روشن = فرم بعد از paint دوباره رسم می‌شود تا paint درست دیده شود، ولی نور/سایه پک روی مش از بین می‌رود.",
     "bbs.ui.forms.editors.paint_sync": "همگام با مدل",
     "bbs.ui.forms.editors.paint_sync-tooltip": "اگر در نمایش مشکلی دارد این گزینه را تغییر دهید.",
     "bbs.ui.forms.editors.shape.appearance": "ظاهر",
