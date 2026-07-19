@@ -25,11 +25,13 @@ import java.util.regex.Pattern;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 
 /**
- * Runtime opacity fix for Complementary / BSL. Translucent BBS forms are delayed until
- * after Iris {@code beginTranslucents} (VL clouds/fog already composited) so soft fades
- * never punch sky holes or let clouds draw over the mesh. Near-opaque ({@code #f2+}) stays
- * on the live Iris path with depth writes so Complementary shading is not flattened.
- * Fully opaque film {@code renderDepth} actors also use the post-deferred queue.
+ * Iris-wide translucency fix for BBS forms. Soft-opacity meshes are delayed until after
+ * Iris {@code beginTranslucents} (clouds/fog already composited) so they never punch sky
+ * holes. Near-opaque stays on the live Iris path for pack lighting.
+ * <p>
+ * Enabled by {@link mchorse.bbs_mod.BBSSettings#irisOpacityFix} for <b>any</b> shader pack.
+ * Complementary/BSL-specific GLSL rewrites (shadow dither, shadow opacity uniform) run
+ * automatically only when that pack is detected — they are not separate user toggles.
  */
 public class ShaderOpacityPatch
 {
@@ -104,22 +106,41 @@ public class ShaderOpacityPatch
         return name != null && name.toLowerCase(Locale.ROOT).contains("bsl");
     }
 
+    /**
+     * Global Iris translucency pipeline (post-deferred queue + generic Iris property patches).
+     */
     public static boolean isActive()
     {
-        String pack = resolvePackName();
-
-        if (pack.isEmpty())
-        {
-            return false;
-        }
-
-        if (BBSSettings.complementaryOpacityFix != null && BBSSettings.complementaryOpacityFix.get()
-            && isComplementaryPack(pack))
+        if (BBSSettings.irisOpacityFix != null && BBSSettings.irisOpacityFix.get())
         {
             return true;
         }
 
-        return BBSSettings.bslOpacityFix != null && BBSSettings.bslOpacityFix.get() && isBslPack(pack);
+        /* Legacy: old Complementary/BSL toggles before migration. */
+        if (BBSSettings.complementaryOpacityFix != null && BBSSettings.complementaryOpacityFix.get()
+            && isComplementaryPack(resolvePackName()))
+        {
+            return true;
+        }
+
+        return BBSSettings.bslOpacityFix != null && BBSSettings.bslOpacityFix.get()
+            && isBslPack(resolvePackName());
+    }
+
+    /**
+     * Pack-specific GLSL string rewrites (shadow caster dither, shadow opacity scaling).
+     * Only Complementary / BSL source layouts are known; other packs skip these.
+     */
+    public static boolean shouldApplyPackGlslPatches()
+    {
+        if (!isActive())
+        {
+            return false;
+        }
+
+        String pack = resolvePackName();
+
+        return isComplementaryPack(pack) || isBslPack(pack);
     }
 
     private static String resolvePackName()
@@ -209,7 +230,8 @@ public class ShaderOpacityPatch
     /**
      * Queue translucent forms until after deferred/VL clouds so soft opacity never punches
      * sky holes or lets clouds composite over the mesh. Near-opaque stays live for pack
-     * lighting. Opaque film {@code renderDepth} still joins. Never delay the shadow pass.
+     * lighting. Never delay fully opaque forms (film pose/idle must stay on the live path).
+     * Never delay the shadow pass.
      */
     public static boolean shouldDelayUntilPostDeferred(float alpha)
     {
@@ -241,14 +263,9 @@ public class ShaderOpacityPatch
             return false;
         }
 
-        /* Any visible translucency — including #e9 — must wait for clouds. */
-        if (alpha < LIVE_DEPTH_WRITE_ALPHA)
-        {
-            return true;
-        }
-
-        /* Fully opaque film actors may still share the post-deferred depth queue. */
-        return filmRenderDepth && alpha >= 0.999F;
+        /* filmRenderDepth used to force opaque actors into this queue and corrupted shared
+         * ModelInstance pose/idle. Opaque stays live; only true translucency is delayed. */
+        return alpha < LIVE_DEPTH_WRITE_ALPHA;
     }
 
     public static boolean shouldJoinPostDeferredQueue(float alpha)
@@ -553,15 +570,18 @@ public class ShaderOpacityPatch
             return source;
         }
 
-        /* Only relax alpha discards. Do not rewrite translucentMult — forcing it to 1.0 made
-         * Complementary show full-brightness sky through forms (washed / background-tinted). */
+        /* Generic: relax alpha discards on any pack so soft form opacity is not clipped. */
         String patched = ALPHA_TEST_REF_COMPARE.matcher(source).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
 
         patched = LITERAL_POINT_ONE_COMPARE.matcher(patched).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
 
-        patched = processShadowCasterAlpha(patched);
+        if (shouldApplyPackGlslPatches())
+        {
+            patched = processShadowCasterAlpha(patched);
+            patched = processShadowOpacity(patched);
+        }
 
-        return processShadowOpacity(patched);
+        return patched;
     }
 
     /**
@@ -571,7 +591,7 @@ public class ShaderOpacityPatch
      */
     public static String processShadowCasterAlpha(String source)
     {
-        if (!isActive() || source == null || source.isEmpty())
+        if (!shouldApplyPackGlslPatches() || source == null || source.isEmpty())
         {
             return source;
         }
@@ -624,7 +644,7 @@ public class ShaderOpacityPatch
      */
     public static String processShadowOpacity(String source)
     {
-        if (!isActive() || source == null || source.isEmpty())
+        if (!shouldApplyPackGlslPatches() || source == null || source.isEmpty())
         {
             return source;
         }
@@ -650,7 +670,7 @@ public class ShaderOpacityPatch
 
     public static void ensureShadowOpacityVariable()
     {
-        if (!isActive())
+        if (!shouldApplyPackGlslPatches())
         {
             return;
         }

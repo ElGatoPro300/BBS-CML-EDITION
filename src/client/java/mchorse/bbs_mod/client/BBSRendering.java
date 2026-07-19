@@ -836,7 +836,7 @@ public class BBSRendering
     }
 
     /**
-     * With the Complementary/BSL opacity patch, translucent opacities are redrawn after
+     * With the Iris opacity fix, translucent opacities are redrawn after
      * VL clouds (post-deferred) so soft fades never punch the sky or get clouds composited
      * over the mesh. Near-opaque keeps the live Iris path with depth writes.
      */
@@ -845,8 +845,8 @@ public class BBSRendering
     /**
      * True when Iris would discard/mis-composite very low form opacity; queue a BBS redraw
      * after compositing. Slight opacity (e.g. {@code #e7}/{@code #fc}) stays on Iris.
-     * When the Complementary opacity patch is active, only near-zero alpha is deferred so
-     * pack lighting stays on the Iris path.
+     * When the Iris opacity fix is active, only near-zero alpha uses this older deferral
+     * path so pack lighting stays on Iris for mid translucency (handled by post-deferred).
      */
     public static boolean needsIrisTranslucentModelDeferral(float alpha)
     {

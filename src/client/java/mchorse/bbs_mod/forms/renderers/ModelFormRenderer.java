@@ -828,9 +828,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             if (drawIrisLive)
             {
-                /* Complementary VL: any translucency (e.g. #e9) goes post-deferred after
-                 * clouds so soft fades never get sky holes or clouds drawn over the mesh.
-                 * Near-opaque stays live with depth for Complementary shading. */
+                /* Iris opacity fix: translucency goes post-deferred after clouds so soft
+                 * fades never get sky holes. Near-opaque stays live with depth for pack lighting. */
                 boolean filmRenderDepth = renderContext != null && renderContext.renderDepthFrame != null;
 
                 if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, filmRenderDepth))
@@ -838,8 +837,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     /* Entity-local matrices only — submitPostDeferredForm restores camera ModelView. */
                     Matrix4f positionMatrix = new Matrix4f(newStack.peek().getPositionMatrix());
                     Matrix3f normalMatrix = new Matrix3f(newStack.peek().getNormalMatrix());
+                    Matrix4f baseTransformSnapshot = baseTransform == null ? null : new Matrix4f(baseTransform);
                     Color colorSnapshot = color.copy();
                     Color paintSnapshot = paintColor.copy();
+                    Pose poseSnapshot = this.getPose().copy();
+                    float transitionSnapshot = transition;
                     float paintStrengthSnapshot = paintStrength;
                     boolean paintActiveSnapshot = paintActive;
                     boolean stripGlowSnapshot = stripMainPassGlow || shapeKeyPositiveOverlay;
@@ -868,6 +870,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                     ShaderOpacityPatch.submitPostDeferredForm(sortDepth, distanceSq, depthWrite, () ->
                     {
+                        /* Shared ModelInstance bones are overwritten by later draws — re-apply
+                         * the captured pose like other deferred Iris paths. */
+                        this.applyOverlayPosePipeline(target, model, transitionSnapshot, poseSnapshot, baseTransformSnapshot);
+
                         MatrixStack overlayStack = new MatrixStack();
 
                         overlayStack.peek().getPositionMatrix().set(positionMatrix);

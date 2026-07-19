@@ -208,7 +208,12 @@ public class BBSSettings
     public static ValueBoolean damageControl;
 
     public static ValueBoolean shaderCurvesEnabled;
+    public static ValueBoolean irisOpacityFix;
+    /** Kept invisible for migrating saved Complementary/BSL toggles. */
+    @Deprecated
     public static ValueBoolean complementaryOpacityFix;
+    /** Kept invisible for migrating saved Complementary/BSL toggles. */
+    @Deprecated
     public static ValueBoolean bslOpacityFix;
     public static ValueFloat shaderShadowOpacity;
 
@@ -740,8 +745,12 @@ public class BBSSettings
 
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
+        irisOpacityFix = builder.getBoolean("iris_opacity_fix", false);
+        /* Legacy pack-specific toggles — invisible, migrated into iris_opacity_fix on load. */
         complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", false);
+        complementaryOpacityFix.invisible();
         bslOpacityFix = builder.getBoolean("bsl_opacity_fix", false);
+        bslOpacityFix.invisible();
         shaderShadowOpacity = builder.getFloat("shader_shadow_opacity", 1F, 0F, 1F);
 
         builder.category("fluid_simulation");
@@ -764,5 +773,35 @@ public class BBSSettings
 
         BBSMod.events.post(new RegisterBBSSettingsEvent(builder));
         syncAppliedAppearance();
+    }
+
+    /**
+     * Fold legacy Complementary/BSL opacity toggles into {@link #irisOpacityFix}.
+     * Call after settings are loaded from disk.
+     */
+    public static void migrateIrisOpacityFix()
+    {
+        if (irisOpacityFix == null)
+        {
+            return;
+        }
+
+        boolean legacyOn = (complementaryOpacityFix != null && complementaryOpacityFix.get())
+            || (bslOpacityFix != null && bslOpacityFix.get());
+
+        if (legacyOn && !irisOpacityFix.get())
+        {
+            irisOpacityFix.set(true);
+        }
+
+        if (complementaryOpacityFix != null && complementaryOpacityFix.get())
+        {
+            complementaryOpacityFix.set(false);
+        }
+
+        if (bslOpacityFix != null && bslOpacityFix.get())
+        {
+            bslOpacityFix.set(false);
+        }
     }
 }

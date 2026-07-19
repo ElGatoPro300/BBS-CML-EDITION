@@ -548,8 +548,7 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
 
-        BBSSettings.complementaryOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
-        BBSSettings.bslOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
+        BBSSettings.irisOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
         BBSSettings.shaderShadowOpacity.postCallback((v, f) ->
             mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.syncShadowOpacityDefault());
 

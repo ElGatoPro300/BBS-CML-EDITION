@@ -792,6 +792,8 @@ public class BBSMod implements ModInitializer
                     e.printStackTrace();
                 }
             }
+
+            BBSSettings.migrateIrisOpacityFix();
         }
 
         return settings;
