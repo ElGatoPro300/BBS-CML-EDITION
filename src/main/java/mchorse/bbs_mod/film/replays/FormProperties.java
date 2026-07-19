@@ -4,6 +4,7 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.Illusion;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
@@ -16,6 +17,7 @@ import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Interpolations;
@@ -30,8 +32,12 @@ import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -299,6 +305,13 @@ public class FormProperties extends ValueGroup
             {
                 property.setRuntimeValue(coerceRuntimeValue(property, segment.createInterpolated()));
             }
+
+            /* Color track keyframes are often RGBA-only; keep morph Blend Color grading unless
+             * the track itself keyframes brightness/contrast/hue/saturation. */
+            if ("color".equals(id))
+            {
+                this.mergeColorAdjustmentsFromForm(property, value);
+            }
         }
         else
         {
@@ -361,6 +374,94 @@ public class FormProperties extends ValueGroup
         }
 
         return value;
+    }
+
+    /**
+     * Film Color tracks often store only blend RGB/intensity. Morph-level brightness /
+     * contrast / hue / saturation (and their transforms) must still apply unless the
+     * Color track itself keyframes them.
+     */
+    @SuppressWarnings("rawtypes")
+    private void mergeColorAdjustmentsFromForm(BaseValueBasic property, KeyframeChannel channel)
+    {
+        if (!(property instanceof ValueColor valueColor))
+        {
+            return;
+        }
+
+        Object runtimeObj = valueColor.getRuntimeValue();
+
+        if (!(runtimeObj instanceof Color runtime))
+        {
+            return;
+        }
+
+        Color base = valueColor.getOriginalValue();
+
+        if (base == null)
+        {
+            return;
+        }
+
+        if (!this.colorChannelHasAdjustments(channel) && base.hasColorAdjustments())
+        {
+            runtime.brightness = base.brightness;
+            runtime.contrast = base.contrast;
+            runtime.hue = base.hue;
+            runtime.saturation = base.saturation;
+        }
+
+        if (!this.colorChannelHasGradeTransforms(channel) && base.hasActiveGradeTransform())
+        {
+            runtime.brightnessTransform = base.brightnessTransform == null ? new EffectTransform() : base.brightnessTransform.copy();
+            runtime.contrastTransform = base.contrastTransform == null ? new EffectTransform() : base.contrastTransform.copy();
+            runtime.hueTransform = base.hueTransform == null ? new EffectTransform() : base.hueTransform.copy();
+            runtime.saturationTransform = base.saturationTransform == null ? new EffectTransform() : base.saturationTransform.copy();
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private boolean colorChannelHasAdjustments(KeyframeChannel channel)
+    {
+        if (channel == null)
+        {
+            return false;
+        }
+
+        for (Object kfObj : channel.getKeyframes())
+        {
+            Keyframe<?> keyframe = (Keyframe<?>) kfObj;
+            Object value = keyframe.getValue();
+
+            if (value instanceof Color color && color.hasColorAdjustments())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private boolean colorChannelHasGradeTransforms(KeyframeChannel channel)
+    {
+        if (channel == null)
+        {
+            return false;
+        }
+
+        for (Object kfObj : channel.getKeyframes())
+        {
+            Keyframe<?> keyframe = (Keyframe<?>) kfObj;
+            Object value = keyframe.getValue();
+
+            if (value instanceof Color color && color.hasActiveGradeTransform())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void applyTextureBlend(Form form, KeyframeSegment segment)
@@ -542,6 +643,160 @@ public class FormProperties extends ValueGroup
                 this.remove(next);
             }
         }
+    }
+
+    /**
+     * Paint is edited from the Color inspector but stored on a hidden {@code "paint"}
+     * channel. When Color keyframes at {@code ticks} are removed, drop matching paint
+     * companions so leftover paint does not keep rendering.
+     */
+    public void removeCompanionPaintAtTicks(Form form, Collection<Float> ticks)
+    {
+        if (ticks == null || ticks.isEmpty())
+        {
+            return;
+        }
+
+        this.removeKeyframesAtTicks("paint", ticks);
+        this.removeKeyframesAtTicks("paint_color", ticks);
+
+        KeyframeChannel color = this.properties.get("color");
+
+        if (color == null || color.isEmpty())
+        {
+            this.clearPaintChannels(form);
+        }
+        else
+        {
+            this.clearPaintRuntimeIfChannelsEmpty(form);
+        }
+    }
+
+    /**
+     * Move hidden paint companions by the same delta as Color keyframes.
+     */
+    public void moveCompanionPaintBy(float diff, Collection<Float> fromTicks)
+    {
+        if (Math.abs(diff) < 0.0001F || fromTicks == null || fromTicks.isEmpty())
+        {
+            return;
+        }
+
+        this.moveKeyframesBy("paint", diff, fromTicks);
+        this.moveKeyframesBy("paint_color", diff, fromTicks);
+    }
+
+    private void clearPaintChannels(Form form)
+    {
+        KeyframeChannel paint = this.properties.get("paint");
+
+        if (paint != null)
+        {
+            paint.removeAll();
+        }
+
+        KeyframeChannel legacy = this.properties.get("paint_color");
+
+        if (legacy != null)
+        {
+            legacy.removeAll();
+        }
+
+        this.clearPaintRuntime(form);
+    }
+
+    private void clearPaintRuntimeIfChannelsEmpty(Form form)
+    {
+        KeyframeChannel paint = this.properties.get("paint");
+        KeyframeChannel legacy = this.properties.get("paint_color");
+        boolean paintEmpty = paint == null || paint.isEmpty();
+        boolean legacyEmpty = legacy == null || legacy.isEmpty();
+
+        if (paintEmpty && legacyEmpty)
+        {
+            this.clearPaintRuntime(form);
+        }
+    }
+
+    private void clearPaintRuntime(Form form)
+    {
+        if (form == null)
+        {
+            return;
+        }
+
+        form.paintSettings.setRuntimeValue(null);
+        form.paintColor.setRuntimeValue(null);
+    }
+
+    private void removeKeyframesAtTicks(String channelId, Collection<Float> ticks)
+    {
+        KeyframeChannel channel = this.properties.get(channelId);
+
+        if (channel == null || channel.isEmpty())
+        {
+            return;
+        }
+
+        List keyframes = channel.getKeyframes();
+        List<Integer> indices = new ArrayList<>();
+
+        for (int i = 0; i < keyframes.size(); i++)
+        {
+            Keyframe keyframe = (Keyframe) keyframes.get(i);
+
+            for (Float tick : ticks)
+            {
+                if (tick != null && Math.abs(keyframe.getTick() - tick) < 0.001F)
+                {
+                    indices.add(i);
+
+                    break;
+                }
+            }
+        }
+
+        indices.sort(Comparator.reverseOrder());
+
+        for (Integer index : indices)
+        {
+            channel.remove(index);
+        }
+    }
+
+    private void moveKeyframesBy(String channelId, float diff, Collection<Float> fromTicks)
+    {
+        KeyframeChannel channel = this.properties.get(channelId);
+
+        if (channel == null || channel.isEmpty())
+        {
+            return;
+        }
+
+        List keyframes = channel.getKeyframes();
+        List<Keyframe> moving = new ArrayList<>();
+
+        for (Object kfObj : keyframes)
+        {
+            Keyframe keyframe = (Keyframe) kfObj;
+
+            for (Float tick : fromTicks)
+            {
+                if (tick != null && Math.abs(keyframe.getTick() - tick) < 0.001F)
+                {
+                    moving.add(keyframe);
+
+                    break;
+                }
+            }
+        }
+
+        for (Keyframe keyframe : moving)
+        {
+            keyframe.setTick(keyframe.getTick() + diff, false);
+        }
+
+        channel.sort();
     }
 
     @Override
@@ -855,9 +1110,14 @@ public class FormProperties extends ValueGroup
                     {
                         float a = color.a;
 
-                        opacity.insert(kf.getTick(), a);
-                        color.a = 1F;
-                        migrated = true;
+                        /* color.a ≈ 0 is Blend Color intensity off, not legacy opacity.
+                         * Migrating it created opacity=0 keyframes on every film reload (Alt+F4 save). */
+                        if (a > 0.001F && a < 0.999F)
+                        {
+                            opacity.insert(kf.getTick(), a);
+                            color.a = 1F;
+                            migrated = true;
+                        }
                     }
                 }
 
@@ -865,6 +1125,32 @@ public class FormProperties extends ValueGroup
                 {
                     this.properties.put("opacity", opacity);
                     this.add(opacity);
+                }
+            }
+            else if (opacityAny != null && opacityAny.getFactory() == KeyframeFactories.FLOAT && !opacityAny.isEmpty())
+            {
+                /* Repair films poisoned by the old a≈0 → opacity=0 migration. */
+                @SuppressWarnings("unchecked")
+                KeyframeChannel<Float> opacityChannel = (KeyframeChannel<Float>) opacityAny;
+                boolean allZero = true;
+
+                for (Object kfObj : opacityChannel.getKeyframes())
+                {
+                    Keyframe<?> kf = (Keyframe<?>) kfObj;
+                    Object v = kf.getValue();
+
+                    if (!(v instanceof Float) || ((Float) v) > 0.001F)
+                    {
+                        allZero = false;
+
+                        break;
+                    }
+                }
+
+                if (allZero)
+                {
+                    this.properties.remove("opacity");
+                    this.remove(opacityChannel);
                 }
             }
         }

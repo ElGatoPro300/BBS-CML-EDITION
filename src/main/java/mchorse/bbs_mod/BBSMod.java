@@ -749,6 +749,8 @@ public class BBSMod implements ModInitializer
 
         if (id.equals("bbs"))
         {
+            BBSSettings.migrateShaderOpacityPatchesAfterLoad();
+
             File cmlFile = new File(destination.getParentFile(), "cml.json");
             
             if (cmlFile.exists())

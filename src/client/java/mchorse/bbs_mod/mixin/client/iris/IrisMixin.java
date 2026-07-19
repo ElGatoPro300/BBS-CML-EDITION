@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.mixin.client.iris;
 
+import mchorse.bbs_mod.utils.iris.FormColorGradePatch;
 import mchorse.bbs_mod.utils.iris.QueueMap;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
@@ -29,6 +30,7 @@ public class IrisMixin
     private static void onLoadExternalShaderpack(String name, CallbackInfoReturnable<Boolean> info)
     {
         ShaderCurves.reset();
+        FormColorGradePatch.resetPackState();
         ShaderOpacityPatch.setLoadingPackName(name);
         ShaderOpacityPatch.ensureShadowOpacityVariable();
         ShaderCurves.ensureSunPathRotationVariable();
@@ -38,6 +40,7 @@ public class IrisMixin
     private static void onSetShadersDisabled(CallbackInfo info)
     {
         ShaderCurves.reset();
+        FormColorGradePatch.resetPackState();
         ShaderOpacityPatch.clearLoadingPackName();
     }
 

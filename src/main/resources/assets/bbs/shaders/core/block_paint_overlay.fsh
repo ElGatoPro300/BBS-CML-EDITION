@@ -51,6 +51,12 @@ float bbsPaintEffectMask(vec3 rootPos, mat4 effectInverse, float active, vec3 ha
     float dist;
     float maxHalf = max(halfExtents.x, max(halfExtents.y, halfExtents.z));
 
+    /* Scale 0 → empty mask. */
+    if (maxHalf < 0.001)
+    {
+        return 0.0;
+    }
+
     if (shape > 1.5)
     {
         /* Front-facing triangle in XY (apex up), thickness along Z. */
@@ -77,7 +83,7 @@ float bbsPaintEffectMask(vec3 rootPos, mat4 effectInverse, float active, vec3 ha
         dist = length(max(d, 0.0)) + min(max(max(d.x, d.y), d.z), 0.0);
     }
 
-    float falloff = max(maxHalf * 0.15, 0.1);
+    float falloff = max(maxHalf * 0.15, 0.001);
 
     return 1.0 - smoothstep(0.0, falloff, dist);
 }

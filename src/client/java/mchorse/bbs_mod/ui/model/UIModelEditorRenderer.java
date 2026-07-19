@@ -860,11 +860,11 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             {
                 this.deletePreview();
 
-                this.previewModel = new ModelInstance(globalModel.id, globalModel.model, globalModel.animations, globalModel.texture);
+                this.previewModel = globalModel.copy();
 
-                if (globalModel.model instanceof BOBJModel bobjModel && bobjModel.getVao() != null)
+                if (globalModel.model instanceof BOBJModel)
                 {
-                    /* BOBJ VAO lives on the shared model; global setup already created it. */
+                    /* BOBJModel.copy() already builds its own armature VAO. */
                 }
                 else if (globalModel.isVAORendered())
                 {

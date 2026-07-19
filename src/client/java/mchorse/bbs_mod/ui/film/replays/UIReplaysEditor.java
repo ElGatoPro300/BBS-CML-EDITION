@@ -3300,9 +3300,57 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         return propertyId.equals("pose") || propertyId.startsWith("pose_overlay") || propertyId.equals("look_at") || propertyId.equals("inverse_kinematics");
     }
 
+    /**
+     * Bone stencil can hit any visible replay. Switch to the owning replay first so
+     * pose/look-at sheets and the gizmo target the correct actor.
+     */
+    private boolean ensureReplayForForm(Form form)
+    {
+        Replay owner = this.findReplayForForm(form);
+
+        if (owner == null)
+        {
+            return this.replay != null;
+        }
+
+        if (owner != this.replay)
+        {
+            this.setReplay(owner, true, false);
+        }
+
+        return this.keyframeEditor != null;
+    }
+
+    private Replay findReplayForForm(Form form)
+    {
+        if (form == null || this.filmPanel.getData() == null)
+        {
+            return null;
+        }
+
+        Form root = FormUtils.getRoot(form);
+
+        for (Replay replay : this.filmPanel.getData().replays.getList())
+        {
+            Form replayForm = replay.form.get();
+
+            if (replayForm != null && FormUtils.getRoot(replayForm) == root)
+            {
+                return replay;
+            }
+        }
+
+        return null;
+    }
+
     public void pickForm(Form form, String bone)
     {
-        if (form == null || this.keyframeEditor == null || bone.isEmpty())
+        if (form == null || bone.isEmpty())
+        {
+            return;
+        }
+
+        if (!this.ensureReplayForForm(form) || this.keyframeEditor == null)
         {
             return;
         }
@@ -3481,6 +3529,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     public void pickFormProperty(Form form, String bone)
     {
         if (form == null)
+        {
+            return;
+        }
+
+        if (!this.ensureReplayForForm(form))
         {
             return;
         }

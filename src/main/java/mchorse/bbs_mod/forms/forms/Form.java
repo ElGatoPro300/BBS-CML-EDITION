@@ -533,7 +533,8 @@ public abstract class Form extends ValueGroup
             /* Compatibility with state triggers */
             FormUtils.readOldStateTriggers(this, map);
 
-            /* Split legacy color.a into opacity when the form had no opacity field yet. */
+            /* Split legacy color.a into opacity when the form had no opacity field yet.
+             * Skip a≈0 — that is Blend Color intensity off, not invisible opacity. */
             if (!map.has("opacity"))
             {
                 BaseValue colorValue = this.get("color");
@@ -542,7 +543,7 @@ public abstract class Form extends ValueGroup
                 {
                     Color color = valueColor.get().copy();
 
-                    if (color.a < 0.999F)
+                    if (color.a > 0.001F && color.a < 0.999F)
                     {
                         this.opacity.set(MathUtils.clamp(color.a, 0F, 1F));
                         color.a = 1F;

@@ -30,6 +30,8 @@ public class BBSShaders
     private static ShaderProgram pickerModels;
     private static ShaderProgram blockPaintOverlay;
     private static ShaderProgram flatPaintOverlay;
+    private static ShaderProgram blockColorTintOverlay;
+    private static ShaderProgram flatColorTintOverlay;
 
     static
     {
@@ -49,6 +51,8 @@ public class BBSShaders
         if (pickerModels != null) pickerModels.close();
         if (blockPaintOverlay != null) blockPaintOverlay.close();
         if (flatPaintOverlay != null) flatPaintOverlay.close();
+        if (blockColorTintOverlay != null) blockColorTintOverlay.close();
+        if (flatColorTintOverlay != null) flatColorTintOverlay.close();
 
         try
         {
@@ -65,6 +69,8 @@ public class BBSShaders
             pickerModels = new ShaderProgram(factory, "picker_models", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
             blockPaintOverlay = new ShaderProgram(factory, "block_paint_overlay", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
             flatPaintOverlay = new ShaderProgram(factory, "flat_paint_overlay", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+            blockColorTintOverlay = new ShaderProgram(factory, "block_color_tint_overlay", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+            flatColorTintOverlay = new ShaderProgram(factory, "flat_color_tint_overlay", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
         
             for (Runnable runnable : LOADERS)
             {
@@ -125,6 +131,16 @@ public class BBSShaders
     public static ShaderProgram getFlatPaintOverlayProgram()
     {
         return flatPaintOverlay;
+    }
+
+    public static ShaderProgram getBlockColorTintOverlayProgram()
+    {
+        return blockColorTintOverlay;
+    }
+
+    public static ShaderProgram getFlatColorTintOverlayProgram()
+    {
+        return flatColorTintOverlay;
     }
 
     private static class ProxyResourceFactory implements ResourceFactory

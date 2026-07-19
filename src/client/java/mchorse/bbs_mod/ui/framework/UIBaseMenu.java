@@ -6,6 +6,7 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.IViewport;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.UIAnimatedCollapseShell;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.utils.IViewportStack;
 import mchorse.bbs_mod.ui.utils.Area;
@@ -328,6 +329,7 @@ public abstract class UIBaseMenu
         this.context.resetCursor();
 
         this.preRenderMenu(context);
+        UIAnimatedCollapseShell.tickAll();
 
         if (this.root.isVisible())
         {

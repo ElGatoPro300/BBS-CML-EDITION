@@ -3,7 +3,6 @@ package mchorse.bbs_mod.forms;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.graphics.Framebuffer;
 import mchorse.bbs_mod.graphics.Renderbuffer;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -194,16 +193,9 @@ public final class FormUIPreviewCache
 
     private static long buildKey(Form form, int width, int height, int angleBucket)
     {
-        int formKey;
-
-        if (form instanceof ModelForm modelForm)
-        {
-            formKey = modelForm.model.get().hashCode();
-        }
-        else
-        {
-            formKey = System.identityHashCode(form);
-        }
+        /* Key by form identity so duplicated ModelForms with the same model id
+         * do not share thumbnails / animated pose previews. */
+        int formKey = System.identityHashCode(form);
 
         return ((long) formKey << 32)
             ^ ((long) width << 16)

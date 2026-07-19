@@ -75,6 +75,8 @@ public class ModelVAORenderer
     private static boolean paintOverlaySynced;
     /* Multiply Iris-lit pixels by FormColorTint inside the color mask (keeps pack lighting/shadows). */
     private static boolean colorTintOverlayPass;
+    /* Replace Iris-lit model pixels with FormColorGrade(sceneColor) after composite. */
+    private static boolean colorGradeOverlayPass;
     /* Captured-matrix redraw after Iris (or immediate low-opacity bypass) — not the paint-overlay shader branch. */
     private static boolean deferredTranslucentPass;
 
@@ -90,21 +92,104 @@ public class ModelVAORenderer
     private static boolean colorEffectActive;
     private static boolean paintMaskBottomAnchored = true;
     private static boolean colorMaskBottomAnchored = true;
+    private static final GradeMaskState gradeBrightnessMask = new GradeMaskState();
+    private static final GradeMaskState gradeContrastMask = new GradeMaskState();
+    private static final GradeMaskState gradeHueMask = new GradeMaskState();
+    private static final GradeMaskState gradeSaturationMask = new GradeMaskState();
     private static float formColorR = 1F;
     private static float formColorG = 1F;
     private static float formColorB = 1F;
     private static float formColorA = 1F;
     private static boolean colorTintMasked;
+    private static float formColorGradeBrightness;
+    private static float formColorGradeContrast;
+    private static float formColorGradeHue;
+    private static float formColorGradeSaturation;
+    private static float baseFormColorGradeBrightness;
+    private static float baseFormColorGradeContrast;
+    private static float baseFormColorGradeHue;
+    private static float baseFormColorGradeSaturation;
+    private static final EffectTransform baseGradeBrightnessTransform = new EffectTransform();
+    private static final EffectTransform baseGradeContrastTransform = new EffectTransform();
+    private static final EffectTransform baseGradeHueTransform = new EffectTransform();
+    private static final EffectTransform baseGradeSaturationTransform = new EffectTransform();
     private static boolean suppressShapeKeyMainPassGlow;
 
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
     private static NativeImageBackedTexture whiteTexture;
+    /* Scene color copy for ColorGradeOverlay (Iris-lit pixels → FormColorGrade). */
+    private static mchorse.bbs_mod.graphics.texture.Texture gradeSceneColor;
 
     /* Saved GL state for the paint overlay pass (restored in endPaintOverlayPass). */
     private static int savedDepthFunc;
     private static boolean savedDepthMask;
     private static boolean savedPolygonOffsetFill;
     private static boolean savedCullEnabled;
+
+    private static final class GradeMaskState
+    {
+        private final Matrix4f inverse = new Matrix4f();
+        private final Vector3f half = new Vector3f(EffectTransformMath.MODEL_MASK_HALF_BASE, EffectTransformMath.MODEL_MASK_HALF_BASE * EffectTransformMath.MODEL_MASK_Y_BIAS, EffectTransformMath.MODEL_MASK_HALF_BASE);
+        private boolean active;
+        private boolean bottomAnchored = true;
+        private float shape;
+
+        private void set(EffectTransform transform)
+        {
+            EffectTransformMath.buildInverseMatrix(transform, this.inverse);
+            this.active = EffectTransformMath.isTransformActive(transform);
+            this.shape = transform == null || transform.shape == null ? 0F : transform.shape.id;
+            EffectTransformMath.resolveModelMaskHalfExtents(transform, this.half);
+            this.bottomAnchored = true;
+        }
+
+        private void clear()
+        {
+            this.inverse.identity();
+            this.active = false;
+            this.bottomAnchored = true;
+            this.shape = 0F;
+            this.half.set(EffectTransformMath.MODEL_MASK_HALF_BASE, EffectTransformMath.MODEL_MASK_HALF_BASE * EffectTransformMath.MODEL_MASK_Y_BIAS, EffectTransformMath.MODEL_MASK_HALF_BASE);
+        }
+
+        private void upload(ShaderProgram shader, String prefix)
+        {
+            GlUniform inverseUniform = shader.getUniform(prefix + "Inverse");
+
+            if (inverseUniform != null)
+            {
+                inverseUniform.set(this.inverse);
+            }
+
+            GlUniform activeUniform = shader.getUniform(prefix + "Active");
+
+            if (activeUniform != null)
+            {
+                activeUniform.set(this.active ? 1F : 0F);
+            }
+
+            GlUniform halfUniform = shader.getUniform(prefix + "Half");
+
+            if (halfUniform != null)
+            {
+                halfUniform.set(this.half.x, this.half.y, this.half.z);
+            }
+
+            GlUniform bottomUniform = shader.getUniform(prefix + "BottomAnchored");
+
+            if (bottomUniform != null)
+            {
+                bottomUniform.set(this.bottomAnchored ? 1F : 0F);
+            }
+
+            GlUniform shapeUniform = shader.getUniform(prefix + "Shape");
+
+            if (shapeUniform != null)
+            {
+                shapeUniform.set(this.shape);
+            }
+        }
+    }
 
     private static final List<PaintOverlayEntry> paintOverlayQueue = new ArrayList<>();
 
@@ -115,17 +200,21 @@ public class ModelVAORenderer
         private final boolean synced;
         private final boolean fullModel;
         private final boolean colorTint;
+        private final boolean colorGrade;
+        private final boolean vanillaComposite;
         private final boolean depthWrite;
         private final boolean depthTest;
         private final Runnable draw;
 
-        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean colorTint, boolean depthWrite, boolean depthTest, Runnable draw)
+        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean colorTint, boolean colorGrade, boolean vanillaComposite, boolean depthWrite, boolean depthTest, Runnable draw)
         {
             this.projection = projection;
             this.modelView = modelView;
             this.synced = synced;
             this.fullModel = fullModel;
             this.colorTint = colorTint;
+            this.colorGrade = colorGrade;
+            this.vanillaComposite = vanillaComposite;
             this.depthWrite = depthWrite;
             this.depthTest = depthTest;
             this.draw = draw;
@@ -201,12 +290,24 @@ public class ModelVAORenderer
 
     private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean colorTint, boolean depthWrite, boolean depthTest, Runnable draw)
     {
+        enqueuePaintOverlay(projection, modelView, synced, fullModel, colorTint, false, depthWrite, depthTest, draw);
+    }
+
+    private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean colorTint, boolean colorGrade, boolean depthWrite, boolean depthTest, Runnable draw)
+    {
+        enqueuePaintOverlay(projection, modelView, synced, fullModel, colorTint, colorGrade, false, depthWrite, depthTest, draw);
+    }
+
+    private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean colorTint, boolean colorGrade, boolean vanillaComposite, boolean depthWrite, boolean depthTest, Runnable draw)
+    {
         PaintOverlayEntry entry = new PaintOverlayEntry(
             new Matrix4f(projection),
             new Matrix4f(modelView),
             synced,
             fullModel,
             colorTint,
+            colorGrade,
+            vanillaComposite,
             depthWrite,
             depthTest,
             draw
@@ -218,8 +319,33 @@ public class ModelVAORenderer
         }
         else
         {
+            if (colorGrade && !captureGradeSceneColor())
+            {
+                return;
+            }
+
             ModelVAORenderer.runPaintOverlayEntry(entry, false);
         }
+    }
+
+    /**
+     * After Iris composite: run vanilla entity/BE draws with ColorModulator (no BBS paint pass).
+     * Used for structure chests/beds where gbuffer ignores setShaderColor and paint overlays break shading.
+     */
+    public static void submitVanillaPostComposite(Runnable draw)
+    {
+        enqueuePaintOverlay(
+            new Matrix4f(RenderSystem.getProjectionMatrix()),
+            new Matrix4f(RenderSystem.getModelViewMatrix()),
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true,
+            draw
+        );
     }
 
     private static void runPaintOverlayEntry(PaintOverlayEntry entry, boolean restoreFramebuffer)
@@ -254,9 +380,17 @@ public class ModelVAORenderer
             {
                 beginDeferredTranslucentModelPass(entry.depthWrite, entry.depthTest);
             }
+            else if (entry.colorGrade)
+            {
+                beginColorGradeOverlayPass();
+            }
             else if (entry.colorTint)
             {
                 beginColorTintOverlayPass();
+            }
+            else if (entry.vanillaComposite)
+            {
+                beginVanillaPostCompositePass();
             }
             else
             {
@@ -273,9 +407,17 @@ public class ModelVAORenderer
                 {
                     endDeferredTranslucentModelPass();
                 }
+                else if (entry.colorGrade)
+                {
+                    endColorGradeOverlayPass();
+                }
                 else if (entry.colorTint)
                 {
                     endColorTintOverlayPass();
+                }
+                else if (entry.vanillaComposite)
+                {
+                    endVanillaPostCompositePass();
                 }
                 else
                 {
@@ -329,7 +471,27 @@ public class ModelVAORenderer
             false,
             false,
             true,
+            false,
             true,
+            true,
+            draw
+        );
+    }
+
+    /**
+     * Queues a post-composite regrade of Iris-lit model pixels (scene color → FormColorGrade).
+     * Keeps pack lighting/shadows; avoids binding BBS during the gbuffer pass.
+     */
+    public static void submitColorGradeOverlay(Runnable draw)
+    {
+        ModelVAORenderer.enqueuePaintOverlay(
+            new Matrix4f(RenderSystem.getProjectionMatrix()),
+            new Matrix4f(RenderSystem.getModelViewMatrix()),
+            false,
+            false,
+            false,
+            true,
+            false,
             true,
             draw
         );
@@ -363,6 +525,29 @@ public class ModelVAORenderer
 
         try
         {
+            boolean needsSceneCapture = false;
+
+            for (PaintOverlayEntry entry : paintOverlayQueue)
+            {
+                if (entry.colorGrade)
+                {
+                    needsSceneCapture = true;
+
+                    break;
+                }
+            }
+
+            if (needsSceneCapture)
+            {
+                BBSRendering.ensurePaintOverlayTargetFramebuffer();
+
+                if (!captureGradeSceneColor())
+                {
+                    /* Keep Iris-lit mesh; skip broken regrade rather than painting black. */
+                    paintOverlayQueue.removeIf(entry -> entry.colorGrade);
+                }
+            }
+
             for (PaintOverlayEntry entry : paintOverlayQueue)
             {
                 ModelVAORenderer.runPaintOverlayEntry(entry, true);
@@ -408,7 +593,64 @@ public class ModelVAORenderer
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(-1F, -1F);
+        /* Flat / extruded / billboard overlays need a large units bias — factor alone is not
+         * enough for near-zero depth slope at distance (see FlatPaintOverlayPass). */
+        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+    }
+
+    /**
+     * Post-Iris composite path for vanilla block-entity redraws. Pulls slightly toward the
+     * camera without rewriting depth so the tinted pass does not z-fight the Iris-lit BE.
+     */
+    public static void beginVanillaPostCompositePass()
+    {
+        paintOverlayPass = false;
+        paintOverlaySynced = false;
+        colorTintOverlayPass = false;
+        colorGradeOverlayPass = false;
+
+        savedDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
+        savedCullEnabled = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(false);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(-1F, -2F);
+    }
+
+    public static void endVanillaPostCompositePass()
+    {
+        RenderSystem.depthFunc(savedDepthFunc);
+        RenderSystem.depthMask(savedDepthMask);
+
+        if (savedPolygonOffsetFill)
+        {
+            GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        }
+        else
+        {
+            GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        }
+
+        GL11.glPolygonOffset(0F, 0F);
+
+        if (savedCullEnabled)
+        {
+            RenderSystem.enableCull();
+        }
+        else
+        {
+            RenderSystem.disableCull();
+        }
+
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.defaultBlendFunc();
     }
 
     /**
@@ -439,7 +681,136 @@ public class ModelVAORenderer
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(-1F, -1F);
+        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+    }
+
+    /**
+     * Replace Iris-lit model pixels with FormColorGrade(sceneColor). Sampler3 holds the
+     * pre-overlay scene copy from {@link #captureGradeSceneColor()}.
+     */
+    public static void beginColorGradeOverlayPass()
+    {
+        colorGradeOverlayPass = true;
+        colorTintOverlayPass = false;
+        paintOverlayPass = false;
+        paintOverlaySynced = false;
+
+        savedDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
+        savedCullEnabled = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+
+        if (gradeSceneColor != null && gradeSceneColor.isValid())
+        {
+            RenderSystem.setShaderTexture(3, gradeSceneColor.id);
+        }
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(false);
+
+        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+    }
+
+    public static void endColorGradeOverlayPass()
+    {
+        colorGradeOverlayPass = false;
+
+        GL11.glPolygonOffset(0F, 0F);
+
+        if (savedPolygonOffsetFill)
+        {
+            GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        }
+        else
+        {
+            GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        }
+
+        RenderSystem.depthMask(savedDepthMask);
+        RenderSystem.depthFunc(savedDepthFunc);
+        RenderSystem.enableDepthTest();
+        RenderSystem.defaultBlendFunc();
+
+        if (savedCullEnabled)
+        {
+            RenderSystem.enableCull();
+        }
+        else
+        {
+            RenderSystem.disableCull();
+        }
+    }
+
+    /**
+     * Copy the current paint-overlay target color into {@link #gradeSceneColor} so
+     * ColorGradeOverlay can sample Iris-lit pixels without feedback loops.
+     *
+     * @return true when Sampler3 has a valid scene copy for this frame
+     */
+    public static boolean captureGradeSceneColor()
+    {
+        net.minecraft.client.gl.Framebuffer source = BBSRendering.getPaintOverlaySourceFramebuffer();
+
+        if (source == null)
+        {
+            return false;
+        }
+
+        int width = source.textureWidth;
+        int height = source.textureHeight;
+
+        if (width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        if (gradeSceneColor == null)
+        {
+            gradeSceneColor = new mchorse.bbs_mod.graphics.texture.Texture();
+            gradeSceneColor.setFilter(GL11.GL_NEAREST);
+        }
+
+        int prevRead = GL30.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        int prevDraw = GL30.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+        int prevTex = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+
+        try
+        {
+            source.beginRead();
+            gradeSceneColor.bind();
+
+            if (gradeSceneColor.width != width || gradeSceneColor.height != height)
+            {
+                gradeSceneColor.setSize(width, height);
+            }
+
+            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+        }
+        finally
+        {
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTex);
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevRead);
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, prevDraw);
+            BBSRendering.ensurePaintOverlayTargetFramebuffer();
+        }
+
+        return gradeSceneColor.isValid() && gradeSceneColor.width == width && gradeSceneColor.height == height;
+    }
+
+    /**
+     * Bind the scene copy from {@link #captureGradeSceneColor()} to texture unit 3.
+     */
+    public static void bindGradeSceneColorTexture()
+    {
+        if (gradeSceneColor != null && gradeSceneColor.isValid())
+        {
+            RenderSystem.setShaderTexture(3, gradeSceneColor.id);
+        }
     }
 
     public static void endColorTintOverlayPass()
@@ -578,6 +949,11 @@ public class ModelVAORenderer
         return colorTintOverlayPass;
     }
 
+    public static boolean isColorGradeOverlayPass()
+    {
+        return colorGradeOverlayPass;
+    }
+
     public static boolean isDeferredTranslucentPass()
     {
         return deferredTranslucentPass;
@@ -585,7 +961,7 @@ public class ModelVAORenderer
 
     private static boolean usesCapturedModelView()
     {
-        return paintOverlayPass || deferredTranslucentPass || colorTintOverlayPass;
+        return paintOverlayPass || deferredTranslucentPass || colorTintOverlayPass || colorGradeOverlayPass;
     }
 
     /**
@@ -916,6 +1292,123 @@ public class ModelVAORenderer
         colorTintMasked = false;
     }
 
+    public static void setFormColorGrade(float brightness, float contrast, float hue, float saturation)
+    {
+        baseFormColorGradeBrightness = brightness;
+        baseFormColorGradeContrast = contrast;
+        baseFormColorGradeHue = hue;
+        baseFormColorGradeSaturation = saturation;
+        applyFormColorGrade(brightness, contrast, hue, saturation);
+    }
+
+    public static void setGradeEffectTransforms(Color color)
+    {
+        if (color == null)
+        {
+            clearGradeEffectTransforms();
+            clearBaseGradeEffectTransforms();
+
+            return;
+        }
+
+        copyEffectTransform(baseGradeBrightnessTransform, color.brightnessTransform);
+        copyEffectTransform(baseGradeContrastTransform, color.contrastTransform);
+        copyEffectTransform(baseGradeHueTransform, color.hueTransform);
+        copyEffectTransform(baseGradeSaturationTransform, color.saturationTransform);
+        applyGradeEffectTransforms(color.brightnessTransform, color.contrastTransform, color.hueTransform, color.saturationTransform);
+    }
+
+    public static void setGradeEffectTransforms(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation)
+    {
+        copyEffectTransform(baseGradeBrightnessTransform, brightness);
+        copyEffectTransform(baseGradeContrastTransform, contrast);
+        copyEffectTransform(baseGradeHueTransform, hue);
+        copyEffectTransform(baseGradeSaturationTransform, saturation);
+        applyGradeEffectTransforms(brightness, contrast, hue, saturation);
+    }
+
+    /**
+     * Per-bone Color Grade override (same idea as {@link #setGroupPaint}). When the group
+     * has adjustments, they replace the form/base grade for this draw; otherwise restore base.
+     */
+    public static void setGroupFormColorGrade(Color color)
+    {
+        if (color != null && color.hasColorAdjustments())
+        {
+            applyFormColorGrade(color.brightness, color.contrast, color.hue, color.saturation);
+            applyGradeEffectTransforms(color.brightnessTransform, color.contrastTransform, color.hueTransform, color.saturationTransform);
+        }
+        else
+        {
+            applyFormColorGrade(baseFormColorGradeBrightness, baseFormColorGradeContrast, baseFormColorGradeHue, baseFormColorGradeSaturation);
+            applyGradeEffectTransforms(baseGradeBrightnessTransform, baseGradeContrastTransform, baseGradeHueTransform, baseGradeSaturationTransform);
+        }
+    }
+
+    private static void applyFormColorGrade(float brightness, float contrast, float hue, float saturation)
+    {
+        formColorGradeBrightness = brightness;
+        formColorGradeContrast = contrast;
+        formColorGradeHue = hue;
+        formColorGradeSaturation = saturation;
+        mchorse.bbs_mod.utils.iris.FormColorGradePatch.set(brightness, contrast, hue, saturation);
+    }
+
+    private static void applyGradeEffectTransforms(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation)
+    {
+        gradeBrightnessMask.set(brightness);
+        gradeContrastMask.set(contrast);
+        gradeHueMask.set(hue);
+        gradeSaturationMask.set(saturation);
+    }
+
+    private static void copyEffectTransform(EffectTransform target, EffectTransform source)
+    {
+        EffectTransform value = source == null ? new EffectTransform() : source;
+
+        target.offsetX = value.offsetX;
+        target.offsetY = value.offsetY;
+        target.offsetZ = value.offsetZ;
+        target.scaleX = value.scaleX;
+        target.scaleY = value.scaleY;
+        target.scaleZ = value.scaleZ;
+        target.rotateX = value.rotateX;
+        target.rotateY = value.rotateY;
+        target.rotateZ = value.rotateZ;
+        target.shape = value.shape;
+    }
+
+    private static void clearBaseGradeEffectTransforms()
+    {
+        copyEffectTransform(baseGradeBrightnessTransform, null);
+        copyEffectTransform(baseGradeContrastTransform, null);
+        copyEffectTransform(baseGradeHueTransform, null);
+        copyEffectTransform(baseGradeSaturationTransform, null);
+    }
+
+    public static void clearGradeEffectTransforms()
+    {
+        gradeBrightnessMask.clear();
+        gradeContrastMask.clear();
+        gradeHueMask.clear();
+        gradeSaturationMask.clear();
+    }
+
+    public static void clearFormColorGrade()
+    {
+        baseFormColorGradeBrightness = 0F;
+        baseFormColorGradeContrast = 0F;
+        baseFormColorGradeHue = 0F;
+        baseFormColorGradeSaturation = 0F;
+        formColorGradeBrightness = 0F;
+        formColorGradeContrast = 0F;
+        formColorGradeHue = 0F;
+        formColorGradeSaturation = 0F;
+        clearBaseGradeEffectTransforms();
+        clearGradeEffectTransforms();
+        mchorse.bbs_mod.utils.iris.FormColorGradePatch.clear();
+    }
+
     public static void clearColorEffectTransform()
     {
         if (!paintEffectActive)
@@ -955,6 +1448,7 @@ public class ModelVAORenderer
         RenderSystem.setShader(() -> shader);
         shader.bind();
         mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.reassertPostDeferredDepthState();
+        mchorse.bbs_mod.utils.iris.FormColorGradePatch.uploadToCurrentProgram();
         modelVAO.render(shader.getFormat(), r, g, b, a, light, overlay);
         shader.unbind();
 
@@ -964,6 +1458,11 @@ public class ModelVAORenderer
 
     public static void setupUniforms(MatrixStack stack, ShaderProgram shader)
     {
+        if (colorGradeOverlayPass && gradeSceneColor != null && gradeSceneColor.isValid())
+        {
+            RenderSystem.setShaderTexture(3, gradeSceneColor.id);
+        }
+
         for (int i = 0; i < 12; i++)
         {
             shader.addSampler("Sampler" + i, RenderSystem.getShaderTexture(i));
@@ -1118,6 +1617,18 @@ public class ModelVAORenderer
             formColorTintUniform.set(formColorR, formColorG, formColorB, formColorA);
         }
 
+        GlUniform formColorGradeUniform = shader.getUniform("FormColorGrade");
+
+        if (formColorGradeUniform != null)
+        {
+            formColorGradeUniform.set(formColorGradeBrightness, formColorGradeContrast, formColorGradeHue, formColorGradeSaturation);
+        }
+
+        gradeBrightnessMask.upload(shader, "GradeBrightness");
+        gradeContrastMask.upload(shader, "GradeContrast");
+        gradeHueMask.upload(shader, "GradeHue");
+        gradeSaturationMask.upload(shader, "GradeSaturation");
+
         GlUniform colorTintMaskedUniform = shader.getUniform("ColorTintMasked");
 
         if (colorTintMaskedUniform != null)
@@ -1130,6 +1641,13 @@ public class ModelVAORenderer
         if (colorTintOverlayUniform != null)
         {
             colorTintOverlayUniform.set(colorTintOverlayPass ? 1F : 0F);
+        }
+
+        GlUniform colorGradeOverlayUniform = shader.getUniform("ColorGradeOverlay");
+
+        if (colorGradeOverlayUniform != null)
+        {
+            colorGradeOverlayUniform.set(colorGradeOverlayPass ? 1F : 0F);
         }
 
         /* After Iris composite, RenderSystem fog is often collapsed (FogEnd≈1) or left as

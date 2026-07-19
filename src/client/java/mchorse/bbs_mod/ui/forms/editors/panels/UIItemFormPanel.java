@@ -6,6 +6,7 @@ import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorAdjustments;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIItemStack;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -21,6 +22,7 @@ import net.minecraft.client.render.model.json.ModelTransformationMode;
 public class UIItemFormPanel extends UIFormPanel<ItemForm>
 {
     public UIColor color;
+    public UIFormColorAdjustments colorAdjustments;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
     public UIFormPaintTransform paintTransform;
@@ -34,7 +36,19 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
     {
         super(editor);
 
-        this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
+        this.color = new UIColor((c) ->
+        {
+            Color color = this.form.color.get().copy();
+            Color value = Color.rgba(c);
+
+            color.set(value.r, value.g, value.b, value.a);
+            this.form.color.set(color);
+        }).withAlpha();
+        this.colorAdjustments = new UIFormColorAdjustments(() -> this.form.color.get(), (color) ->
+        {
+            this.form.color.setRuntimeValue(null);
+            this.form.color.set(color);
+        });
         this.paintColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
@@ -46,6 +60,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
             settings.r = color.r;
             settings.g = color.g;
             settings.b = color.b;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
         });
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
@@ -55,6 +70,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
             float intensity = PaintSettings.clampIntensity(value.floatValue());
 
             settings.intensity = intensity;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();
@@ -111,7 +127,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         this.sameAnimationWhenDropped.tooltip(UIKeys.FORMS_EDITORS_ITEM_SAME_ANIMATION_WHEN_DROPPED_TOOLTIP);
         this.itemStackEditor = new UIItemStack((itemStack) -> this.form.stack.set(itemStack.copy()));
 
-        this.options.add(this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.glowingColor, this.glowIntensity, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
+        this.options.add(this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.colorAdjustments, this.glowingColor, this.glowIntensity, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
     }
 
     private void setModelTransform(ModelTransformationMode value)
@@ -127,6 +143,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         super.startEdit(form);
 
         this.color.setColor(form.color.get().getARGBColor());
+        this.colorAdjustments.syncFromForm();
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

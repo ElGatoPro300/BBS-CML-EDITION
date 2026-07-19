@@ -4,8 +4,6 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.forms.LabelForm;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
@@ -37,8 +35,6 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
     public UIToggle billboard;
     public UIToggle nametag;
     public UIColor color;
-    public UIColor paintColor;
-    public UITrackpad paintIntensity;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
     public UITrackpad max;
@@ -91,35 +87,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.nametag = new UIToggle(UIKeys.FORMS_EDITORS_LABEL_NAMETAG, (b) -> this.form.nametag.set(b.getValue()));
         this.nametag.tooltip(UIKeys.FORMS_EDITORS_LABEL_NAMETAG_HINT);
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
-        this.paintColor = new UIColor((c) ->
-        {
-            Color color = Color.rgba(c);
-            PaintSettings settings = this.form.paintSettings.get().copy();
-
-            color.a = settings.intensity;
-            this.form.paintColor.set(color);
-
-            settings.r = color.r;
-            settings.g = color.g;
-            settings.b = color.b;
-            this.form.paintSettings.set(settings);
-        });
-        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
-        this.paintIntensity = new UITrackpad((value) ->
-        {
-            PaintSettings settings = this.form.paintSettings.get().copy();
-            float intensity = PaintSettings.clampIntensity(value.floatValue());
-
-            settings.intensity = intensity;
-            this.form.paintSettings.set(settings);
-
-            Color legacy = this.form.paintColor.get().copy();
-
-            legacy.a = intensity;
-            this.form.paintColor.set(legacy);
-        });
-        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
-        this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.color.tooltip(UIKeys.FORMS_EDITORS_BLEND_COLOR);
         this.glowingColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
@@ -251,7 +219,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
             this.gradientOffset.setValue(0.5F);
         });
 
-        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.nametag, this.color, this.paintColor, this.paintIntensity, this.glowingColor, this.glowIntensity, this.max);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.nametag, this.color, this.glowingColor, this.glowIntensity, this.max);
 
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_ANCHOR).marginTop(8), UI.row(this.anchorX, this.anchorY), this.anchorLines);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_SHADOW_OFFSET).marginTop(8), this.shadowX, this.shadowY);
@@ -327,12 +295,6 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.billboard.setValue(form.billboard.get());
         this.nametag.setValue(form.nametag.get());
         this.color.setColor(form.color.get().getARGBColor());
-        PaintSettings paint = form.paintSettings.get();
-        Color paintDisplay = new Color();
-
-        paint.resolveColor(form.paintColor.get(), paintDisplay);
-        this.paintColor.setColor(paintDisplay.getRGBColor());
-        this.paintIntensity.setValue(paint.intensity);
         GlowSettings glow = form.glowSettings.get();
         Color glowDisplay = new Color();
 

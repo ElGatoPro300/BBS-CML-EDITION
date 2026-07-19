@@ -15,6 +15,13 @@ import org.lwjgl.opengl.GL11;
  */
 public class FlatPaintOverlayPass
 {
+    /**
+     * Camera-facing quads have ~0 depth slope, so only {@code units} separates the overlay.
+     * Far away, float depth precision needs a larger units bias than near-camera draws.
+     */
+    public static final float POLYGON_OFFSET_FACTOR = -1F;
+    public static final float POLYGON_OFFSET_UNITS = -32F;
+
     private FlatPaintOverlayPass()
     {
     }
@@ -41,8 +48,7 @@ public class FlatPaintOverlayPass
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        /* Stronger units bias keeps coplanar paint overlays stable when the camera is very close. */
-        GL11.glPolygonOffset(-1F, -2F);
+        GL11.glPolygonOffset(POLYGON_OFFSET_FACTOR, POLYGON_OFFSET_UNITS);
 
         ShaderProgram program = BBSShaders.getFlatPaintOverlayProgram();
 

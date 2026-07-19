@@ -9,6 +9,7 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorAdjustments;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIStructureOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -44,6 +45,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
     public UIButton pickBiome;
     public UITextbox structureFile;
     public UIColor color;
+    public UIFormColorAdjustments colorAdjustments;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
     public UIFormPaintTransform paintTransform;
@@ -63,7 +65,19 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
         this.pickStructure = new UIButton(UIKeys.FORMS_EDITORS_STRUCTURE_PICK_STRUCTURE, (b) -> this.pickStructure());
         this.structureFile = new UITextbox(100, (s) -> this.form.structureFile.set(s)).path().border();
-        this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
+        this.color = new UIColor((c) ->
+        {
+            Color color = this.form.color.get().copy();
+            Color value = Color.rgba(c);
+
+            color.set(value.r, value.g, value.b, value.a);
+            this.form.color.set(color);
+        }).withAlpha();
+        this.colorAdjustments = new UIFormColorAdjustments(() -> this.form.color.get(), (color) ->
+        {
+            this.form.color.setRuntimeValue(null);
+            this.form.color.set(color);
+        });
         this.paintColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
@@ -75,6 +89,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
             settings.r = color.r;
             settings.g = color.g;
             settings.b = color.b;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
         });
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
@@ -84,6 +99,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
             float intensity = PaintSettings.clampIntensity(value.floatValue());
 
             settings.intensity = intensity;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();
@@ -136,7 +152,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         // Pivot UI removed; calculate center moved to Transform panel
 
         /* Quitar etiquetas; mostrar solo los controles */
-        this.options.add(this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.glowingColor, this.glowIntensity);
+        this.options.add(this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.colorAdjustments, this.glowingColor, this.glowIntensity);
         this.options.add(this.pickStructure);
         this.options.add(this.pickBiome);
         this.options.add(this.toggleLight);
@@ -243,6 +259,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
         this.structureFile.setText(form.structureFile.get());
         this.color.setColor(form.color.get().getARGBColor());
+        this.colorAdjustments.syncFromForm();
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

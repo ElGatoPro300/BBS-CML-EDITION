@@ -665,6 +665,12 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_PAINT_COLOR = L10n.lang("bbs.ui.forms.editors.paint_color");
     public static final IKey FORMS_EDITORS_BLEND_COLOR = L10n.lang("bbs.ui.forms.editors.blend_color");
     public static final IKey FORMS_EDITORS_BLEND_INTENSITY = L10n.lang("bbs.ui.forms.editors.blend_intensity");
+    public static final IKey FORMS_EDITORS_COLOR_GRADE = L10n.lang("bbs.ui.forms.editors.color_grade");
+    public static final IKey FORMS_EDITORS_COLOR_GRADE_HIDE = L10n.lang("bbs.ui.forms.editors.color_grade_hide");
+    public static final IKey FORMS_EDITORS_COLOR_BRIGHTNESS = L10n.lang("bbs.ui.forms.editors.color_brightness");
+    public static final IKey FORMS_EDITORS_COLOR_CONTRAST = L10n.lang("bbs.ui.forms.editors.color_contrast");
+    public static final IKey FORMS_EDITORS_COLOR_HUE = L10n.lang("bbs.ui.forms.editors.color_hue");
+    public static final IKey FORMS_EDITORS_COLOR_SATURATION = L10n.lang("bbs.ui.forms.editors.color_saturation");
     public static final IKey FORMS_EDITORS_COLOR_TRANSFORM = L10n.lang("bbs.ui.forms.editors.color_transform");
     public static final IKey FORMS_EDITORS_COLOR_TRANSFORM_HIDE = L10n.lang("bbs.ui.forms.editors.color_transform_hide");
     public static final IKey FORMS_EDITORS_PAINT_INTENSITY = L10n.lang("bbs.ui.forms.editors.paint_intensity");

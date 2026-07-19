@@ -1,12 +1,15 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
 import mchorse.bbs_mod.film.replays.FormProperties;
+import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.LabelForm;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorAdjustments;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragEndEvent;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragStartEvent;
@@ -27,11 +30,15 @@ import java.util.function.Consumer;
 
 /**
  * Film Color track: Blend Color (RGB + intensity + Transform) and Paint Color (RGB + intensity + Transform).
+ * Label/text forms only expose Blend Color itself.
  */
 public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
 {
+    private final boolean simpleBlendColorOnly;
+
     private UIColor blendColor;
     private UITrackpad blendIntensity;
+    private UIFormColorAdjustments blendAdjustments;
     private UIEffectTransformCollapse blendTransform;
     private UIColor paintColor;
     private UITrackpad paintIntensity;
@@ -42,6 +49,8 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
     {
         super(keyframe, editor);
 
+        this.simpleBlendColorOnly = this.isSimpleBlendColorOnly();
+
         this.blendColor = new UIColor((c) -> this.applyColorEdit((color) ->
         {
             Color value = Color.rgb(c);
@@ -51,58 +60,111 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
         }));
         this.blendColor.setColor(keyframe.getValue().getRGBColor());
 
-        this.blendIntensity = new UITrackpad((value) -> this.applyColorEdit((color) ->
-            color.a = MathUtils.clamp(value.floatValue(), 0F, 1F)));
-        this.blendIntensity.limit(0F, 1F).values(0.1D, 0.05D, 0.2D);
-        this.blendIntensity.tooltip(UIKeys.FORMS_EDITORS_BLEND_INTENSITY);
-        this.wireUndo(this.blendIntensity);
-
-        this.blendTransform = new UIEffectTransformCollapse((apply) -> this.applyColorEdit((color) ->
-        {
-            if (color.transform == null)
-            {
-                color.transform = new EffectTransform();
-            }
-
-            apply.accept(color.transform);
-        }));
-        this.blendTransform.registerUndo(editor);
-
-        this.paintColor = new UIColor((c) -> this.applyPaintEdit((settings) -> this.setPaintColor(settings, c)));
-        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
-
-        this.paintIntensity = new UITrackpad((value) -> this.applyPaintEdit((settings) ->
-            settings.intensity = PaintSettings.clampIntensity(value.floatValue())));
-        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
-        this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
-
-        this.paintTransform = new UIEffectTransformCollapse((apply) -> this.applyPaintEdit((settings) ->
-        {
-            if (settings.transform == null)
-            {
-                settings.transform = new EffectTransform();
-            }
-
-            apply.accept(settings.transform);
-        }));
-        /* Paint lives on a hidden channel (not a timeline sheet); undo via color-sheet
-         * cache/submit would not capture paint and was snapping the intensity bar back. */
-
         this.spectrum = new UIToggle(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM, (b) -> this.setSpectrum(b.getValue()));
         this.spectrum.tooltip(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM_TOOLTIP);
         this.spectrum.setValue(keyframe.isSpectrum());
 
         this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_BLEND_COLOR).marginTop(4));
         this.scroll.add(this.blendColor);
-        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_BLEND_INTENSITY), this.blendIntensity);
-        this.scroll.add(this.blendTransform);
-        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR).marginTop(4));
-        this.scroll.add(this.paintColor);
-        this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY), this.paintIntensity);
-        this.scroll.add(this.paintTransform);
-        this.scroll.add(this.spectrum.marginTop(8));
+
+        if (!this.simpleBlendColorOnly)
+        {
+            this.blendIntensity = new UITrackpad((value) -> this.applyColorEdit((color) ->
+                color.a = MathUtils.clamp(value.floatValue(), 0F, 1F)));
+            this.blendIntensity.limit(0F, 1F).values(0.1D, 0.05D, 0.2D);
+            this.blendIntensity.tooltip(UIKeys.FORMS_EDITORS_BLEND_INTENSITY);
+            this.wireUndo(this.blendIntensity);
+
+            this.blendAdjustments = new UIFormColorAdjustments(
+                () -> this.getOrCreateColor(this.keyframe.getValue()),
+                (color) -> this.applyColorEdit((target) ->
+                {
+                    target.brightness = color.brightness;
+                    target.contrast = color.contrast;
+                    target.hue = color.hue;
+                    target.saturation = color.saturation;
+                    target.brightnessTransform = color.brightnessTransform == null ? new EffectTransform() : color.brightnessTransform.copy();
+                    target.contrastTransform = color.contrastTransform == null ? new EffectTransform() : color.contrastTransform.copy();
+                    target.hueTransform = color.hueTransform == null ? new EffectTransform() : color.hueTransform.copy();
+                    target.saturationTransform = color.saturationTransform == null ? new EffectTransform() : color.saturationTransform.copy();
+                })
+            );
+            this.wireUndo(this.blendAdjustments.brightness);
+            this.wireUndo(this.blendAdjustments.contrast);
+            this.wireUndo(this.blendAdjustments.hue);
+            this.wireUndo(this.blendAdjustments.saturation);
+            this.blendAdjustments.registerUndo(editor);
+
+            this.blendTransform = new UIEffectTransformCollapse((apply) -> this.applyColorEdit((color) ->
+            {
+                if (color.transform == null)
+                {
+                    color.transform = new EffectTransform();
+                }
+
+                apply.accept(color.transform);
+            }));
+            this.blendTransform.registerUndo(editor);
+
+            this.paintColor = new UIColor((c) -> this.applyPaintEdit((settings) -> this.setPaintColor(settings, c)));
+            this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+
+            this.paintIntensity = new UITrackpad((value) -> this.applyPaintEdit((settings) ->
+                settings.intensity = PaintSettings.clampIntensity(value.floatValue())));
+            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
+            this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+
+            this.paintTransform = new UIEffectTransformCollapse((apply) -> this.applyPaintEdit((settings) ->
+            {
+                if (settings.transform == null)
+                {
+                    settings.transform = new EffectTransform();
+                }
+
+                apply.accept(settings.transform);
+            }));
+            /* Paint lives on a hidden channel (not a timeline sheet); undo via color-sheet
+             * cache/submit would not capture paint and was snapping the intensity bar back. */
+
+            this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_BLEND_INTENSITY), this.blendIntensity);
+            this.scroll.add(this.blendTransform);
+            this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR).marginTop(4));
+            this.scroll.add(this.paintColor);
+            this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY), this.paintIntensity);
+            this.scroll.add(this.paintTransform);
+            this.scroll.add(this.spectrum.marginTop(8));
+            this.scroll.add(this.blendAdjustments.marginTop(4));
+        }
+        else
+        {
+            this.scroll.add(this.spectrum.marginTop(8));
+        }
 
         this.update();
+    }
+
+    private boolean isSimpleBlendColorOnly()
+    {
+        if (this.editor == null)
+        {
+            return false;
+        }
+
+        UIKeyframeSheet sheet = this.editor.getGraph().getSheet(this.keyframe);
+
+        if (sheet != null && sheet.property != null)
+        {
+            return FormUtils.getForm(sheet.property) instanceof LabelForm;
+        }
+
+        UIReplaysEditor replays = this.editor.getParent(UIReplaysEditor.class);
+
+        if (replays == null || replays.getReplay() == null)
+        {
+            return false;
+        }
+
+        return replays.getReplay().form.get() instanceof LabelForm;
     }
 
     private void wireUndo(UITrackpad trackpad)
@@ -119,15 +181,23 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
         this.syncLiveColorKeyframe();
 
         Color value = this.getOrCreateColor(this.keyframe.getValue());
-        PaintSettings paint = this.getPaintSettingsAtTick(this.keyframe.getTick());
 
         this.blendColor.setColor(value.getRGBColor());
+        this.spectrum.setValue(this.keyframe.isSpectrum());
+
+        if (this.simpleBlendColorOnly)
+        {
+            return;
+        }
+
+        PaintSettings paint = this.getPaintSettingsAtTick(this.keyframe.getTick());
+
         this.blendIntensity.setValue(MathUtils.clamp(value.a, 0F, 1F));
+        this.blendAdjustments.syncFromForm();
         this.blendTransform.setEffectTransform(value.transform);
         this.paintColor.setColor(new Color().set(paint.r, paint.g, paint.b, 1F).getRGBColor());
         this.paintIntensity.setValue(paint.intensity);
         this.paintTransform.setEffectTransform(paint.transform);
-        this.spectrum.setValue(this.keyframe.isSpectrum());
     }
 
     /**
@@ -264,6 +334,11 @@ public class UIFormColorKeyframeFactory extends UIKeyframeFactory<Color>
 
     private void refreshPaintFields(PaintSettings paint)
     {
+        if (this.simpleBlendColorOnly || this.paintColor == null)
+        {
+            return;
+        }
+
         PaintSettings value = this.getOrCreatePaint(paint);
 
         this.paintColor.setColor(new Color().set(value.r, value.g, value.b, 1F).getRGBColor());

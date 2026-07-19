@@ -15,10 +15,16 @@ public class PaintSettings
     public static final float MIN_INTENSITY = -1F;
     public static final float MAX_INTENSITY = 1F;
     public static final float SHADER_SHADOW_DEFAULT = 1F;
-    public static final float SHADER_SHADOW_FIX_BUG = 0.005F;
+    /** Complementary / Iris workaround: keep painted forms from leaving a cursor-side shadow speck. */
+    public static final float SHADER_SHADOW_FIX_BUG = 0.001F;
     public static final float SHADER_SHADOW_FIX_BUG_THRESHOLD = 0.01F;
     /* When form color opacity is 0, still cast a faint Iris shadow. */
     public static final float SHADER_SHADOW_ZERO_OPACITY = 0.05F;
+    /**
+     * Structure forms that are only block entities (chests, beds, …): soft enough to clear the
+     * Complementary cursor speck, but strong enough that a silhouette still casts.
+     */
+    public static final float SHADER_SHADOW_BLOCK_ENTITY = 0.05F;
 
     public float r = 1F;
     public float g = 1F;

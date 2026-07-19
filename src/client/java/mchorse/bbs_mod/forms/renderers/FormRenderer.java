@@ -6,6 +6,8 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
@@ -16,6 +18,7 @@ import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -107,20 +110,30 @@ public abstract class FormRenderer <T extends Form>
 
     public final void render(FormRenderingContext context)
     {
-        if (!this.form.shaderShadow.get() && BBSRendering.isIrisShadowPass())
-        {
-            return;
-        }
+        boolean shadowPass = context.isShadowPass || BBSRendering.isIrisShadowPass();
 
-        if (context.isShadowPass || BBSRendering.isIrisShadowPass())
+        if (shadowPass)
         {
             BaseValue colorValue = this.form.get("color");
+            Color formColor = colorValue instanceof ValueColor valueColor ? valueColor.get() : null;
 
-            if (colorValue instanceof ValueColor valueColor && valueColor.get().a <= 0.001F)
+            if (formColor != null && formColor.a <= 0.001F)
             {
                 /* Keep shadow casting when the mesh itself is fully transparent. */
                 this.form.shaderShadow.setRuntimeValue(true);
             }
+
+            /* Paint / Blend Color fringe fix must not disable casting (Complementary speck fix). */
+            if (PaintSettings.isFixBugShaderShadow(FormColorBlend.resolveEffectShaderShadow(
+                formColor, this.form.paintSettings.get(), this.form.paintColor.get())))
+            {
+                this.form.shaderShadow.setRuntimeValue(true);
+            }
+        }
+
+        if (!this.form.shaderShadow.get() && BBSRendering.isIrisShadowPass())
+        {
+            return;
         }
 
         if (!this.form.render.get())

@@ -1209,9 +1209,9 @@ public class UIFilmController extends UIElement
         {
             if (this.panel.hasLastGizmoMatrix)
             {
-                /* Whether the world pass bakes BBSRendering.camera into the captured
-                 * matrix depends on the render path (Iris pack vs. vanilla), so let
-                 * the gizmo pick the composition that lands inside the frustum. */
+                /* Prefer camera * capture (same as no-shader); fall back to baked capture
+                 * only when that composition leaves the frustum (Iris paths that already
+                 * baked the camera into the world-pass matrix). */
                 Gizmo.composeVisualMatrix(this.panel.lastGizmoMatrix, BBSRendering.camera, this.panel.lastProjection, this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.hasGizmoMatrix = true;
@@ -1616,17 +1616,24 @@ public class UIFilmController extends UIElement
         }
         else
         {
-            Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), this.panel.replayEditor.replays.replays.getIndex());
+            /* Bone pick across every visible replay so duplicated actors in front
+             * of the selected one remain clickable (same as Alt entity pick coverage). */
             Pair<String, Boolean> bone = this.getBone();
+            Replay currentReplay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), this.panel.replayEditor.replays.replays.getIndex());
+            boolean markedBonesOnly = BBSSettings.replayMarkedBonesOnly.get() && !Window.isShiftPressed();
 
-            if (replay != null && this.editorController != null && !this.editorController.isReplayVisible(replay, replay.getTick(cursorTick)))
+            for (Map.Entry<Integer, IEntity> entry : this.getEntities().entrySet())
             {
-                replay = null;
-            }
+                Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), entry.getKey());
 
-            if (replay != null)
-            {
-                if (BBSSettings.replayMarkedBonesOnly.get() && !Window.isShiftPressed())
+                if (replay == null || this.editorController == null || !this.editorController.isReplayVisible(replay, replay.getTick(cursorTick)))
+                {
+                    continue;
+                }
+
+                this.stencilMap.allowedBones = null;
+
+                if (markedBonesOnly)
                 {
                     Form form = replay.form.get();
 
@@ -1647,14 +1654,16 @@ public class UIFilmController extends UIElement
                     }
                 }
 
+                boolean current = replay == currentReplay;
+
                 BaseFilmController.renderEntity(FilmControllerContext.instance
-                    .setup(this.getEntities(), entity, replay, renderContext)
+                    .setup(this.getEntities(), entry.getValue(), replay, renderContext)
                     .film(this.panel.getData())
                     .filmTick(cursorTick)
                     .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
                     .stencil(this.stencilMap)
                     .relative(replay.relative.get())
-                    .bone(bone == null ? null : bone.a, bone != null && bone.b));
+                    .bone(current && bone != null ? bone.a : null, current && bone != null && bone.b));
             }
         }
 

@@ -59,6 +59,12 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         this.yAxis = new Scale(this.keyframes.area, ScrollDirection.VERTICAL).inverse();
     }
 
+    @Override
+    public UIKeyframes getHostKeyframes()
+    {
+        return this.keyframes;
+    }
+
     /* Graphing */
 
     public int toGraphY(double value)

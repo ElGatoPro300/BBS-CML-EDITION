@@ -99,6 +99,7 @@ public class CubicCpuGroupDrawRenderer extends CubicCubeRenderer
             this.resolveEffectiveGlowB(group),
             effectiveGlowStrength
         );
+        ModelVAORenderer.setGroupFormColorGrade(group.color);
 
         float cr = this.r;
         float cg = this.g;

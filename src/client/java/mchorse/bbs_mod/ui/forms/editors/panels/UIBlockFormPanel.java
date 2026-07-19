@@ -6,6 +6,7 @@ import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIBlockStateEditor;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormColorAdjustments;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -18,6 +19,7 @@ import net.minecraft.block.BlockState;
 public class UIBlockFormPanel extends UIFormPanel<BlockForm>
 {
     public UIColor color;
+    public UIFormColorAdjustments colorAdjustments;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
     public UIFormPaintTransform paintTransform;
@@ -36,7 +38,19 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
     {
         super(editor);
 
-        this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
+        this.color = new UIColor((c) ->
+        {
+            Color color = this.form.color.get().copy();
+            Color value = Color.rgba(c);
+
+            color.set(value.r, value.g, value.b, value.a);
+            this.form.color.set(color);
+        }).withAlpha();
+        this.colorAdjustments = new UIFormColorAdjustments(() -> this.form.color.get(), (color) ->
+        {
+            this.form.color.setRuntimeValue(null);
+            this.form.color.set(color);
+        });
         this.paintColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
@@ -48,6 +62,7 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
             settings.r = color.r;
             settings.g = color.g;
             settings.b = color.b;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
         });
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
@@ -57,6 +72,7 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
             float intensity = PaintSettings.clampIntensity(value.floatValue());
 
             settings.intensity = intensity;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();
@@ -107,7 +123,7 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         this.repeatCenterZ = new UIToggle(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_Z, (b) -> this.form.repeatCenterZ.set(b.getValue()));
         this.repeatCenterZ.tooltip(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_Z_TOOLTIP);
 
-        this.options.add(this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.glowingColor, this.glowIntensity, this.stateEditor);
+        this.options.add(this.color, this.paintColor, this.paintIntensity, this.paintTransform, this.colorAdjustments, this.glowingColor, this.glowIntensity, this.stateEditor);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_BLOCK_REPEAT).marginTop(6), UI.row(this.repeatX, this.repeatY, this.repeatZ));
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER).marginTop(6), UI.row(this.repeatCenterX, this.repeatCenterY, this.repeatCenterZ));
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_BLOCK_BREAKING).marginTop(6), this.breaking);
@@ -121,6 +137,7 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         BlockState blockState = this.form.blockState.get();
 
         this.color.setColor(form.color.get().getARGBColor());
+        this.colorAdjustments.syncFromForm();
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

@@ -414,6 +414,7 @@ public class BOBJModelVAO
 
         RenderSystem.setShader(() -> shader);
         shader.bind();
+        mchorse.bbs_mod.utils.iris.FormColorGradePatch.uploadToCurrentProgram();
 
         GL30.glBindVertexArray(this.vao);
 

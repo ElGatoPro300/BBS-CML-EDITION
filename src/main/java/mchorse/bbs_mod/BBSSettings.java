@@ -210,6 +210,7 @@ public class BBSSettings
     public static ValueBoolean shaderCurvesEnabled;
     public static ValueBoolean complementaryOpacityFix;
     public static ValueBoolean bslOpacityFix;
+    public static ValueBoolean shaderOpacityPatchesDefaultOnMigrated;
     public static ValueFloat shaderShadowOpacity;
 
     public static ValueBoolean audioWaveformVisible;
@@ -281,6 +282,30 @@ public class BBSSettings
 
     public static void syncAppliedAppearance()
     {}
+
+    /**
+     * Opacity shader patches originally shipped default-off; defaults are now on.
+     * Existing bbs.json still has false — flip them on once after load.
+     */
+    public static void migrateShaderOpacityPatchesAfterLoad()
+    {
+        if (shaderOpacityPatchesDefaultOnMigrated == null || shaderOpacityPatchesDefaultOnMigrated.get())
+        {
+            return;
+        }
+
+        if (complementaryOpacityFix != null)
+        {
+            complementaryOpacityFix.set(true);
+        }
+
+        if (bslOpacityFix != null)
+        {
+            bslOpacityFix.set(true);
+        }
+
+        shaderOpacityPatchesDefaultOnMigrated.set(true);
+    }
 
     public static int modelEditorHoverHighlight()
     {
@@ -742,6 +767,8 @@ public class BBSSettings
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
         complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", true);
         bslOpacityFix = builder.getBoolean("bsl_opacity_fix", true);
+        shaderOpacityPatchesDefaultOnMigrated = builder.getBoolean("opacity_patches_default_on_migrated", false);
+        shaderOpacityPatchesDefaultOnMigrated.invisible();
         shaderShadowOpacity = builder.getFloat("shader_shadow_opacity", 1F, 0F, 1F);
 
         builder.category("fluid_simulation");

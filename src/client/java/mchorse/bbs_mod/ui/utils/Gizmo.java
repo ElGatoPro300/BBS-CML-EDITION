@@ -549,27 +549,26 @@ public class Gizmo
     /**
      * Compose the world-pass captured gizmo matrix with the camera rotation when needed.
      *
-     * Depending on the render path (Iris shader pack, chunk-layer hook, vanilla), the
-     * captured matrix may or may not already contain the camera rotation. Instead of
-     * hardcoding an assumption per path, test both candidates against the projection:
-     * the correct one places the gizmo origin in front of the camera within the frustum
-     * (the gizmo hitbox is drawn on screen, so the visual must land there too).
+     * Prefer {@code camera * captured} (same as the no-shader path). Some Iris world
+     * passes already bake the camera into {@code captured}; in that case the composed
+     * matrix leaves the frustum and we fall back to the baked capture so the colored
+     * visual stays on the hitbox instead of sticking to the camera.
      */
     public static Matrix4f composeVisualMatrix(Matrix4f captured, Matrix4f cameraMatrix, Matrix4f projection, Matrix4f dest)
     {
         Matrix4f baked = new Matrix4f(captured);
         Matrix4f composed = new Matrix4f(cameraMatrix).mul(captured);
-        boolean preferBaked = BBSRendering.isIrisShadersEnabled();
-        Matrix4f first = preferBaked ? baked : composed;
-        Matrix4f second = preferBaked ? composed : baked;
 
-        if (!isOriginVisible(first, projection) && isOriginVisible(second, projection))
+        /* Always try the no-shader composition first. Preferring "baked" under Iris
+         * made both candidates look frustum-valid at many angles while the visual
+         * followed the camera instead of the bone hitbox. */
+        if (isOriginVisible(composed, projection) || !isOriginVisible(baked, projection))
         {
-            dest.set(second);
+            dest.set(composed);
         }
         else
         {
-            dest.set(first);
+            dest.set(baked);
         }
 
         return dest;
@@ -584,7 +583,11 @@ public class Gizmo
             return false;
         }
 
-        return Math.abs(clip.x / clip.w) <= 1.1F && Math.abs(clip.y / clip.w) <= 1.1F;
+        float ndcX = clip.x / clip.w;
+        float ndcY = clip.y / clip.w;
+        float ndcZ = clip.z / clip.w;
+
+        return Math.abs(ndcX) <= 1.1F && Math.abs(ndcY) <= 1.1F && ndcZ >= -1.1F && ndcZ <= 1.1F;
     }
 
     /**

@@ -2,8 +2,10 @@ package mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs;
 
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.interps.Interpolation;
@@ -18,6 +20,11 @@ public interface IUIKeyframeGraph
 {
     public static final int TOP_MARGIN = 15;
     public static final int SIDEBAR_WIDTH = 140;
+
+    public default UIKeyframes getHostKeyframes()
+    {
+        return null;
+    }
 
     public default int getSidebarWidth()
     {
@@ -178,6 +185,8 @@ public interface IUIKeyframeGraph
     {
         UIKeyframeSheet sheet = this.getSheet(keyframe);
 
+        UIReplaysEditorUtils.removeCompanionPaintForColorKeyframe(this.getHostKeyframes(), keyframe);
+
         sheet.remove(keyframe);
         this.clearSelection();
         this.pickKeyframe(null);
@@ -185,6 +194,8 @@ public interface IUIKeyframeGraph
 
     public default void removeSelected()
     {
+        UIReplaysEditorUtils.removeCompanionPaintForSelectedColor(this.getHostKeyframes());
+
         for (UIKeyframeSheet sheet : this.getSheets())
         {
             sheet.selection.removeSelected();
@@ -216,6 +227,8 @@ public interface IUIKeyframeGraph
         }
 
         float diff = tick - selected.getTick();
+
+        UIReplaysEditorUtils.moveCompanionPaintForSelectedColor(this.getHostKeyframes(), diff);
 
         for (UIKeyframeSheet sheet : this.getSheets())
         {

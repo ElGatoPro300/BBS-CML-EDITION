@@ -265,6 +265,19 @@ public class BBSRendering
         }
     }
 
+    /**
+     * Framebuffer whose color is sampled by ColorGradeOverlay (Iris-lit scene before regrade).
+     */
+    public static Framebuffer getPaintOverlaySourceFramebuffer()
+    {
+        if (toggleFramebuffer && framebuffer != null)
+        {
+            return framebuffer;
+        }
+
+        return MinecraftClient.getInstance().getFramebuffer();
+    }
+
     public static boolean isCustomSize()
     {
         return customSize;
@@ -1368,6 +1381,14 @@ public class BBSRendering
         }
 
         return (b) -> new BlockPaintOverlayVertexConsumer(b, paintColor);
+    }
+
+    /**
+     * Neutral white vertex colors for block color-tint multiply overlays (tint lives in uniforms).
+     */
+    public static Function<VertexConsumer, VertexConsumer> getBlockColorTintOverlayConsumer()
+    {
+        return getColorConsumer(Color.white());
     }
 
     private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)

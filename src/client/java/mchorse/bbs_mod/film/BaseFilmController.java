@@ -26,6 +26,7 @@ import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
 import mchorse.bbs_mod.forms.values.ValueIllusion;
@@ -269,14 +270,21 @@ public abstract class BaseFilmController
                 Color legacyPaint = form.paintColor.get();
                 float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
 
-                /* Paint's effectiveShaderShadow() returns SHADER_SHADOW_FIX_BUG (0.005) when paint
-                 * is active — that value is only a Complementary workaround flag, not caster alpha.
-                 * Under ShaderOpacityPatch, shadow.glsl dither-discards by vertex alpha, so scaling
-                 * by 0.005 would erase painted model shadows. Keep replay/form opacity only. */
-                if (paint.resolveIntensity(legacyPaint) != 0F
-                    && !mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.isActive())
+                /* Paint / Blend Color → SHADER_SHADOW_FIX_BUG (0.001) fringe fix. Softens
+                 * shadow-map alpha only — Form.shaderShadow stays on so casting is kept. */
+                Color formColor = null;
+                BaseValue colorValue = form.get("color");
+
+                if (colorValue instanceof ValueColor valueColor)
                 {
-                    shadowAlpha *= paint.effectiveShaderShadow(legacyPaint);
+                    formColor = valueColor.get();
+                }
+
+                float fix = FormColorBlend.resolveEffectShaderShadow(formColor, paint, legacyPaint);
+
+                if (PaintSettings.isFixBugShaderShadow(fix))
+                {
+                    shadowAlpha *= fix;
                 }
 
                 formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
@@ -2490,7 +2498,8 @@ public abstract class BaseFilmController
             current.sync = current.sync || groupPaint.sync;
             current.shaderShadow = PaintSettings.resolveAutoShaderShadow(current.intensity);
             form.paintSettings.setRuntimeValue(current);
-            form.shaderShadow.setRuntimeValue(current.intensity != 0F);
+            /* Keep casting; paint.shaderShadow float is the Complementary flag only. */
+            form.shaderShadow.setRuntimeValue(null);
         }
 
         if (groupGlow != null)

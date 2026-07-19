@@ -44,6 +44,7 @@ public class UITrailFormPanel extends UIFormPanel<TrailForm>
             settings.r = color.r;
             settings.g = color.g;
             settings.b = color.b;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
         }).direction(Direction.LEFT);
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
@@ -53,6 +54,7 @@ public class UITrailFormPanel extends UIFormPanel<TrailForm>
             float intensity = PaintSettings.clampIntensity(value.floatValue());
 
             settings.intensity = intensity;
+            settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();

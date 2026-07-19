@@ -15,13 +15,13 @@ import java.util.function.Consumer;
 
 /**
  * Compact "Transform" disclosure. When closed only the button stays in layout so
- * following sections (e.g. Paint Color) sit directly underneath. The body is inserted
- * as a sibling after this element so parent column height never reserves empty space.
+ * following sections (e.g. Paint Color) sit directly underneath. The body opens
+ * and closes with a height animation under an {@link UIAnimatedCollapseShell}.
  */
 public class UIEffectTransformCollapse extends UIElement
 {
     private final UIButton toggle;
-    private final UIElement body;
+    private final UIAnimatedCollapseShell shell;
     private final UIIcons shapeIcons;
     private final UIEffectKeyframeTransform transform;
     private boolean expanded;
@@ -43,11 +43,11 @@ public class UIEffectTransformCollapse extends UIElement
         this.shapeIcons.h(20);
 
         this.transform = new UIEffectKeyframeTransform(apply);
-        this.body = UI.column(
+        this.shell = new UIAnimatedCollapseShell(UI.column(
             UI.label(UIKeys.FORMS_EDITORS_PAINT_SHAPE),
             this.shapeIcons,
             this.transform
-        );
+        ));
 
         this.add(this.toggle);
     }
@@ -74,7 +74,7 @@ public class UIEffectTransformCollapse extends UIElement
 
     public void setExpanded(boolean expanded)
     {
-        if (this.expanded == expanded)
+        if (this.expanded == expanded && this.shell.isOpen() == expanded)
         {
             return;
         }
@@ -84,30 +84,6 @@ public class UIEffectTransformCollapse extends UIElement
             ? UIKeys.FORMS_EDITORS_COLOR_TRANSFORM_HIDE
             : UIKeys.FORMS_EDITORS_COLOR_TRANSFORM;
 
-        UIElement parent = this.getParent();
-
-        if (expanded)
-        {
-            if (!this.body.hasParent() && parent != null)
-            {
-                parent.addAfter(this, this.body);
-            }
-        }
-        else if (this.body.hasParent())
-        {
-            this.body.removeFromParent();
-        }
-
-        if (parent != null)
-        {
-            parent.resize();
-        }
-
-        UIElement root = this.getRoot();
-
-        if (root != null && root != parent)
-        {
-            root.resize();
-        }
+        this.shell.setExpanded(expanded, this);
     }
 }

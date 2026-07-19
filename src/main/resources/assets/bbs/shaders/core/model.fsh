@@ -31,6 +31,30 @@ uniform vec4 FormColorTint;
 uniform float ColorTintMasked;
 /* 1 = multiply Iris-lit framebuffer by FormColorTint inside the color mask (keeps pack lighting). */
 uniform float ColorTintOverlay;
+/* 1 = replace Iris-lit model pixels with FormColorGrade(sceneColor) — keeps pack lighting/shadows. */
+uniform float ColorGradeOverlay;
+/* x = brightness, y = contrast, z = hue degrees, w = saturation. Neutral = 0. */
+uniform vec4 FormColorGrade;
+uniform mat4 GradeBrightnessInverse;
+uniform float GradeBrightnessActive;
+uniform vec3 GradeBrightnessHalf;
+uniform float GradeBrightnessBottomAnchored;
+uniform float GradeBrightnessShape;
+uniform mat4 GradeContrastInverse;
+uniform float GradeContrastActive;
+uniform vec3 GradeContrastHalf;
+uniform float GradeContrastBottomAnchored;
+uniform float GradeContrastShape;
+uniform mat4 GradeHueInverse;
+uniform float GradeHueActive;
+uniform vec3 GradeHueHalf;
+uniform float GradeHueBottomAnchored;
+uniform float GradeHueShape;
+uniform mat4 GradeSaturationInverse;
+uniform float GradeSaturationActive;
+uniform vec3 GradeSaturationHalf;
+uniform float GradeSaturationBottomAnchored;
+uniform float GradeSaturationShape;
 
 in float vertexDistance;
 in vec4 vertexColor;
@@ -42,6 +66,69 @@ in vec4 normal;
 in vec3 formRootPos;
 
 out vec4 fragColor;
+
+vec3 bbsRgb2Hsl(vec3 c)
+{
+    float maxc = max(c.r, max(c.g, c.b));
+    float minc = min(c.r, min(c.g, c.b));
+    float l = (maxc + minc) * 0.5;
+    float d = maxc - minc;
+
+    if (d < 1e-5)
+    {
+        return vec3(0.0, 0.0, l);
+    }
+
+    float s = l > 0.5 ? d / (2.0 - maxc - minc) : d / (maxc + minc);
+    float h;
+
+    if (maxc == c.r)
+    {
+        h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+    }
+    else if (maxc == c.g)
+    {
+        h = (c.b - c.r) / d + 2.0;
+    }
+    else
+    {
+        h = (c.r - c.g) / d + 4.0;
+    }
+
+    return vec3(h / 6.0, s, l);
+}
+
+float bbsHue2Rgb(float p, float q, float t)
+{
+    if (t < 0.0) t += 1.0;
+    if (t > 1.0) t -= 1.0;
+    if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
+    if (t < 0.5) return q;
+    if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+
+    return p;
+}
+
+vec3 bbsHsl2Rgb(vec3 hsl)
+{
+    float h = hsl.x;
+    float s = hsl.y;
+    float l = hsl.z;
+
+    if (s < 1e-5)
+    {
+        return vec3(l);
+    }
+
+    float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+    float p = 2.0 * l - q;
+
+    return vec3(
+        bbsHue2Rgb(p, q, h + 1.0 / 3.0),
+        bbsHue2Rgb(p, q, h),
+        bbsHue2Rgb(p, q, h - 1.0 / 3.0)
+    );
+}
 
 float bbsSdTriangle2D(vec2 p, vec2 a, vec2 b, vec2 c)
 {
@@ -79,6 +166,12 @@ float bbsPaintEffectMask(vec3 rootPos, mat4 effectInverse, float active, vec3 ha
     float dist;
     float maxHalf = max(halfExtents.x, max(halfExtents.y, halfExtents.z));
 
+    /* Scale 0 → empty mask. */
+    if (maxHalf < 0.001)
+    {
+        return 0.0;
+    }
+
     if (shape > 1.5)
     {
         /* Front-facing triangle in XY (apex up), thickness along Z. */
@@ -106,9 +199,55 @@ float bbsPaintEffectMask(vec3 rootPos, mat4 effectInverse, float active, vec3 ha
         dist = length(max(d, 0.0)) + min(max(max(d.x, d.y), d.z), 0.0);
     }
 
-    float falloff = max(maxHalf * 0.15, 0.1);
+    float falloff = max(maxHalf * 0.15, 0.001);
 
     return 1.0 - smoothstep(0.0, falloff, dist);
+}
+
+vec3 bbsApplyFormColorGrade(vec3 rgb, vec3 rootPos)
+{
+    if (abs(FormColorGrade.x) < 0.001 && abs(FormColorGrade.y) < 0.001 && abs(FormColorGrade.z) < 0.001 && abs(FormColorGrade.w) < 0.001)
+    {
+        return rgb;
+    }
+
+    vec3 outRgb = rgb;
+
+    if (abs(FormColorGrade.x) >= 0.001)
+    {
+        float mask = bbsPaintEffectMask(rootPos, GradeBrightnessInverse, GradeBrightnessActive, GradeBrightnessHalf, GradeBrightnessBottomAnchored, GradeBrightnessShape);
+        vec3 next = outRgb + FormColorGrade.x;
+
+        outRgb = mix(outRgb, next, mask);
+    }
+
+    if (abs(FormColorGrade.y) >= 0.001)
+    {
+        float mask = bbsPaintEffectMask(rootPos, GradeContrastInverse, GradeContrastActive, GradeContrastHalf, GradeContrastBottomAnchored, GradeContrastShape);
+        vec3 next = vec3(0.5) + (1.0 + FormColorGrade.y) * (outRgb - vec3(0.5));
+
+        outRgb = mix(outRgb, next, mask);
+    }
+
+    if (abs(FormColorGrade.w) >= 0.001)
+    {
+        float mask = bbsPaintEffectMask(rootPos, GradeSaturationInverse, GradeSaturationActive, GradeSaturationHalf, GradeSaturationBottomAnchored, GradeSaturationShape);
+        float luma = dot(outRgb, vec3(0.2126, 0.7152, 0.0722));
+        vec3 next = mix(vec3(luma), outRgb, 1.0 + FormColorGrade.w);
+
+        outRgb = mix(outRgb, next, mask);
+    }
+
+    if (abs(FormColorGrade.z) > 0.01)
+    {
+        float mask = bbsPaintEffectMask(rootPos, GradeHueInverse, GradeHueActive, GradeHueHalf, GradeHueBottomAnchored, GradeHueShape);
+        vec3 hsl = bbsRgb2Hsl(clamp(outRgb, 0.0, 1.0));
+
+        hsl.x = fract(hsl.x + FormColorGrade.z / 360.0);
+        outRgb = mix(outRgb, bbsHsl2Rgb(hsl), mask);
+    }
+
+    return clamp(outRgb, 0.0, 1.0);
 }
 
 vec3 bbsApplyGlow(vec3 color, float strength)
@@ -153,6 +292,24 @@ void main()
         texSample.a = fromA * (1.0 - blendFactor) + toA * blendFactor;
     }
 
+    /* Iris color-grade overlay: regrade already-lit pack pixels (Sampler3 = scene copy).
+       Keeps Complementary/BSL lighting/shadows. Each grade channel has its own Transform mask. */
+    if (ColorGradeOverlay > 0.5)
+    {
+        if (texSample.a < 0.1)
+        {
+            discard;
+        }
+
+        ivec2 sceneSize = textureSize(Sampler3, 0);
+        vec2 sceneUv = clamp(gl_FragCoord.xy / vec2(max(sceneSize, ivec2(1))), vec2(0.0), vec2(1.0));
+        vec3 lit = textureLod(Sampler3, sceneUv, 0.0).rgb;
+
+        fragColor = vec4(bbsApplyFormColorGrade(lit, formRootPos), 1.0);
+
+        return;
+    }
+
     /* Iris color-mask overlay: multiply already-lit pack shading by FormColorTint inside the
        spatial mask (blend DST_COLOR/ZERO). Outside the mask this pass discards. */
     if (ColorTintOverlay > 0.5)
@@ -172,7 +329,7 @@ void main()
         vec3 tintRgb = mix(vec3(1.0), FormColorTint.rgb, cmask);
         float tintA = mix(1.0, FormColorTint.a, cmask);
 
-        fragColor = vec4(tintRgb, tintA);
+        fragColor = vec4(bbsApplyFormColorGrade(tintRgb, formRootPos), tintA);
 
         return;
     }
@@ -278,6 +435,9 @@ void main()
     }
 
     color.rgb = bbsApplyGlow(color.rgb, strength);
+
+    /* Brightness/contrast/hue/saturation each respect their own Transform mask. */
+    color.rgb = bbsApplyFormColorGrade(color.rgb, formRootPos);
 
     fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 }

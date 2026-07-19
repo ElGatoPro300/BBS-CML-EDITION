@@ -89,6 +89,11 @@ public class ShaderOpacityPatch
         loadingPackName = name == null ? "" : name;
     }
 
+    public static String getLoadingPackName()
+    {
+        return loadingPackName == null ? "" : loadingPackName;
+    }
+
     public static void clearLoadingPackName()
     {
         loadingPackName = "";
@@ -338,8 +343,12 @@ public class ShaderOpacityPatch
 
     public static void onBeginTranslucents()
     {
-        /* Mark phase only — do not flush here. Flushing mid-Iris beginTranslucents while the
-         * world Pose stack is live caused IllegalStateException: Pose stack not empty. */
+        /* Soft-opacity (and other after-fluids) forms must not flush here: Iris beginTranslucents
+         * can run mid-frame while WorldRenderer still has an unbalanced pose stack; flushing
+         * then throws IllegalStateException on pop(). Only mark the phase — actual soft-opacity
+         * flush is WorldRenderEvents.AFTER_TRANSLUCENT / onAfterTranslucentTerrain().
+         * Paint/blend/grade overlays stay queued until onWorldRenderEnd — the BBS model shader
+         * only composites correctly on the final framebuffer after Iris finishes. */
         postDeferredPhase = true;
     }
 
@@ -576,69 +585,33 @@ public class ShaderOpacityPatch
             return source;
         }
 
-        /* Only relax alpha discards. Do not rewrite translucentMult — forcing it to 1.0 made
-         * Complementary show full-brightness sky through forms (washed / background-tinted). */
-        String patched = ALPHA_TEST_REF_COMPARE.matcher(source).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
+        String patched = source;
 
+        /* Never touch shadow-map programs: alpha-test rewrites and caster dither make
+         * terrain/block shadows soft and holey (leaves/grass alpha). Opacity soft-fade
+         * only needs gbuffer/entity alpha relaxation. */
+        if (isShadowCasterSource(source))
+        {
+            return processShadowOpacity(patched);
+        }
+
+        /* Only relax alpha discards on gbuffer/entity paths. Do not rewrite translucentMult. */
+        patched = ALPHA_TEST_REF_COMPARE.matcher(patched).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
         patched = LITERAL_POINT_ONE_COMPARE.matcher(patched).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
-
-        patched = processShadowCasterAlpha(patched);
 
         return processShadowOpacity(patched);
     }
 
-    /**
-     * Complementary/BSL shadow map programs: multiply texture alpha by vertex color alpha
-     * and dither-discard so per-model replay {@code shadow_opacity} can lighten/darken
-     * individual casters (hard shadow maps are otherwise binary).
-     */
-    public static String processShadowCasterAlpha(String source)
+    public static boolean isShadowCasterSourcePublic(String source)
     {
-        if (!isActive() || source == null || source.isEmpty())
-        {
-            return source;
-        }
+        return isShadowCasterSource(source);
+    }
 
-        if (source.contains("BBS_SHADOW_CASTER_DITHER"))
-        {
-            return source;
-        }
-
-        /* Complementary shadow.glsl */
-        if (source.contains("DoNaturalShadowCalculation") && source.contains("gl_FragData[0] = color1;"))
-        {
-            String dither =
-                "/* BBS_SHADOW_CASTER_DITHER */\n"
-                    + "    color1.a *= glColor.a;\n"
-                    + "    if (color1.a < 0.999){\n"
-                    + "        float bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
-                    + "        if (bbsShadowDither > color1.a) discard;\n"
-                    + "    }\n";
-
-            return source.replace(
-                "    /* DRAWBUFFERS:0 */\n    gl_FragData[0] = color1; // Shadow Color",
-                dither + "    /* DRAWBUFFERS:0 */\n    gl_FragData[0] = color1; // Shadow Color"
-            );
-        }
-
-        /* BSL shadow.glsl */
-        if (source.contains("float premult = float(mat > 0.98") && source.contains("gl_FragData[0] = albedo;"))
-        {
-            String dither =
-                "\t/* BBS_SHADOW_CASTER_DITHER */\n"
-                    + "\talbedo.a *= color.a;\n"
-                    + "\tif (albedo.a < 0.999){\n"
-                    + "\t\tfloat bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
-                    + "\t\tif (bbsShadowDither > albedo.a) discard;\n"
-                    + "\t}\n";
-
-            if (source.contains("gl_FragData[0] = albedo;"))
-            {
-                return source.replace("\tgl_FragData[0] = albedo;", dither + "\tgl_FragData[0] = albedo;");
-            }
-        }
-
-        return source;
+    private static boolean isShadowCasterSource(String source)
+    {
+        return source.contains("DoNaturalShadowCalculation")
+            || source.contains("float premult = float(mat > 0.98")
+            || source.contains("BBS_SHADOW_CASTER_DITHER");
     }
 
     /**

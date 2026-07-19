@@ -2,6 +2,7 @@ package mchorse.bbs_mod.graphics;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.data.Angle;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -20,6 +21,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -37,6 +39,14 @@ public class Draw
 
     public static void renderBox(MatrixStack stack, double x, double y, double z, double w, double h, double d, float r, float g, float b, float a)
     {
+        /* Iris TAA turns lines/alpha into stipple during the world pass. Queue solid edges for LAST. */
+        if (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld())
+        {
+            enqueueIrisBox(stack, x, y, z, w, h, d, r, g, b);
+
+            return;
+        }
+
         stack.push();
         stack.translate(x, y, z);
         float fw = (float) w;
@@ -70,6 +80,158 @@ public class Draw
         stack.pop();
     }
 
+
+    private static final java.util.List<IrisBox> irisBoxQueue = new java.util.ArrayList<>();
+
+    private static final class IrisBox
+    {
+        private final Matrix4f matrix;
+        private final float w;
+        private final float h;
+        private final float d;
+        private final float r;
+        private final float g;
+        private final float b;
+
+        private IrisBox(Matrix4f matrix, float w, float h, float d, float r, float g, float b)
+        {
+            this.matrix = matrix;
+            this.w = w;
+            this.h = h;
+            this.d = d;
+            this.r = r;
+            this.g = g;
+            this.b = b;
+        }
+    }
+
+    private static void enqueueIrisBox(MatrixStack stack, double x, double y, double z, double w, double h, double d, float r, float g, float b)
+    {
+        Matrix4f matrix = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(stack.peek().getPositionMatrix());
+
+        matrix.translate((float) x, (float) y, (float) z);
+        irisBoxQueue.add(new IrisBox(matrix, (float) w, (float) h, (float) d, r, g, b));
+    }
+
+    /** Flush hitboxes queued during the Iris world pass (call from WorldRenderEvents.LAST). */
+    public static void flushIrisBoxes()
+    {
+        if (irisBoxQueue.isEmpty())
+        {
+            return;
+        }
+
+        boolean savedBlend = GL11.glIsEnabled(GL11.GL_BLEND);
+        boolean savedDepth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        MatrixStack stack = new MatrixStack();
+
+        RenderSystem.disableBlend();
+        RenderSystem.disableDepthTest();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        MatrixStackUtils.pushIdentityModelView();
+
+        try
+        {
+            for (IrisBox box : irisBoxQueue)
+            {
+                stack.push();
+                stack.peek().getPositionMatrix().set(box.matrix);
+                renderBoxSolidEdges(stack, box.w, box.h, box.d, box.r, box.g, box.b);
+                stack.pop();
+            }
+        }
+        finally
+        {
+            MatrixStackUtils.popModelView();
+            irisBoxQueue.clear();
+
+            if (savedDepth)
+            {
+                RenderSystem.enableDepthTest();
+            }
+
+            if (savedBlend)
+            {
+                RenderSystem.enableBlend();
+            }
+        }
+    }
+
+    private static void renderBoxSolidEdges(MatrixStack stack, float fw, float fh, float fd, float r, float g, float b)
+    {
+        float t = 1 / 96F + (float) (Math.sqrt(fw * fw + fh + fh + fd + fd) / 2000);
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        fillBox(builder, stack, -t, -t, -t, t, t + fh, t, r, g, b, 1F);
+        fillBox(builder, stack, -t + fw, -t, -t, t + fw, t + fh, t, r, g, b, 1F);
+        fillBox(builder, stack, -t, -t, -t + fd, t, t + fh, t + fd, r, g, b, 1F);
+        fillBox(builder, stack, -t + fw, -t, -t + fd, t + fw, t + fh, t + fd, r, g, b, 1F);
+
+        fillBox(builder, stack, -t, -t + fh, -t, t + fw, t + fh, t, r, g, b, 1F);
+        fillBox(builder, stack, -t, -t + fh, -t + fd, t + fw, t + fh, t + fd, r, g, b, 1F);
+        fillBox(builder, stack, -t, -t + fh, -t, t, t + fh, t + fd, r, g, b, 1F);
+        fillBox(builder, stack, -t + fw, -t + fh, -t, t + fw, t + fh, t + fd, r, g, b, 1F);
+
+        fillBox(builder, stack, -t, -t, -t, t + fw, t, t, r, g, b, 1F);
+        fillBox(builder, stack, -t, -t, -t + fd, t + fw, t, t + fd, r, g, b, 1F);
+        fillBox(builder, stack, -t, -t, -t, t, t, t + fd, r, g, b, 1F);
+        fillBox(builder, stack, -t + fw, -t, -t, t + fw, t, t + fd, r, g, b, 1F);
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+    }
+
+    private static void renderBoxWireframe(MatrixStack stack, double x, double y, double z, double w, double h, double d, float r, float g, float b, float a)
+    {
+        stack.push();
+        stack.translate(x, y, z);
+
+        Matrix4f matrix = stack.peek().getPositionMatrix();
+        float x1 = 0F;
+        float y1 = 0F;
+        float z1 = 0F;
+        float x2 = (float) w;
+        float y2 = (float) h;
+        float z2 = (float) d;
+        boolean savedBlend = GL11.glIsEnabled(GL11.GL_BLEND);
+
+        RenderSystem.disableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.lineWidth(2F);
+
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        wireLine(builder, matrix, x1, y1, z1, x2, y1, z1, r, g, b, a);
+        wireLine(builder, matrix, x2, y1, z1, x2, y1, z2, r, g, b, a);
+        wireLine(builder, matrix, x2, y1, z2, x1, y1, z2, r, g, b, a);
+        wireLine(builder, matrix, x1, y1, z2, x1, y1, z1, r, g, b, a);
+
+        wireLine(builder, matrix, x1, y2, z1, x2, y2, z1, r, g, b, a);
+        wireLine(builder, matrix, x2, y2, z1, x2, y2, z2, r, g, b, a);
+        wireLine(builder, matrix, x2, y2, z2, x1, y2, z2, r, g, b, a);
+        wireLine(builder, matrix, x1, y2, z2, x1, y2, z1, r, g, b, a);
+
+        wireLine(builder, matrix, x1, y1, z1, x1, y2, z1, r, g, b, a);
+        wireLine(builder, matrix, x2, y1, z1, x2, y2, z1, r, g, b, a);
+        wireLine(builder, matrix, x2, y1, z2, x2, y2, z2, r, g, b, a);
+        wireLine(builder, matrix, x1, y1, z2, x1, y2, z2, r, g, b, a);
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        RenderSystem.lineWidth(1F);
+
+        if (savedBlend)
+        {
+            RenderSystem.enableBlend();
+        }
+
+        stack.pop();
+    }
+
+    private static void wireLine(BufferBuilder builder, Matrix4f matrix, float x0, float y0, float z0, float x1, float y1, float z1, float r, float g, float b, float a)
+    {
+        builder.vertex(matrix, x0, y0, z0).color(r, g, b, a);
+        builder.vertex(matrix, x1, y1, z1).color(r, g, b, a);
+    }
     /**
      * Fill a quad for {@link VertexFormats#POSITION_TEXTURE_COLOR_NORMAL}. Points should
      * be supplied in this order:

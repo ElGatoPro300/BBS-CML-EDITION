@@ -23,6 +23,8 @@ public class BillboardForm extends Form
     public final ValueFloat offsetY = new ValueFloat("offsetY", 0F);
     public final ValueFloat rotation = new ValueFloat("rotation", 0F);
     public final ValueBoolean shading = new ValueBoolean("shading", true);
+    public final ValueFloat pbrNormalIntensity = new ValueFloat("pbr_normal_intensity", 1F, 0F, 4F);
+    public final ValueFloat pbrSpecularIntensity = new ValueFloat("pbr_specular_intensity", 1F, 0F, 4F);
 
     public BillboardForm()
     {
@@ -44,6 +46,8 @@ public class BillboardForm extends Form
         this.add(this.offsetY);
         this.add(this.rotation);
         this.add(this.shading);
+        this.add(this.pbrNormalIntensity);
+        this.add(this.pbrSpecularIntensity);
     }
 
     @Override

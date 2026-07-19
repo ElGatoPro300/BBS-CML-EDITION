@@ -324,6 +324,24 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         if (Math.abs(diff) > 1.0E-6F)
         {
             boolean movedSelection = false;
+            UIKeyframeSheet hostSheet = this.editor.getGraph().getSheet(this.keyframe);
+
+            if (hostSheet != null && "color".equals(hostSheet.id))
+            {
+                if (hostSheet.selection.hasAny())
+                {
+                    mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils.moveCompanionPaintForSelectedColor(this.editor, diff);
+                }
+                else
+                {
+                    mchorse.bbs_mod.ui.film.replays.UIReplaysEditor replays = this.editor.getParent(mchorse.bbs_mod.ui.film.replays.UIReplaysEditor.class);
+
+                    if (replays != null && replays.getReplay() != null)
+                    {
+                        replays.getReplay().properties.moveCompanionPaintBy(diff, java.util.Collections.singletonList(this.keyframe.getTick()));
+                    }
+                }
+            }
 
             /* Diff is relative to the panel's (live) keyframe so the trackpad
              * absolute value stays the source of truth. */
