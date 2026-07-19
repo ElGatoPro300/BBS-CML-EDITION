@@ -2831,6 +2831,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
      * Select the general Properties tab (or unified properties) used by replay
      * keyframes and by embedded clip keyframe editors when the side-panel
      * overlay setting is disabled.
+     * <p>
+     * Does not steal an already-active Camera/Action Properties tab in the same
+     * tab group — opening an embedded clip keyframe view (Image, Subtitle,
+     * Letterbox, Hotbar, etc.) must leave that selection alone.
      */
     public void focusEmbeddedKeyframePropertiesTab()
     {
@@ -2841,7 +2845,38 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         String panelId = this.shouldRedirectProperties() ? "unifiedEditArea" : "editArea";
 
+        if (this.isLinkedClipPropertiesTabActive(panelId))
+        {
+            return;
+        }
+
         this.focusPanelTab(panelId);
+    }
+
+    /**
+     * True when Camera or Action Properties is the active tab in the same group as
+     * {@code propertiesPanelId} (general / unified Properties).
+     */
+    private boolean isLinkedClipPropertiesTabActive(String propertiesPanelId)
+    {
+        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+        EditorLayoutNode.TabbedNode tabbed = this.findTabbedNodeContaining(root, propertiesPanelId);
+
+        if (tabbed == null || tabbed.activeTab < 0 || tabbed.activeTab >= tabbed.tabs.size())
+        {
+            return false;
+        }
+
+        EditorLayoutNode active = tabbed.tabs.get(tabbed.activeTab);
+
+        if (!(active instanceof EditorLayoutNode.PanelNode panelNode))
+        {
+            return false;
+        }
+
+        String activeId = panelNode.getPanelId();
+
+        return "cameraEditArea".equals(activeId) || "actionEditArea".equals(activeId);
     }
 
     /**
