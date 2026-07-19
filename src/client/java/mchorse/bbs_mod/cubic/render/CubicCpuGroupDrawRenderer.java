@@ -19,6 +19,10 @@ import net.minecraft.client.util.math.MatrixStack;
 /**
  * Shape-key CPU geometry must draw one model group per call so PaintColor, GlowingColor, and
  * per-bone texture crossfade uniforms match the group that was just meshed.
+ * <p>
+ * Positions and normals are written already transformed by the render stack. Uniforms must use
+ * {@link ModelVAORenderer#setupUniformsCpuPretransformed} so {@code ModelViewMat} / {@code NormalMat}
+ * are not applied a second time (second ModelView hides composites; second NormalMat inverts lighting).
  */
 public class CubicCpuGroupDrawRenderer extends CubicCubeRenderer
 {
@@ -115,7 +119,7 @@ public class CubicCpuGroupDrawRenderer extends CubicCubeRenderer
         try
         {
             this.shader.bind();
-            ModelVAORenderer.setupUniforms(stack, this.shader);
+            ModelVAORenderer.setupUniformsCpuPretransformed(this.shader);
             BufferRenderer.drawWithGlobalProgram(groupBuilder.end());
             this.shader.unbind();
         }

@@ -234,6 +234,7 @@ public abstract class UIModelRenderer extends UIElement
         RenderSystem.enableDepthTest();
         RenderSystem.enableCull();
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(true);
 
         this.setupPosition();
         this.setupViewport(context);

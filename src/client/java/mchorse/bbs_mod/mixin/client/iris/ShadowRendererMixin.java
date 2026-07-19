@@ -1,6 +1,9 @@
 package mchorse.bbs_mod.mixin.client.iris;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
+import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.FilmControllerContext;
 import mchorse.bbs_mod.film.Films;
@@ -297,6 +300,12 @@ public class ShadowRendererMixin
                     BaseFilmController.renderEntity(context);
                 }
             }
+        }
+
+        /* Model-block forms are block entities — shadowEntities alone does not include them. */
+        for (ModelBlockEntity modelBlock : new java.util.ArrayList<>(BBSRendering.capturedModelBlocks))
+        {
+            ModelBlockEntityRenderer.renderIntoShadowMap(modelBlock, shadowStack, consumers, tickDelta, camX, camY, camZ);
         }
 
         consumers.draw();

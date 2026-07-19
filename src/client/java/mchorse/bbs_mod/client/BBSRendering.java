@@ -331,6 +331,16 @@ public class BBSRendering
 
     public static void startTick()
     {
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        /* Client ticks still run while the pause menu is open, but world/block-entity ticks do
+         * not — clearing here would empty the set with nothing to refill it, killing model-block
+         * Iris shadows (and UI lists that reuse this cache) until unpause. */
+        if (mc != null && mc.isPaused())
+        {
+            return;
+        }
+
         capturedModelBlocks.clear();
         TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
     }
@@ -514,8 +524,10 @@ public class BBSRendering
             return;
         }
 
-        ModelVAORenderer.flushPaintOverlayQueue();
+        /* Billboard/model bases first (Iris post-deferred), then paint overlays so paint can
+         * depth-test against the redrawn base with a stronger polygon offset at distance. */
         ShaderOpacityPatch.onWorldRenderEnd();
+        ModelVAORenderer.flushPaintOverlayQueue();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();

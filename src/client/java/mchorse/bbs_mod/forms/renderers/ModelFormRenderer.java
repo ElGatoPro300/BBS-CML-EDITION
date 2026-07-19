@@ -574,6 +574,13 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     ModelVAORenderer.setFormColorTint(stencilFormColor.r, stencilFormColor.g, stencilFormColor.b, stencilFormColor.a);
                 }
 
+                /* Picking must write depth so the closest limb along the cursor ray wins.
+                 * Glow/paint passes can leave depthMask false; without this, later-drawn
+                 * bones (often torso) overwrite nearer ones (head) in the pick FBO. */
+                RenderSystem.enableDepthTest();
+                RenderSystem.depthFunc(GL11.GL_LEQUAL);
+                RenderSystem.depthMask(true);
+
                 ModelVAORenderer.clearPaint();
                 ModelVAORenderer.clearGlowing();
                 this.renderModelGeometry(newStack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);
@@ -655,6 +662,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean noshadingOpacityDefer = !ui && !shadowPass
             && BBSRendering.needsIrisNoshadingOpacityDeferral(opacityAlpha, this.form.noshadingOpacity.get());
         boolean opacityDefer = lowAlphaDefer || noshadingOpacityDefer;
+
         boolean deferTranslucentModel = deferForRenderDepth || opacityDefer;
         /* Iris live: ColorGradeOverlay keeps pack lighting. No-shader / UI / deferred BBS:
          * FormColorGrade in model.fsh after texture sample (same as Billboard). Never bake
@@ -682,6 +690,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel || deferColorTintToOverlay);
         boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
         boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
+
+        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer || colorTransformDefer;
+        boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel);
+        boolean deferPaintToOverlay = !shadowPass && model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
+        boolean shaderOverlay = !shadowPass && model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
+
         /* Low-alpha Iris redraw: albedo deferred; additive overlay if somehow deferred with glow. */
         boolean emitGlowAfterDeferred = deferTranslucentModel && model.supportsBbsModelShaderEffects() && hasEmissiveGlow;
         boolean deferGlowToOverlay = shaderOverlay;
