@@ -209,6 +209,8 @@
     "bbs.config.editor.duration-comment": "What is default duration of a camera clip (in ticks)",
     "bbs.config.editor.embedded_keyframe_side_panel": "Side panel in embedded views",
     "bbs.config.editor.embedded_keyframe_side_panel-comment": "When enabled, selecting a keyframe in an embedded clip keyframe view shows its properties in a side or bottom overlay panel. When disabled, those properties appear in the Properties tab instead (like the replay keyframe timeline)",
+    "bbs.config.editor.fisheye_widen_fov": "Fisheye widen FOV",
+    "bbs.config.editor.fisheye_widen_fov-comment": "When enabled, positive fisheye (zoom-out) widens the camera FOV so edges show more of the world. When disabled, edges are stretched from border pixels (classic look). The widened-FOV mode can soften the image centre slightly.",
     "bbs.config.editor.flight_free_look": "Flight free look",
     "bbs.config.editor.flight_free_look-comment": "When enabled, you can look around in flight mode without holding mouse buttons",
     "bbs.config.editor.frames": "Frames",

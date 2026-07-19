@@ -132,6 +132,7 @@ public class BBSSettings
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
     public static ValueBoolean editorFilmOverlayVisible;
+    public static ValueBoolean editorFisheyeWidenFov;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
     public static ValueBoolean editorFlightFreeLook;
@@ -641,6 +642,7 @@ public class BBSSettings
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
         editorFilmOverlayVisible = builder.getBoolean("film_overlay_visible", true);
+        editorFisheyeWidenFov = builder.getBoolean("fisheye_widen_fov", true);
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
