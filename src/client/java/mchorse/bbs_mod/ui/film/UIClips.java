@@ -1439,7 +1439,7 @@ public class UIClips extends UIElement
 
             if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
             {
-                this.configureEmbeddedKeyframeEditor(keyframeEditor, true);
+                this.configureEmbeddedKeyframeEditor(keyframeEditor);
             }
 
             this.embedded.resize();
@@ -1467,18 +1467,13 @@ public class UIClips extends UIElement
             this.embeddedLayout.removeFromParent();
             /* Retarget only — do not steal the active tab (avoids nested
              * setupEditorFlex while switching Properties tabs). */
-            this.configureEmbeddedKeyframeEditor(keyframeEditor, false);
+            this.configureEmbeddedKeyframeEditor(keyframeEditor);
             this.embedded.resize();
             this.embeddedClose.resize();
         }
     }
 
     private void configureEmbeddedKeyframeEditor(UIKeyframeEditor keyframeEditor)
-    {
-        this.configureEmbeddedKeyframeEditor(keyframeEditor, false);
-    }
-
-    private void configureEmbeddedKeyframeEditor(UIKeyframeEditor keyframeEditor, boolean focusPropertiesTab)
     {
         UIFilmPanel filmPanel = this.getFilmPanel();
         boolean sidePanel = BBSSettings.isEmbeddedKeyframeSidePanelEnabled() || filmPanel == null;
@@ -1504,13 +1499,10 @@ public class UIClips extends UIElement
 
             keyframeEditor.overlayPanel(false);
             keyframeEditor.target(propertiesTarget);
+            /* Pick a keyframe → show Properties tab. Opening the embed alone does not
+             * focus that tab (keeps Camera/Action Properties if already selected). */
             keyframeEditor.pickListener(filmPanel::focusEmbeddedKeyframePropertiesTab);
             this.syncEmbeddedClipPanelVisibility(true);
-
-            if (focusPropertiesTab)
-            {
-                filmPanel.focusEmbeddedKeyframePropertiesTab();
-            }
         }
     }
 
