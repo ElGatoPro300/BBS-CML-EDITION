@@ -195,6 +195,13 @@ public class ModelVAORenderer
 
     private static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, boolean fullModel, boolean depthWrite, boolean depthTest, Runnable draw)
     {
+        /* Shadow-pass matrices are light-space; flushing them on the color buffer draws tiny
+         * paint blobs at the screen center (one per model block / form that queued paint). */
+        if (BBSRendering.isIrisShadowPass())
+        {
+            return;
+        }
+
         PaintOverlayEntry entry = new PaintOverlayEntry(
             new Matrix4f(projection),
             new Matrix4f(modelView),

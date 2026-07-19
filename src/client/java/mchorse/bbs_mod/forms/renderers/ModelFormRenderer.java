@@ -607,8 +607,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean opacityDefer = lowAlphaDefer || noshadingOpacityDefer;
         boolean deferTranslucentModel = deferForRenderDepth || opacityDefer || colorTransformDefer;
         boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel);
-        boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
-        boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
+        boolean deferPaintToOverlay = !shadowPass && model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
+        boolean shaderOverlay = !shadowPass && model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
         /* Low-alpha Iris redraw: albedo deferred; additive overlay if somehow deferred with glow. */
         boolean emitGlowAfterDeferred = deferTranslucentModel && model.supportsBbsModelShaderEffects() && hasEmissiveGlow;
         boolean deferGlowToOverlay = shaderOverlay;
