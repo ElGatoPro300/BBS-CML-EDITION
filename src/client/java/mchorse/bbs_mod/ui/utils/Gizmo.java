@@ -606,8 +606,11 @@ public class Gizmo
         MatrixStackUtils.cacheMatrices();
         RenderSystem.setProjectionMatrix(projection, VertexSorter.BY_Z);
 
-        float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
-        float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
+        /* Exact physical-to-logical ratio (the UI scale factor). Rounding this snapped fractional
+         * scales like 1.5 up to 2, which offset/stretched the gizmo viewport and could push vy/vh
+         * negative (GL_INVALID_VALUE). Same fix as UIModelRenderer#setupViewport. */
+        float rx = (float) (mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) (mc.getWindow().getHeight() / (double) context.menu.height);
         float size = BBSModClient.getOriginalFramebufferScale();
         int vx = (int) (area.x * rx);
         int vy = (int) (mc.getWindow().getHeight() - (area.y + area.h) * ry);
@@ -648,8 +651,9 @@ public class Gizmo
         MatrixStackUtils.cacheMatrices();
         RenderSystem.setProjectionMatrix(projection, VertexSorter.BY_Z);
 
-        float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
-        float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
+        /* Keep in sync with renderInterface: fractional UI scales must not be rounded. */
+        float rx = (float) (mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) (mc.getWindow().getHeight() / (double) context.menu.height);
         float size = BBSModClient.getOriginalFramebufferScale();
         int vx = (int) (area.x * rx);
         int vy = (int) (mc.getWindow().getHeight() - (area.y + area.h) * ry);
