@@ -117,14 +117,10 @@ public abstract class FormRenderer <T extends Form>
             BaseValue colorValue = this.form.get("color");
             Color formColor = colorValue instanceof ValueColor valueColor ? valueColor.get() : null;
 
-            if (formColor != null && formColor.a <= 0.001F)
-            {
-                /* Keep shadow casting when the mesh itself is fully transparent. */
-                this.form.shaderShadow.setRuntimeValue(true);
-            }
-
-            /* Paint / Blend Color fringe fix must not disable casting (Complementary speck fix). */
-            if (PaintSettings.isFixBugShaderShadow(FormColorBlend.resolveEffectShaderShadow(
+            /* Paint / Blend Color fringe fix must not disable casting (Complementary speck fix).
+             * Fully transparent Opacity forms skip casting via BaseFilmController / vertex alpha. */
+            if (this.form.getFormOpacity() > 0.001F
+                && PaintSettings.isFixBugShaderShadow(FormColorBlend.resolveEffectShaderShadow(
                 formColor, this.form.paintSettings.get(), this.form.paintColor.get())))
             {
                 this.form.shaderShadow.setRuntimeValue(true);

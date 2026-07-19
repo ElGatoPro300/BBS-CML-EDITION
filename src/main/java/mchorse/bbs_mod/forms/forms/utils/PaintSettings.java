@@ -18,8 +18,8 @@ public class PaintSettings
     /** Complementary / Iris workaround: keep painted forms from leaving a cursor-side shadow speck. */
     public static final float SHADER_SHADOW_FIX_BUG = 0.001F;
     public static final float SHADER_SHADOW_FIX_BUG_THRESHOLD = 0.01F;
-    /* When form color opacity is 0, still cast a faint Iris shadow. */
-    public static final float SHADER_SHADOW_ZERO_OPACITY = 0.05F;
+    /* Legacy constant; Opacity 0 no longer forces a faint caster silhouette. */
+    public static final float SHADER_SHADOW_ZERO_OPACITY = 0F;
     /**
      * Structure forms that are only block entities (chests, beds, …): soft enough to clear the
      * Complementary cursor speck, but strong enough that a silhouette still casts.
@@ -102,12 +102,11 @@ public class PaintSettings
     }
 
     /**
-     * Shadow-pass alpha when the form's display opacity is zero so Iris still receives a
-     * faint castersilhouette without showing the mesh in the main pass.
+     * Shadow-pass alpha follows form display opacity (0 = no ground shadow).
      */
     public static float resolveZeroOpacityShaderShadowAlpha(float formAlpha)
     {
-        return formAlpha <= 0.001F ? SHADER_SHADOW_ZERO_OPACITY : formAlpha;
+        return formAlpha;
     }
 
     public float effectiveShaderShadow(Color legacy)

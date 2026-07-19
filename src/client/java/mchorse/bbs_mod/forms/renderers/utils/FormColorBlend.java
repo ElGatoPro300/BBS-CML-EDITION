@@ -11,20 +11,12 @@ public class FormColorBlend
     public static final float OVERLAY_GLOW_BOOST = EMISSION_STRENGTH;
 
     /**
-     * After multiplying form color, restore a faint alpha on the Iris shadow pass when the
-     * form opacity is zero so a silhouette still casts.
+     * Shadow-pass alpha follows form opacity (0 = no ground shadow). Kept for call-site
+     * compatibility; no longer boosts zero opacity to a faint silhouette.
      */
     public static void finishShadowOpacity(Color color, boolean shadowPass)
     {
-        if (color == null || !shadowPass)
-        {
-            return;
-        }
-
-        if (color.a <= 0.001F)
-        {
-            color.a = PaintSettings.SHADER_SHADOW_ZERO_OPACITY;
-        }
+        /* no-op: Opacity track / applyFormOpacity already own caster alpha */
     }
 
     /**
@@ -58,9 +50,9 @@ public class FormColorBlend
     }
 
     /**
-     * Apply zero-opacity silhouette + Paint/Blend Color fringe fix on a shadow pass.
-     * Keeps {@link mchorse.bbs_mod.forms.forms.Form#shaderShadow} casting — only softens
-     * shadow-map alpha so Complementary fringe/speck at the cursor disappears.
+     * Paint/Blend Color fringe fix on a shadow pass. Softens shadow-map alpha for the
+     * Complementary cursor speck; does not restore alpha when the form is fully transparent
+     * (Opacity 0 must cast no ground shadow).
      */
     public static void applyShadowPassColorFix(Color color, Color storedFormColor, PaintSettings paintSettings, Color legacyPaint, boolean shadowPass)
     {
@@ -76,8 +68,6 @@ public class FormColorBlend
 
         if (color.a <= 0.001F)
         {
-            color.a = PaintSettings.SHADER_SHADOW_ZERO_OPACITY;
-
             return;
         }
 

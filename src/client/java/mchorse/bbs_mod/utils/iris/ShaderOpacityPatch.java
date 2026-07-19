@@ -617,12 +617,12 @@ public class ShaderOpacityPatch
 
         String patched = source;
 
-        /* Never touch shadow-map programs: alpha-test rewrites and caster dither make
-         * terrain/block shadows soft and holey (leaves/grass alpha). Opacity soft-fade
-         * only needs gbuffer/entity alpha relaxation. */
+        /* Shadow casters: skip alpha-test rewrites (those hole foliage/terrain shadows), but
+         * keep vertex-alpha dither so per-actor Opacity / shadow_opacity can fade ground
+         * shadows on otherwise binary Iris shadow maps. */
         if (isShadowCasterSource(source))
         {
-            return processShadowOpacity(patched);
+            return processShadowOpacity(processShadowCasterAlpha(patched));
         }
 
         /* Only relax alpha discards on gbuffer/entity paths. Do not rewrite translucentMult. */
@@ -642,6 +642,64 @@ public class ShaderOpacityPatch
         return source.contains("DoNaturalShadowCalculation")
             || source.contains("float premult = float(mat > 0.98")
             || source.contains("BBS_SHADOW_CASTER_DITHER");
+    }
+
+    /**
+     * Complementary/BSL shadow map programs: dither-discard by <b>vertex color alpha only</b>
+     * so form Opacity and replay shadow_opacity fade per-actor ground shadows. Does not
+     * multiply texture alpha (that previously made leaves/grass shadows holey).
+     */
+    public static String processShadowCasterAlpha(String source)
+    {
+        if (!isActive() || source == null || source.isEmpty())
+        {
+            return source;
+        }
+
+        if (source.contains("BBS_SHADOW_CASTER_DITHER"))
+        {
+            return source;
+        }
+
+        /* Complementary shadow.glsl */
+        if (source.contains("DoNaturalShadowCalculation") && source.contains("gl_FragData[0] = color1;"))
+        {
+            String dither =
+                "/* BBS_SHADOW_CASTER_DITHER */\n"
+                    + "    {\n"
+                    + "        float bbsCasterAlpha = glColor.a;\n"
+                    + "        if (bbsCasterAlpha < 0.999){\n"
+                    + "            float bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
+                    + "            if (bbsShadowDither > bbsCasterAlpha) discard;\n"
+                    + "        }\n"
+                    + "    }\n";
+
+            return source.replace(
+                "    /* DRAWBUFFERS:0 */\n    gl_FragData[0] = color1; // Shadow Color",
+                dither + "    /* DRAWBUFFERS:0 */\n    gl_FragData[0] = color1; // Shadow Color"
+            );
+        }
+
+        /* BSL shadow.glsl */
+        if (source.contains("float premult = float(mat > 0.98") && source.contains("gl_FragData[0] = albedo;"))
+        {
+            String dither =
+                "\t/* BBS_SHADOW_CASTER_DITHER */\n"
+                    + "\t{\n"
+                    + "\t\tfloat bbsCasterAlpha = color.a;\n"
+                    + "\t\tif (bbsCasterAlpha < 0.999){\n"
+                    + "\t\t\tfloat bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
+                    + "\t\t\tif (bbsShadowDither > bbsCasterAlpha) discard;\n"
+                    + "\t\t}\n"
+                    + "\t}\n";
+
+            if (source.contains("\tgl_FragData[0] = albedo;"))
+            {
+                return source.replace("\tgl_FragData[0] = albedo;", dither + "\tgl_FragData[0] = albedo;");
+            }
+        }
+
+        return source;
     }
 
     /**

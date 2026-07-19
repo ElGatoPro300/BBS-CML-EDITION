@@ -268,7 +268,15 @@ public abstract class BaseFilmController
 
                 PaintSettings paint = form.paintSettings.get();
                 Color legacyPaint = form.paintColor.get();
-                float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
+                /* Opacity track scales caster alpha (Color.a is blend intensity after the
+                 * color/opacity split). Iris hard shadow maps dither on this via
+                 * ShaderOpacityPatch.processShadowCasterAlpha. */
+                float shadowAlpha = Colors.getA(formContext.color) * form.getFormOpacity() * context.shadowOpacity;
+
+                if (shadowAlpha <= 0.001F)
+                {
+                    return;
+                }
 
                 /* Paint / Blend Color → SHADER_SHADOW_FIX_BUG (0.001) fringe fix. Softens
                  * shadow-map alpha only — Form.shaderShadow stays on so casting is kept. */
@@ -364,11 +372,11 @@ public abstract class BaseFilmController
         }
 
         /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map
-         * and per-replay opacity is applied in the Iris shadow pass above. */
+         * and per-replay / form opacity is applied in the Iris shadow pass above. */
         if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.render.get()
             && !context.isShadowPass && !mchorse.bbs_mod.utils.iris.IrisUtils.isShaderPackEnabled())
         {
-            float shadowOpacity = MathUtils.clamp(opacity * context.shadowOpacity, 0F, 1F);
+            float shadowOpacity = MathUtils.clamp(opacity * form.getFormOpacity() * context.shadowOpacity, 0F, 1F);
 
             if (shadowOpacity > 0F)
             {
