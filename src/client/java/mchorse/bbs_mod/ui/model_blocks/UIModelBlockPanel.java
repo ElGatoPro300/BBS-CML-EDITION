@@ -2338,8 +2338,8 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     private void applyGizmoCaptureToSingleton()
     {
         /* Whether the captured matrix already bakes BBSRendering.camera depends on the
-         * render path (Iris pack vs. vanilla); pick the composition that lands inside
-         * the frustum so the visual always matches the on-screen hitbox. */
+         * render path (Iris pack vs. vanilla); composeVisualMatrix prefers camera*capture
+         * and falls back to baked when that would place the origin behind the camera. */
         Gizmo.composeVisualMatrix(this.gizmoInterfaceMatrix, BBSRendering.camera, this.gizmoProjection, Gizmo.INSTANCE.lastGizmoMatrix);
         Gizmo.INSTANCE.hasGizmoMatrix = true;
     }

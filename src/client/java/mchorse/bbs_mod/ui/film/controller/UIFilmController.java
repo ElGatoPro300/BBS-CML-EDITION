@@ -1209,9 +1209,8 @@ public class UIFilmController extends UIElement
         {
             if (this.panel.hasLastGizmoMatrix)
             {
-                /* Whether the world pass bakes BBSRendering.camera into the captured
-                 * matrix depends on the render path (Iris pack vs. vanilla), so let
-                 * the gizmo pick the composition that lands inside the frustum. */
+                /* camera * capture; falls back to raw capture only if that product is behind
+                 * the camera (Iris paths that already baked the view into the stack). */
                 Gizmo.composeVisualMatrix(this.panel.lastGizmoMatrix, BBSRendering.camera, this.panel.lastProjection, this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.hasGizmoMatrix = true;

@@ -549,29 +549,30 @@ public class Gizmo
     /**
      * Compose the world-pass captured gizmo matrix with the camera rotation when needed.
      *
-     * Depending on the render path (Iris shader pack, chunk-layer hook, vanilla), the
-     * captured matrix may or may not already contain the camera rotation. Prefer the
-     * path that matches the active renderer, and only fall back when that path puts the
-     * gizmo origin behind the camera (invalid depth). Do <b>not</b> use on-screen XY
-     * frustum tests: when the limb anchor leaves the viewport the correct matrix fails
-     * that test and the wrong candidate can still project “on screen”, which teleports
-     * the gizmo (and flips axis arrows from a nonsense camera-local position).
+     * The film/world capture is camera-relative translation (and bone rotation) but often
+     * lacks the view rotation — especially under Iris, where the AFTER_ENTITIES stack may
+     * not bake {@link mchorse.bbs_mod.client.BBSRendering#camera}. Always prefer
+     * {@code camera * captured}. Only fall back to the raw capture when that product puts
+     * the origin behind the camera (capture already included the full view matrix).
+     *
+     * Do <b>not</b> use on-screen XY frustum tests: when the limb anchor leaves the
+     * viewport the correct matrix fails that test and the wrong candidate can still
+     * project “on screen”, which teleports the gizmo.
      */
     public static Matrix4f composeVisualMatrix(Matrix4f captured, Matrix4f cameraMatrix, Matrix4f projection, Matrix4f dest)
     {
         Matrix4f baked = new Matrix4f(captured);
         Matrix4f composed = new Matrix4f(cameraMatrix).mul(captured);
-        boolean preferBaked = BBSRendering.isIrisShadersEnabled();
-        Matrix4f preferred = preferBaked ? baked : composed;
-        Matrix4f alternate = preferBaked ? composed : baked;
 
-        if (!isOriginInFront(preferred, projection) && isOriginInFront(alternate, projection))
+        /* Prefer composed for every path. Iris packs used to force "baked" first, which
+         * left film gizmos view-locked (move with pan, frozen under orbit/look). */
+        if (!isOriginInFront(composed, projection) && isOriginInFront(baked, projection))
         {
-            dest.set(alternate);
+            dest.set(baked);
         }
         else
         {
-            dest.set(preferred);
+            dest.set(composed);
         }
 
         return dest;
