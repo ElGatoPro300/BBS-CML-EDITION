@@ -770,8 +770,11 @@ public class BBSSettings
 
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
+        irisOpacityFix = builder.getBoolean("iris_opacity_fix", true);
         complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", true);
+        complementaryOpacityFix.invisible();
         bslOpacityFix = builder.getBoolean("bsl_opacity_fix", true);
+        bslOpacityFix.invisible();
         shaderOpacityPatchesDefaultOnMigrated = builder.getBoolean("opacity_patches_default_on_migrated", false);
         shaderOpacityPatchesDefaultOnMigrated.invisible();
         shaderShadowOpacity = builder.getFloat("shader_shadow_opacity", 1F, 0F, 1F);

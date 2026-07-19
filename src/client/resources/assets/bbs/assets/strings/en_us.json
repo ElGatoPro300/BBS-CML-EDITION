@@ -383,6 +383,8 @@
     "bbs.config.timeline_toolbar.warning": "Hiding timeline toolbars removes access to some actions that are only available in those menus. Keyboard shortcuts will still work where assigned.",
     "bbs.config.shader_curves.enabled": "Enabled",
     "bbs.config.shader_curves.enabled-comment": "Whether shader curves are enabled",
+    "bbs.config.shader_curves.iris_opacity_fix": "Iris opacity fix",
+    "bbs.config.shader_curves.iris_opacity_fix-comment": "For any Iris shader pack: keep form lighting on the Iris path when nearly opaque, and redraw soft translucency after clouds/fog so the sky is not punched. Complementary/BSL get GLSL shadow helpers automatically when detected. Reloads shaders when toggled.",
     "bbs.config.shader_curves.complementary_opacity_fix": "Complementary opacity fix",
     "bbs.config.shader_curves.complementary_opacity_fix-comment": "When Complementary is loaded: keep form opacity/lighting on the Iris path, but do not let translucent forms punch clouds/fog (no depth write + translucentMult/separateEntityDraws). Reloads shaders when toggled.",
     "bbs.config.shader_curves.bsl_opacity_fix": "BSL opacity fix",
