@@ -27,6 +27,37 @@ public class FormColorBlend
         }
     }
 
+    /**
+     * Approximate BBS paint for the Iris entity pass (vertex color). Mid-pipeline BBS paint
+     * overlays cannot write Iris deferred MRTs, so simple full-mesh paint is baked here and
+     * lands under soft post-deferred forms with pack lighting/shadows intact.
+     */
+    public static void bakePaintIntoVertexColor(Color color, Color paint, float strength)
+    {
+        if (color == null || paint == null || Math.abs(strength) <= 0.001F)
+        {
+            return;
+        }
+
+        float s = MathUtils.clamp(strength, -1F, 1F);
+
+        if (s >= 0F)
+        {
+            color.r = color.r * (1F - s) + paint.r * s;
+            color.g = color.g * (1F - s) + paint.g * s;
+            color.b = color.b * (1F - s) + paint.b * s;
+        }
+        else
+        {
+            /* Negative intensity darkens toward black (same idea as BBS paint darken). */
+            float t = -s;
+
+            color.r *= 1F - t;
+            color.g *= 1F - t;
+            color.b *= 1F - t;
+        }
+    }
+
     public enum BlendMode
     {
         MULTIPLY,

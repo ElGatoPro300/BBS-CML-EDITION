@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class IrisRenderingPipelineMixin
 {
     /**
-     * After deferred (clouds/fog) has run, mark the post-deferred phase. Soft BBS forms
-     * flush later at world-render end (after color paint) so both survive Iris composite.
+     * After deferred (clouds/fog) has run, flush soft BBS forms onto Iris' translucent
+     * target so they keep pack lighting and sun shadows without punching the sky.
      */
     @Inject(method = "beginTranslucents", at = @At("RETURN"), remap = false, require = 0)
     private void bbsFlushPostDeferredForms(CallbackInfo ci)

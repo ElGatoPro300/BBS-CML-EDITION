@@ -358,7 +358,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 EffectTransform paintTransformQueued = paintTransformSnapshot;
                 Vector3f paintMaskHalfQueued = paintMaskHalfSnapshot;
                 double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
-                boolean depthWrite = true;
+                boolean depthWrite = !ShaderOpacityPatch.isActive();
 
                 ShaderOpacityPatch.submitPostDeferredForm(sortDepth, 0D, depthWrite, () ->
                 {

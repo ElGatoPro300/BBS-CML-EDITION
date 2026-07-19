@@ -511,10 +511,10 @@ public class BBSRendering
             return;
         }
 
-        /* Paint first on the final framebuffer (Iris mid-pipeline paint never survives),
-         * then soft opacity-fix forms so they composite over painted actors. */
-        ModelVAORenderer.flushPaintOverlayQueue();
+        /* Soft forms flush at Iris beginTranslucents (pack lighting / body shadows). Paint
+         * overlays always flush here on the final framebuffer (BBS paint cannot target Iris MRTs). */
         ShaderOpacityPatch.onWorldRenderEnd();
+        ModelVAORenderer.flushPaintOverlayQueue();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();

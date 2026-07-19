@@ -866,10 +866,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                         distanceSq = FormRenderDepth.getEntityDistanceSq(renderContext.entity, renderContext.camera, transition);
                     }
 
-                    /* depthMask true: soft mesh composites over paint flushed just before
-                     * this queue (same Iris translucent target). Writing depth also stops
-                     * self X-ray on multi-limb models. */
-                    boolean depthWrite = true;
+                    /* depthMask false when opacity fix is on: soft forms keep Iris lighting/
+                     * body shadows, but must not stamp depth that rejects end-of-frame paint
+                     * overlays (BBS paint cannot write Iris MRTs mid-pipeline). */
+                    boolean depthWrite = !ShaderOpacityPatch.isActive();
 
                     ShaderOpacityPatch.submitPostDeferredForm(sortDepth, distanceSq, depthWrite, () ->
                     {
@@ -1655,6 +1655,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             return true;
         }
 
+        return this.hasBonePaint(model);
+    }
+
+    private boolean hasBonePaint(ModelInstance model)
+    {
         if (model != null && model.getModel() != null)
         {
             for (ModelGroup group : model.getModel().getAllGroups())
