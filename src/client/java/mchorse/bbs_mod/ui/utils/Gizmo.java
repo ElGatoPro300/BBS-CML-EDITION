@@ -550,32 +550,38 @@ public class Gizmo
      * Compose the world-pass captured gizmo matrix with the camera rotation when needed.
      *
      * Depending on the render path (Iris shader pack, chunk-layer hook, vanilla), the
-     * captured matrix may or may not already contain the camera rotation. Instead of
-     * hardcoding an assumption per path, test both candidates against the projection:
-     * the correct one places the gizmo origin in front of the camera within the frustum
-     * (the gizmo hitbox is drawn on screen, so the visual must land there too).
+     * captured matrix may or may not already contain the camera rotation. Prefer the
+     * path that matches the active renderer, and only fall back when that path puts the
+     * gizmo origin behind the camera (invalid depth). Do <b>not</b> use on-screen XY
+     * frustum tests: when the limb anchor leaves the viewport the correct matrix fails
+     * that test and the wrong candidate can still project “on screen”, which teleports
+     * the gizmo (and flips axis arrows from a nonsense camera-local position).
      */
     public static Matrix4f composeVisualMatrix(Matrix4f captured, Matrix4f cameraMatrix, Matrix4f projection, Matrix4f dest)
     {
         Matrix4f baked = new Matrix4f(captured);
         Matrix4f composed = new Matrix4f(cameraMatrix).mul(captured);
         boolean preferBaked = BBSRendering.isIrisShadersEnabled();
-        Matrix4f first = preferBaked ? baked : composed;
-        Matrix4f second = preferBaked ? composed : baked;
+        Matrix4f preferred = preferBaked ? baked : composed;
+        Matrix4f alternate = preferBaked ? composed : baked;
 
-        if (!isOriginVisible(first, projection) && isOriginVisible(second, projection))
+        if (!isOriginInFront(preferred, projection) && isOriginInFront(alternate, projection))
         {
-            dest.set(second);
+            dest.set(alternate);
         }
         else
         {
-            dest.set(first);
+            dest.set(preferred);
         }
 
         return dest;
     }
 
-    private static boolean isOriginVisible(Matrix4f view, Matrix4f projection)
+    /**
+     * True when the gizmo origin is in front of the camera with a sane clip depth.
+     * Off-screen X/Y is allowed — only behind-camera / degenerate projections fail.
+     */
+    private static boolean isOriginInFront(Matrix4f view, Matrix4f projection)
     {
         Vector4f clip = new Vector4f(0F, 0F, 0F, 1F).mul(view).mul(projection);
 
@@ -584,7 +590,9 @@ public class Gizmo
             return false;
         }
 
-        return Math.abs(clip.x / clip.w) <= 1.1F && Math.abs(clip.y / clip.w) <= 1.1F;
+        float ndcZ = clip.z / clip.w;
+
+        return ndcZ >= -1.2F && ndcZ <= 1.2F;
     }
 
     /**

@@ -185,7 +185,7 @@ public final class FilmPoseGizmoDrag
             return false;
         }
 
-        /* Same frustum-based composition as the visual pass, so drags grab the
+        /* Same depth-based composition as the visual pass, so drags grab the
          * handle exactly where it is drawn regardless of the shader path. */
         Gizmo.composeVisualMatrix(panel.lastGizmoMatrix, BBSRendering.camera, panel.lastProjection, matrix);
 
