@@ -2846,6 +2846,24 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     /**
+     * After leaving an embedded clip keyframe view, show the clip form tab again.
+     * Picking a keyframe focuses {@code editArea} (Properties); once the embed
+     * closes that panel is empty while a clip remains selected, so restore
+     * Camera/Action Properties (or the unified properties host).
+     */
+    public void focusClipPropertiesTab(boolean cameraTimeline)
+    {
+        if (this.shouldRedirectProperties())
+        {
+            this.focusPanelTab("unifiedEditArea");
+
+            return;
+        }
+
+        this.focusPanelTab(cameraTimeline ? "cameraEditArea" : "actionEditArea");
+    }
+
+    /**
      * Activate {@code panelId} inside its tab group without clearing timeline
      * selections or re-entering through {@link #focusLinkedPropertiesTab}.
      */

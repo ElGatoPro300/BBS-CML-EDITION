@@ -149,6 +149,16 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         else
         {
             this.applyDefaultToolbarSections();
+
+            /* Leaving an embedded keyframe view: Properties (editArea) may still be
+             * selected from picking a keyframe, but it is empty with no selection.
+             * Show Camera/Action Properties again for the selected clip.
+             * Only relevant when keyframe props use the Properties tab (not the
+             * floating side panel). */
+            if (embed == null && !BBSSettings.isEmbeddedKeyframeSidePanelEnabled())
+            {
+                this.filmPanel.focusClipPropertiesTab(this.isCameraTimeline);
+            }
         }
 
         this.applyToolbarDockLayout();
