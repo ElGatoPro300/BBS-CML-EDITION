@@ -10,7 +10,6 @@ import mchorse.bbs_mod.utils.MathUtils;
 public final class LensDistortionOverscan
 {
     public static final float CORNER_R2 = 0.5F;
-    private static final float MAX_FOV_DEGREES = 170F;
 
     private LensDistortionOverscan()
     {}
@@ -43,12 +42,13 @@ public final class LensDistortionOverscan
         }
 
         float wideHalf = (float) Math.atan(tanHalf * (double) scale);
+        float widened = MathUtils.toDeg(wideHalf * 2F);
 
-        return MathUtils.clamp(MathUtils.toDeg(wideHalf * 2F), 1F, MAX_FOV_DEGREES);
+        return Float.isFinite(widened) ? Math.max(1F, widened) : fovDegrees;
     }
 
     /**
-     * Actual tan-space scale achieved between two vertical FOV values (after clamps).
+     * Actual tan-space scale achieved between two vertical FOV values.
      */
     public static float scaleBetweenFovDegrees(float fovBeforeDegrees, float fovAfterDegrees)
     {
