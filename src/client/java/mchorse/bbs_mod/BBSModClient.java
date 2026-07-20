@@ -606,6 +606,12 @@ public class BBSModClient implements ClientModInitializer
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
         );
 
+        BBSSettings.gizmoStyle.modes(
+            UIKeys.CONFIG_AXES_GIZMO_STYLE_1,
+            UIKeys.CONFIG_AXES_GIZMO_STYLE_2,
+            UIKeys.CONFIG_AXES_GIZMO_STYLE_3
+        );
+
         BBSSettings.editorTimeMode.modes(
             UIKeys.CONFIG_EDITOR_TICKS_MODE,
             UIKeys.CONFIG_EDITOR_SECONDS_MODE,

@@ -42,8 +42,10 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -58,7 +60,6 @@ import mchorse.bbs_mod.utils.pose.Transform;
 
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -350,17 +351,19 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
     {
         this.gizmoStencil = stencil;
 
+        UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
+
+        if (context.mouseButton == 0 && this.gizmoController.tryStartHandleDrag(context, editableTransform))
+        {
+            return true;
+        }
+
         if (stencil.hasPicked() && this.state != null)
         {
             Pair<Form, String> pair = stencil.getPicked();
 
             if (pair != null && context.mouseButton < 2)
             {
-                if (this.gizmoController.tryStartHandleDrag(context, UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor)))
-                {
-                    return true;
-                }
-
                 if (pair.a == null)
                 {
                     return false;
@@ -383,6 +386,25 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
         }
 
         return false;
+    }
+
+    public void finishGizmoPendingClick()
+    {
+        Pair<Form, String> pendingPick = this.gizmoController.consumePendingTrackballClick();
+
+        if (pendingPick != null && pendingPick.a != null)
+        {
+            if (Window.isShiftPressed())
+            {
+                UIReplaysEditorUtils.offerHierarchy(this.getContext(), pendingPick.a, pendingPick.b, (bone) -> this.pickForm(pendingPick.a, bone));
+            }
+            else
+            {
+                this.pickForm(pendingPick.a, pendingPick.b);
+            }
+        }
+
+        this.gizmoController.stop();
     }
 
     @Override
@@ -443,7 +465,7 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
             return Matrices.EMPTY_4F;
         }
 
-        Pair<String, Boolean> bone = this.keyframeEditor.getBone();
+        Pair<String, TransformOrientation> bone = this.keyframeEditor.getBone();
 
         if (bone == null)
         {
@@ -465,31 +487,15 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
             return Matrices.EMPTY_4F;
         }
 
-        Matrix4f matrix;
-
         if (forceOrigin)
         {
-            matrix = entry.origin();
-        }
-        else if (bone.b)
-        {
-            Matrix4f localMatrix = entry.matrix();
-            Matrix4f originMatrix = entry.origin();
+            Matrix4f matrix = entry.origin();
 
-            if (localMatrix != null && originMatrix != null)
-            {
-                matrix = new Matrix4f(localMatrix);
-                matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
-            }
-            else
-            {
-                matrix = localMatrix != null ? localMatrix : originMatrix;
-            }
+            return matrix == null ? Matrices.EMPTY_4F : matrix;
         }
-        else
-        {
-            matrix = entry.origin();
-        }
+
+        boolean bobj = root instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+        Matrix4f matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, bone.b, bobj);
 
         return matrix == null ? Matrices.EMPTY_4F : matrix;
     }

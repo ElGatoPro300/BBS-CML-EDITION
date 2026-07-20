@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.forms.editors.panels.UIFormPanel;
 import mchorse.bbs_mod.ui.forms.editors.panels.UIModelFormPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -77,7 +78,7 @@ public class UIModelForm extends UIForm<ModelForm>
         String path = FormUtils.getPath(this.form);
         UIPoseEditor poseEditor = this.modelPanel.poseEditor;
 
-        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.isLocal());
+        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.getOrientation());
     }
 
     /**
@@ -88,6 +89,11 @@ public class UIModelForm extends UIForm<ModelForm>
      */
     @Override
     public Matrix4f getOrigin(float transition, String path, boolean local)
+    {
+        return this.getOrigin(transition, path, local ? TransformOrientation.LOCAL : TransformOrientation.PARENT);
+    }
+
+    public Matrix4f getOrigin(float transition, String path, TransformOrientation orientation)
     {
         if (path == null)
         {
@@ -117,7 +123,7 @@ public class UIModelForm extends UIForm<ModelForm>
         }
 
         boolean bobj = ModelFormRenderer.isBobjModel(this.form);
-        Matrix4f matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local, bobj);
+        Matrix4f matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, orientation, bobj);
 
         return matrix == null ? Matrices.EMPTY_4F : matrix;
     }
@@ -131,6 +137,6 @@ public class UIModelForm extends UIForm<ModelForm>
 
         String path = FormUtils.getPath(this.form);
 
-        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.isLocal());
+        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.getOrientation());
     }
 }

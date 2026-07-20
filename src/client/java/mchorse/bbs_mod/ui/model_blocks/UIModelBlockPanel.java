@@ -1949,6 +1949,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
     @Override
     public boolean subMouseReleased(UIContext context) {
+        this.gizmoController.consumePendingTrackballClick();
         this.gizmoController.stop();
 
         return super.subMouseReleased(context);
@@ -2338,8 +2339,8 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     private void applyGizmoCaptureToSingleton()
     {
         /* Whether the captured matrix already bakes BBSRendering.camera depends on the
-         * render path (Iris pack vs. vanilla); composeVisualMatrix prefers camera*capture
-         * and falls back to baked when that would place the origin behind the camera. */
+         * render path (Iris pack vs. vanilla). composeVisualMatrix detects double-camera
+         * by view-space origin distance and keeps the gizmo on the block. */
         Gizmo.composeVisualMatrix(this.gizmoInterfaceMatrix, BBSRendering.camera, this.gizmoProjection, Gizmo.INSTANCE.lastGizmoMatrix);
         Gizmo.INSTANCE.hasGizmoMatrix = true;
     }
@@ -2391,6 +2392,12 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         if (transform == null) {
             return;
         }
+
+        /* Y/Z ring and white view-ring values follow the mouse; only those process bars
+         * wind the wrong way (especially in Local). */
+        transform.setInvertRotationArcY(true);
+        transform.setInvertRotationArcZ(true);
+        transform.setInvertRotationArcViewRing(true);
 
         transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider() {
             @Override

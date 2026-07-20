@@ -20,6 +20,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKey
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -473,11 +474,11 @@ public class UIKeyframeEditor extends UIElement
         return null;
     }
 
-    public Pair<String, Boolean> getBone()
+    public Pair<String, TransformOrientation> getBone()
     {
         UIKeyframeFactory editor = this.editor;
         String bone = null;
-        boolean local = false;
+        TransformOrientation orientation = TransformOrientation.PARENT;
 
         if (editor instanceof UIPoseKeyframeFactory || editor instanceof UITransformKeyframeFactory || editor instanceof UIAnchorKeyframeFactory)
         {
@@ -525,11 +526,11 @@ public class UIKeyframeEditor extends UIElement
 
                     if (editor instanceof UIPoseKeyframeFactory pose)
                     {
-                        local = pose.poseEditor.transform.isLocal();
+                        orientation = pose.poseEditor.transform.getOrientation();
                     }
                     else if (editor instanceof UITransformKeyframeFactory transform)
                     {
-                        local = transform.transform.isLocal();
+                        orientation = transform.transform.getOrientation();
                     }
                 }
                 else if (propertyId.equals("transform") || propertyId.startsWith("transform_overlay"))
@@ -540,7 +541,7 @@ public class UIKeyframeEditor extends UIElement
 
                     if (editor instanceof UITransformKeyframeFactory transform)
                     {
-                        local = transform.transform.isLocal();
+                        orientation = transform.transform.getOrientation();
                     }
                 }
                 else if (propertyId.equals("illusion_transform") || propertyId.startsWith("illusion_transform_overlay"))
@@ -551,7 +552,7 @@ public class UIKeyframeEditor extends UIElement
 
                     if (editor instanceof UITransformKeyframeFactory transform)
                     {
-                        local = transform.transform.isLocal();
+                        orientation = transform.transform.getOrientation();
                     }
                 }
                 else if (propertyId.equals("anchor") && editor instanceof UIAnchorKeyframeFactory anchorFactory)
@@ -560,7 +561,7 @@ public class UIKeyframeEditor extends UIElement
 
                     bone = lastSlash >= 0 ? sheet.id.substring(0, lastSlash) : "";
 
-                    local = anchorFactory.transform.isLocal();
+                    orientation = anchorFactory.transform.getOrientation();
                 }
             }
         }
@@ -575,7 +576,7 @@ public class UIKeyframeEditor extends UIElement
 
         if (bone != null)
         {
-            return new Pair<>(bone, local);
+            return new Pair<>(bone, orientation);
         }
 
         return null;

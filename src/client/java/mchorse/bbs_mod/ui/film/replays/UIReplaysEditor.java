@@ -3821,6 +3821,14 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
 
         StencilFormFramebuffer stencil = this.filmPanel.getController().getStencil();
+        UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
+
+        this.gizmoDragArea = area;
+
+        if (context.mouseButton == 0 && this.gizmoController.tryStartHandleDrag(context, editableTransform))
+        {
+            return true;
+        }
 
         if (stencil.hasPicked())
         {
@@ -3851,15 +3859,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                     if (!this.isVisible())
                     {
                         this.filmPanel.showPanel(this);
-                    }
-
-                    UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
-
-                    this.gizmoDragArea = area;
-
-                    if (this.gizmoController.tryStartHandleDrag(context, editableTransform))
-                    {
-                        return true;
                     }
 
                     if (pair.a == null)
@@ -3962,6 +3961,20 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
     public void stopGizmoDrag()
     {
+        Pair<Form, String> pendingPick = this.gizmoController.consumePendingTrackballClick();
+
+        if (pendingPick != null && pendingPick.a != null)
+        {
+            if (Window.isShiftPressed())
+            {
+                offerHierarchy(this.getContext(), pendingPick.a, pendingPick.b, (bone) -> this.pickForm(pendingPick.a, bone));
+            }
+            else
+            {
+                this.pickForm(pendingPick.a, pendingPick.b);
+            }
+        }
+
         this.gizmoController.stop();
     }
 

@@ -72,6 +72,9 @@ public class BBSSettings
     public static ValueBoolean gizmoConstantSize;
     public static ValueFloat gizmoConstantSizeMin;
     public static ValueInt gizmoDefaultMode;
+    /* 0 = Style 1, 1 = Style 2 (cubes outside view ring), 2 = Style 3 (cubes on ring, no cones). */
+    public static ValueInt gizmoStyle;
+    public static ValueBoolean gizmoFullRotationRings;
     public static ValueFloat gizmoGuideLength;
     public static ValueFloat gizmoGuideThickness;
     public static ValueFloat gizmoGuideOpacity;
@@ -618,10 +621,14 @@ public class BBSSettings
         gizmoTrackballScale = builder.getInt("gizmo_trackball_scale", 1, 1, 5);
         /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined, 4 = Trackball only; see Gizmo.Mode (ordinal order matches). */
         gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 4);
+        /* Combined / rotate visual style: 0 = Style 1, 1 = Style 2, 2 = Style 3 (cubes on ring, no cones). */
+        gizmoStyle = builder.getInt("gizmo_style", 0, 0, 2);
+        /* When true, XYZ rotation rings are full circles; when false, camera-facing half-rings. */
+        gizmoFullRotationRings = builder.getBoolean("gizmo_full_rotation_rings", false);
         /* Faint guide line(s) shown along the dragged axis/plane: length (multiplier),
          * thickness (multiplier) and opacity (0..1). */
         gizmoGuideLength = builder.getFloat("gizmo_guide_length", 2F, 0.1F, 10F);
-        gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 1F, 0.1F, 10F);
+        gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 2F, 0.1F, 10F);
         gizmoGuideOpacity = builder.getFloat("gizmo_guide_opacity", 0.35F, 0.05F, 1F);
         gizmoTranslateSpeed = builder.getInt("gizmo_translate_speed", 5, 1, 20);
         builder.register(editorGizmoToolbar = new ValueGizmoToolbar("gizmo_toolbar"));

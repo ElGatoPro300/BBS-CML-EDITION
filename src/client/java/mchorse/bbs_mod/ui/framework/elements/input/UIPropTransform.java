@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -76,13 +77,26 @@ public class UIPropTransform extends UITransform
     private boolean invertGizmoViewRing;
     private boolean invertGizmoViewRingTuning;
     private boolean invertGizmoTrackball;
+    /**
+     * When true, flip the rotation process-bar sweep relative to the value delta.
+     * Used by model-editor General where arc3D winds opposite every ring's plane sweep.
+     */
+    private boolean invertRotationArcSweep;
+    /* Model-editor General: Y-ring process bar winds opposite the value delta. */
+    private boolean invertRotationArcY;
+    /* Film Anchor: Z-ring process bar winds opposite the value delta. */
+    private boolean invertRotationArcZ;
+    /* Film Transform: white view-ring process bar only (value stays mouse-correct). */
+    private boolean invertRotationArcViewRing;
     private boolean filmMatchPoseTrackball;
+    /* Film Anchor: keep process-bar orientation fixed even in Global (same as Local). */
+    private boolean forceFrozenRotationArc;
     /* Film pose keyframe trackball: arcball on a gizmo-local unit sphere via view-space rays
      * (same space as the axis rings). Screen-delta trackball does not work there. */
     private boolean filmArcballTrackball;
     private boolean invertFilmArcballDragY;
     private boolean invertFilmPoseGizmoAxes;
-    private boolean local;
+    private TransformOrientation orientation = TransformOrientation.PARENT;
     private boolean freeRotation;
     private boolean freeTranslation;
     private boolean uniformScale;
@@ -140,6 +154,14 @@ public class UIPropTransform extends UITransform
     private float rayDragPlaneAngleOffset;
     /** Same for the camera-facing view ring (radians). */
     private float rayDragViewRingAngleOffsetRad;
+    /**
+     * Continuous (unwrapped) sweep from {@link #rayDragStartPoint} so process-bar / value
+     * keep growing past ±180° instead of atan2-wrapping and reversing.
+     */
+    private float rayPlaneSweepUnwrappedDeg;
+    private float rayViewSweepUnwrappedRad;
+    private boolean rayPlaneSweepUnwrappedInit;
+    private boolean rayViewSweepUnwrappedInit;
     private final Vector3d planeOrigin = new Vector3d();
     private final Vector3d planeNormal = new Vector3d();
     private final Vector3d rayDirectionD = new Vector3d();
@@ -152,9 +174,10 @@ public class UIPropTransform extends UITransform
         this.handler = new UITransformHandler(this);
 
         this.iconT.callback = (b) -> this.toggleLocal();
+        this.iconT.both(() -> this.isLocal() ? Icons.MINIMIZE : Icons.FULLSCREEN);
         this.iconT.hoverColor = Colors.LIGHTEST_GRAY;
         this.iconT.setEnabled(true);
-        this.iconT.tooltip(this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL);
+        this.updateLocalIcon();
 
         this.noCulling();
     }
@@ -162,11 +185,7 @@ public class UIPropTransform extends UITransform
     @Override
     protected void addGeneralTabActions(ContextMenuManager menu, ListType transforms)
     {
-        menu.action(
-            this.local ? Icons.FULLSCREEN : Icons.MINIMIZE,
-            this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL,
-            this::toggleLocal
-        );
+        menu.action(this.isLocal() ? Icons.MINIMIZE : Icons.FULLSCREEN, this.isLocal() ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL, this::toggleLocal);
 
         for (BiConsumer<UIPropTransform, ContextMenuManager> consumer : contextMenuExtensions)
         {
@@ -219,7 +238,12 @@ public class UIPropTransform extends UITransform
 
     public void setModel()
     {
-        this.model = true;
+        this.setModel(true);
+    }
+
+    public void setModel(boolean model)
+    {
+        this.model = model;
     }
 
     /**
@@ -370,6 +394,11 @@ public class UIPropTransform extends UITransform
         return this;
     }
 
+    public void setInvertFilmArcballDragY(boolean invertFilmArcballDragY)
+    {
+        this.invertFilmArcballDragY = invertFilmArcballDragY;
+    }
+
     /** Film replay transform trackball / view-ring path: no pose euler sign flips. */
     public UIPropTransform clearTrackballEulerInverts()
     {
@@ -381,14 +410,13 @@ public class UIPropTransform extends UITransform
     }
 
     /**
-     * Film anchor gizmo: the anchor transform is applied in the attachment bone's space, which
-     * mirrors the X and Z axes relative to this class' own Euler storage (same pattern as the
-     * bone-pose bodies), so those two rotation rings need their drag sign flipped.
+     * Film anchor gizmo: attachment-bone space does not need X/Z ring sign flips for mouse
+     * sense (those flips made the rings oppose the cursor).
      */
     public UIPropTransform anchorGizmoTuning()
     {
-        this.invertGizmoRotationX = true;
-        this.invertGizmoRotationZ = true;
+        this.invertGizmoRotationX = false;
+        this.invertGizmoRotationZ = false;
 
         return this;
     }
@@ -427,6 +455,46 @@ public class UIPropTransform extends UITransform
     public void setInvertGizmoViewRing(boolean invertGizmoViewRing)
     {
         this.invertGizmoViewRing = invertGizmoViewRing;
+    }
+
+    public void setInvertRotationArcSweep(boolean invertRotationArcSweep)
+    {
+        this.invertRotationArcSweep = invertRotationArcSweep;
+    }
+
+    public void setInvertRotationArcY(boolean invertRotationArcY)
+    {
+        this.invertRotationArcY = invertRotationArcY;
+    }
+
+    public void setInvertRotationArcZ(boolean invertRotationArcZ)
+    {
+        this.invertRotationArcZ = invertRotationArcZ;
+    }
+
+    public void setInvertRotationArcViewRing(boolean invertRotationArcViewRing)
+    {
+        this.invertRotationArcViewRing = invertRotationArcViewRing;
+    }
+
+    public void setForceFrozenRotationArc(boolean forceFrozenRotationArc)
+    {
+        this.forceFrozenRotationArc = forceFrozenRotationArc;
+    }
+
+    public void setInvertGizmoRotationX(boolean invertGizmoRotationX)
+    {
+        this.invertGizmoRotationX = invertGizmoRotationX;
+    }
+
+    public void setInvertGizmoRotationZ(boolean invertGizmoRotationZ)
+    {
+        this.invertGizmoRotationZ = invertGizmoRotationZ;
+    }
+
+    public void setInvertGizmoTranslateZ(boolean invertGizmoTranslateZ)
+    {
+        this.invertGizmoTranslateZ = invertGizmoTranslateZ;
     }
 
     public void setInvertTrackballDragY(boolean invertTrackballDragY)
@@ -525,33 +593,53 @@ public class UIPropTransform extends UITransform
 
     public boolean isLocal()
     {
-        return this.local;
+        return this.orientation.isLocal();
     }
 
-    public void setLocalMode(boolean local)
+    public TransformOrientation getOrientation()
     {
-        if (this.local != local)
+        return this.orientation;
+    }
+
+    public void setOrientation(TransformOrientation orientation)
+    {
+        if (orientation == null)
         {
-            this.toggleLocal();
+            orientation = TransformOrientation.PARENT;
         }
-    }
 
-    private void toggleLocal()
-    {
-        this.local = !this.local;
+        boolean wasLocal = this.isLocal();
 
-        if (!this.local)
+        this.orientation = orientation;
+
+        if (wasLocal && !this.isLocal() && this.transform != null)
         {
             this.fillT(this.transform.translate.x, this.transform.translate.y, this.transform.translate.z);
         }
 
-        this.tx.forcedLabel(this.local ? UIKeys.GENERAL_X : null);
-        this.ty.forcedLabel(this.local ? UIKeys.GENERAL_Y : null);
-        this.tz.forcedLabel(this.local ? UIKeys.GENERAL_Z : null);
-        this.tx.relative(this.local);
-        this.ty.relative(this.local);
-        this.tz.relative(this.local);
-        this.iconT.tooltip(this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL);
+        this.updateLocalIcon();
+    }
+
+    public void setLocalMode(boolean local)
+    {
+        this.setOrientation(local ? TransformOrientation.LOCAL : TransformOrientation.PARENT);
+    }
+
+    private void toggleLocal()
+    {
+        this.setLocalMode(!this.isLocal());
+    }
+
+    private void updateLocalIcon()
+    {
+        this.tx.forcedLabel(this.isLocal() ? UIKeys.GENERAL_X : null);
+        this.ty.forcedLabel(this.isLocal() ? UIKeys.GENERAL_Y : null);
+        this.tz.forcedLabel(this.isLocal() ? UIKeys.GENERAL_Z : null);
+        this.tx.relative(this.isLocal());
+        this.ty.relative(this.isLocal());
+        this.tz.relative(this.isLocal());
+        this.iconT.iconColor(Colors.WHITE);
+        this.iconT.tooltip(this.isLocal() ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL);
     }
 
     private Vector3f calculateLocalVector(double factor, Axis axis)
@@ -639,6 +727,11 @@ public class UIPropTransform extends UITransform
     public void setGizmoRayProvider(IGizmoRayProvider provider)
     {
         this.gizmoRayProvider = provider;
+    }
+
+    public IGizmoRayProvider getGizmoRayProvider()
+    {
+        return this.gizmoRayProvider;
     }
 
     public UIPropTransform translationScale(float translationScale)
@@ -759,7 +852,7 @@ public class UIPropTransform extends UITransform
         Vector3f result = new Vector3f(this.rayDragStartTranslate);
         float delta = this.applyTranslateDelta(axis, axisDelta);
 
-        if (this.local && !this.usesModelPixelTranslation())
+        if (this.isLocal() && !this.usesModelPixelTranslation())
         {
             Vector3f local = this.calculateLocalVector(delta, axis);
 
@@ -800,7 +893,7 @@ public class UIPropTransform extends UITransform
         float dy = (float) offset.dot(worldY.x, worldY.y, worldY.z) * axisScale;
         float dz = (float) offset.dot(worldZ.x, worldZ.y, worldZ.z) * axisScale;
 
-        if (this.local && !this.usesModelPixelTranslation())
+        if (this.isLocal() && !this.usesModelPixelTranslation())
         {
             Vector3f result = new Vector3f(this.rayDragStartTranslate);
 
@@ -851,6 +944,81 @@ public class UIPropTransform extends UITransform
         return (float) Math.toRadians(this.computePlaneSweepAngleDegrees(fromPoint, toPoint));
     }
 
+    private void resetPlaneSweepUnwrap()
+    {
+        this.rayPlaneSweepUnwrappedDeg = 0F;
+        this.rayPlaneSweepUnwrappedInit = false;
+    }
+
+    private void resetViewSweepUnwrap()
+    {
+        this.rayViewSweepUnwrappedRad = 0F;
+        this.rayViewSweepUnwrappedInit = false;
+    }
+
+    /**
+     * Absolute atan2 from the grab point stays in (-180, 180]; unwrap so multi-turn drags
+     * and the process bar keep a continuous signed sweep.
+     */
+    private float continuousPlaneSweepDegrees(Vector3d toPoint)
+    {
+        float wrapped = this.computePlaneSweepAngleDegrees(this.rayDragStartPoint, toPoint);
+
+        if (!this.rayPlaneSweepUnwrappedInit)
+        {
+            this.rayPlaneSweepUnwrappedDeg = wrapped;
+            this.rayPlaneSweepUnwrappedInit = true;
+        }
+        else
+        {
+            float delta = wrapped - this.rayPlaneSweepUnwrappedDeg;
+
+            while (delta > 180F)
+            {
+                delta -= 360F;
+            }
+
+            while (delta < -180F)
+            {
+                delta += 360F;
+            }
+
+            this.rayPlaneSweepUnwrappedDeg += delta;
+        }
+
+        return this.rayDragPlaneAngleOffset + this.rayPlaneSweepUnwrappedDeg;
+    }
+
+    private float continuousViewSweepRadians(Vector3d toPoint)
+    {
+        float wrapped = this.computePlaneSweepAngleRadians(this.rayDragStartPoint, toPoint);
+
+        if (!this.rayViewSweepUnwrappedInit)
+        {
+            this.rayViewSweepUnwrappedRad = wrapped;
+            this.rayViewSweepUnwrappedInit = true;
+        }
+        else
+        {
+            float delta = wrapped - this.rayViewSweepUnwrappedRad;
+            float pi = (float) Math.PI;
+
+            while (delta > pi)
+            {
+                delta -= pi * 2F;
+            }
+
+            while (delta < -pi)
+            {
+                delta += pi * 2F;
+            }
+
+            this.rayViewSweepUnwrappedRad += delta;
+        }
+
+        return this.rayDragViewRingAngleOffsetRad + this.rayViewSweepUnwrappedRad;
+    }
+
     public void enableMode(int mode)
     {
         this.enableMode(mode, null);
@@ -867,6 +1035,8 @@ public class UIPropTransform extends UITransform
         this.scaleProgressLength = 0F;
         this.rayDragPlaneAngleOffset = 0F;
         this.rayDragViewRingAngleOffsetRad = 0F;
+        this.resetPlaneSweepUnwrap();
+        this.resetViewSweepUnwrap();
     }
 
     private void syncDragMouseFromContext(UIContext context)
@@ -1041,7 +1211,7 @@ public class UIPropTransform extends UITransform
 
     private void applyIncrementalAxisTranslate(float signedDelta)
     {
-        if (this.local && !this.usesModelPixelTranslation())
+        if (this.isLocal() && !this.usesModelPixelTranslation())
         {
             Vector3f vector = new Vector3f(this.getValue());
             Vector3f local = this.calculateLocalVector(signedDelta, this.axis);
@@ -1190,7 +1360,7 @@ public class UIPropTransform extends UITransform
 
         if (this.viewRing)
         {
-            float segment = this.computePlaneSweepAngleRadians(this.rayDragStartPoint, this.rayLastPoint);
+            float segment = this.rayViewSweepUnwrappedInit ? this.rayViewSweepUnwrappedRad : this.computePlaneSweepAngleRadians(this.rayDragStartPoint, this.rayLastPoint);
 
             if (this.invertGizmoViewRing || this.invertGizmoViewRingTuning)
             {
@@ -1198,10 +1368,11 @@ public class UIPropTransform extends UITransform
             }
 
             this.rayDragViewRingAngleOffsetRad += segment;
+            this.resetViewSweepUnwrap();
         }
         else
         {
-            float segment = this.computePlaneSweepAngleDegrees(this.rayDragStartPoint, this.rayLastPoint);
+            float segment = this.rayPlaneSweepUnwrappedInit ? this.rayPlaneSweepUnwrappedDeg : this.computePlaneSweepAngleDegrees(this.rayDragStartPoint, this.rayLastPoint);
 
             if (this.shouldInvertRotationRing(this.axis))
             {
@@ -1209,6 +1380,7 @@ public class UIPropTransform extends UITransform
             }
 
             this.rayDragPlaneAngleOffset += segment;
+            this.resetPlaneSweepUnwrap();
         }
 
         this.rayDragStartPoint.set(this.rayCurrentPoint);
@@ -1612,7 +1784,7 @@ public class UIPropTransform extends UITransform
 
     private boolean usesTrackballRotate2()
     {
-        return BBSSettings.gizmos.get() && (this.local || this.filmMatchPoseTrackball);
+        return BBSSettings.gizmos.get() && (this.isLocal() || this.filmMatchPoseTrackball);
     }
 
     private void applyTrackballRotation(float ex, float ey, float ez)
@@ -1660,7 +1832,7 @@ public class UIPropTransform extends UITransform
         }
         else if (this.mode == 2)
         {
-            return this.local && BBSSettings.gizmos.get() ? this.transform.rotate2 : this.transform.rotate;
+            return this.isLocal() && BBSSettings.gizmos.get() ? this.transform.rotate2 : this.transform.rotate;
         }
 
         return this.transform.translate;
@@ -1687,6 +1859,11 @@ public class UIPropTransform extends UITransform
         this.viewRing = false;
         this.invertGizmoTrackball = false;
         this.invertGizmoViewRing = false;
+        this.invertRotationArcSweep = false;
+        this.invertRotationArcY = false;
+        this.invertRotationArcZ = false;
+        this.invertRotationArcViewRing = false;
+        this.forceFrozenRotationArc = false;
         this.filmMatchPoseTrackball = false;
         this.filmArcballTrackball = false;
         this.invertFilmArcballDragY = false;
@@ -1695,6 +1872,8 @@ public class UIPropTransform extends UITransform
         this.raySphereDragInitialized = false;
         this.rayDragPlaneAngleOffset = 0F;
         this.rayDragViewRingAngleOffsetRad = 0F;
+        this.resetPlaneSweepUnwrap();
+        this.resetViewSweepUnwrap();
 
         Gizmo.INSTANCE.clearRotationArc();
         Gizmo.INSTANCE.clearDragProgress();
@@ -1718,10 +1897,46 @@ public class UIPropTransform extends UITransform
         this.setTransform(this.transform);
     }
 
+    public String buildGizmoDragReadout()
+    {
+        if (this.transform == null)
+        {
+            return "";
+        }
+
+        if (this.mode == 1)
+        {
+            return this.formatVector(this.transform.scale, false);
+        }
+
+        if (this.mode == 2)
+        {
+            Vector3f rotation = this.isLocal() && BBSSettings.gizmos.get() ? this.transform.rotate2 : this.transform.rotate;
+
+            return this.formatVector(rotation, true);
+        }
+
+        return this.formatVector(this.transform.translate, false);
+    }
+
+    private String formatVector(Vector3f vector, boolean degrees)
+    {
+        if (degrees)
+        {
+            return String.format(java.util.Locale.ENGLISH, "X %.1f\u00B0  Y %.1f\u00B0  Z %.1f\u00B0",
+                MathUtils.toDeg(vector.x),
+                MathUtils.toDeg(vector.y),
+                MathUtils.toDeg(vector.z)
+            );
+        }
+
+        return String.format(java.util.Locale.ENGLISH, "X %.3f  Y %.3f  Z %.3f", vector.x, vector.y, vector.z);
+    }
+
     @Override
     protected void internalSetT(double x, Axis axis)
     {
-        if (this.local)
+        if (this.isLocal())
         {
             try
             {
@@ -1824,14 +2039,6 @@ public class UIPropTransform extends UITransform
             int y = this.area.my(font.getHeight());
 
             context.batcher.textCard(label, x, y, Colors.WHITE, BBSSettings.primaryColor(Colors.A50));
-
-            /* Live degree readout next to the mouse while a rotation ring is being dragged. */
-            if (this.mode == 2 && Gizmo.INSTANCE.hasRotationArc())
-            {
-                String degrees = String.format("%.1f\u00B0", Gizmo.INSTANCE.getRotationSweep());
-
-                context.batcher.textCard(degrees, context.mouseX + 12, context.mouseY + 12, Colors.WHITE, BBSSettings.primaryColor(Colors.A50));
-            }
 
             if (Gizmo.INSTANCE.isDragging() && this.mode == 1)
             {
@@ -2001,7 +2208,7 @@ public class UIPropTransform extends UITransform
                     UITrackpad reference = this.mode == 0 ? this.tx : (this.mode == 1 ? this.sx : this.rx);
                     float factor = (float) reference.getValueModifier();
 
-                    if (this.local && this.mode == 0)
+                    if (this.isLocal() && this.mode == 0)
                     {
                         Vector3f local = new Vector3f();
 
@@ -2084,7 +2291,7 @@ public class UIPropTransform extends UITransform
                         }
                         else
                         {
-                            if (this.mode == 0 && !this.local && this.secondaryAxis == null && !all)
+                            if (this.mode == 0 && !this.isLocal() && this.secondaryAxis == null && !all)
                             {
                                 if (this.axis == Axis.X)
                                 {
@@ -2142,7 +2349,7 @@ public class UIPropTransform extends UITransform
                         if (this.mode == 1) this.setS(null, vector3f.x, vector3f.y, vector3f.z);
                         if (this.mode == 2)
                         {
-                            if (this.local && BBSSettings.gizmos.get()) this.setR2(null, vector3f.x, vector3f.y, vector3f.z);
+                            if (this.isLocal() && BBSSettings.gizmos.get()) this.setR2(null, vector3f.x, vector3f.y, vector3f.z);
                             else this.setR(null, vector3f.x, vector3f.y, vector3f.z);
                         }
                     }
@@ -2335,7 +2542,10 @@ public class UIPropTransform extends UITransform
             {
                 if (this.useFrozenRotationArc())
                 {
-                    Gizmo.INSTANCE.setRotationArcFrozen(this.rayGizmoMatrix, this.viewRing);
+                    /* Freeze the last *drawn* gizmo matrix (camera × origin). The ray
+                     * provider's bone-only matrix lacks the editor camera, so freezing
+                     * that made Local process bars render off-screen in the model editor. */
+                    Gizmo.INSTANCE.setRotationArcFrozen(Gizmo.INSTANCE.lastGizmoMatrix, this.viewRing);
                 }
 
                 Gizmo.INSTANCE.startRotationArc(local);
@@ -2475,25 +2685,54 @@ public class UIPropTransform extends UITransform
         dest.set(point.x, point.y, point.z);
     }
 
-    /** Local-mode gizmo drags rotate the live matrix, which makes geometric arc tracking drift. */
+    /** Local-mode gizmo drags rotate the live matrix, which makes geometric arc tracking drift.
+     *  Film Anchor also freezes in Global so the process bar does not spin with the object. */
     private boolean useFrozenRotationArc()
     {
-        return this.local && BBSSettings.gizmos.get();
+        return BBSSettings.gizmos.get() && (this.isLocal() || this.forceFrozenRotationArc);
     }
 
     private void updateRotationArcProgress(float deltaDegrees, Vector3d worldPoint)
     {
-        if (this.useFrozenRotationArc())
-        {
-            Gizmo.INSTANCE.addRotationSweep(deltaDegrees);
-        }
-        else
-        {
-            Vector3f localPoint = new Vector3f();
+        float sweep = deltaDegrees;
 
-            this.toGizmoLocal(worldPoint, localPoint);
-            Gizmo.INSTANCE.updateRotationArc(localPoint);
+        if (this.invertRotationArcSweep)
+        {
+            sweep = -sweep;
         }
+        else if (this.invertRotationArcViewRing && this.viewRing)
+        {
+            /* Film Transform: white ring value follows the mouse; only the process bar is flipped. */
+            sweep = -sweep;
+        }
+        else if (this.invertRotationArcY && !this.viewRing && this.axis == Axis.Y)
+        {
+            /* Model-editor General: Y process bar winds opposite the plane-sweep value delta. */
+            sweep = -sweep;
+        }
+        else if (this.filmArcballTrackball && !this.viewRing && this.shouldInvertRotationRing(this.axis))
+        {
+            /* Pose cubic X/Z: value delta is flipped for mouse sense; undo that for arc3D so
+             * the process bar follows the cursor. When invertRotationArcZ is also set (form /
+             * model-block pose), Z's arc already winds with that flipped delta — only undo X. */
+            if (this.axis != Axis.Z || !this.invertRotationArcZ)
+            {
+                sweep = -sweep;
+            }
+        }
+        else if (this.invertRotationArcZ && !this.viewRing && this.axis == Axis.Z)
+        {
+            /* Film Anchor / form General: Z process bar winds opposite the plane-sweep value. */
+            sweep = -sweep;
+        }
+        else if (!this.useFrozenRotationArc() && !this.viewRing && this.axis == Axis.Z
+            && !this.filmArcballTrackball)
+        {
+            /* Film Transform Global Z-ring only. */
+            sweep = -sweep;
+        }
+
+        Gizmo.INSTANCE.addRotationSweep(sweep);
     }
 
     private boolean applyRayDrag(UIContext context)
@@ -2700,7 +2939,8 @@ public class UIPropTransform extends UITransform
                 return false;
             }
 
-            float angle = this.rayDragPlaneAngleOffset + this.computePlaneSweepAngleDegrees(this.rayDragStartPoint, this.rayCurrentPoint);
+            float previousAngle = this.continuousPlaneSweepDegrees(this.rayLastPoint);
+            float angle = this.continuousPlaneSweepDegrees(this.rayCurrentPoint);
 
             /* Model/bone-pose bodies are rendered through a matrix that (same as the "no
              * idea why but it works" 180-degree-about-X flip in calculateLocalVector() above)
@@ -2711,16 +2951,10 @@ public class UIPropTransform extends UITransform
             if (this.shouldInvertRotationRing(this.axis))
             {
                 angle = -angle;
-            }
-
-            float previousAngle = this.rayDragPlaneAngleOffset + this.computePlaneSweepAngleDegrees(this.rayDragStartPoint, this.rayLastPoint);
-
-            if (this.shouldInvertRotationRing(this.axis))
-            {
                 previousAngle = -previousAngle;
             }
 
-            Vector3f value = this.local && BBSSettings.gizmos.get()
+            Vector3f value = this.isLocal() && BBSSettings.gizmos.get()
                 ? new Vector3f(this.cache.rotate2)
                 : new Vector3f(this.cache.rotate);
 
@@ -2728,7 +2962,7 @@ public class UIPropTransform extends UITransform
 
             this.addAxisDelta(value, this.axis, angle);
 
-            if (this.local && BBSSettings.gizmos.get())
+            if (this.isLocal() && BBSSettings.gizmos.get())
             {
                 this.setR2(null, value.x, value.y, value.z);
             }
@@ -2761,11 +2995,13 @@ public class UIPropTransform extends UITransform
             return false;
         }
 
-        float angleRad = this.rayDragViewRingAngleOffsetRad + this.computePlaneSweepAngleRadians(this.rayDragStartPoint, this.rayCurrentPoint);
+        float previousAngleRad = this.continuousViewSweepRadians(this.rayLastPoint);
+        float angleRad = this.continuousViewSweepRadians(this.rayCurrentPoint);
 
         if (this.invertGizmoViewRing || this.invertGizmoViewRingTuning)
         {
             angleRad = -angleRad;
+            previousAngleRad = -previousAngleRad;
         }
 
         this.trackballAccum.identity().rotateAxis(angleRad, this.rayPlaneNormal.x, this.rayPlaneNormal.y, this.rayPlaneNormal.z);
@@ -2780,13 +3016,6 @@ public class UIPropTransform extends UITransform
         float ez = MathUtils.toDeg(euler.z);
 
         this.finishTrackballEulerRotation(ex, ey, ez);
-
-        float previousAngleRad = this.rayDragViewRingAngleOffsetRad + this.computePlaneSweepAngleRadians(this.rayDragStartPoint, this.rayLastPoint);
-
-        if (this.invertGizmoViewRing || this.invertGizmoViewRingTuning)
-        {
-            previousAngleRad = -previousAngleRad;
-        }
 
         this.updateRotationArcProgress((float) Math.toDegrees(angleRad - previousAngleRad), this.rayCurrentPoint);
 
@@ -2837,11 +3066,8 @@ public class UIPropTransform extends UITransform
 
             if (angle > 1.0E-6F)
             {
-                /* Screen Y grows downward; negate the vertical contribution so dragging up
-                 * consistently reads as the positive direction (matching the already-correct
-                 * horizontal drag, which needed no change). Film transform trackball needs the
-                 * opposite vertical sign to match pose keyframe feel on Y only. */
-                float verticalDelta = this.filmMatchPoseTrackball ? dy : -dy;
+                /* Screen Y grows downward; negate so dragging up rotates with the cursor. */
+                float verticalDelta = -dy;
 
                 if (this.invertTrackballDragY)
                 {

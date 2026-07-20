@@ -27,6 +27,12 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 public class Draw
 {
+    /* Render-thread scratch for torus/sphere/cone (avoids per-frame float[] allocs). */
+    private static final float[] SCRATCH_COS_U = new float[65];
+    private static final float[] SCRATCH_SIN_U = new float[65];
+    private static final float[] SCRATCH_COS_V = new float[25];
+    private static final float[] SCRATCH_SIN_V = new float[25];
+
     public static void renderBox(MatrixStack stack, double x, double y, double z, double w, double h, double d)
     {
         renderBox(stack, x, y, z, w, h, d, 1, 1, 1);
@@ -344,11 +350,6 @@ public class Draw
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
-    public static void arc3D(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, float r, float g, float b)
-    {
-        arc3D(builder, stack, axis, radius, thickness, r, g, b, 0F, 360F);
-    }
-
     /**
      * Draws a solid cone (with a capped base) between two points, used for the tapered
      * arrow tips on gizmo translate handles. The base circle is perpendicular to the
@@ -396,18 +397,32 @@ public class Draw
         float uy = rz * dx - rx * dz;
         float uz = rx * dy - ry * dx;
 
+        float[] cosA = SCRATCH_COS_U;
+        float[] sinA = SCRATCH_SIN_U;
+
         for (int i = 0; i < segments; i++)
         {
-            double a1 = Math.PI * 2D * i / segments;
-            double a2 = Math.PI * 2D * (i + 1) / segments;
+            double ang = Math.PI * 2D * i / segments;
 
-            float x1 = baseX + (float) (rx * Math.cos(a1) + ux * Math.sin(a1)) * radius;
-            float y1 = baseY + (float) (ry * Math.cos(a1) + uy * Math.sin(a1)) * radius;
-            float z1 = baseZ + (float) (rz * Math.cos(a1) + uz * Math.sin(a1)) * radius;
+            cosA[i] = (float) Math.cos(ang);
+            sinA[i] = (float) Math.sin(ang);
+        }
 
-            float x2 = baseX + (float) (rx * Math.cos(a2) + ux * Math.sin(a2)) * radius;
-            float y2 = baseY + (float) (ry * Math.cos(a2) + uy * Math.sin(a2)) * radius;
-            float z2 = baseZ + (float) (rz * Math.cos(a2) + uz * Math.sin(a2)) * radius;
+        for (int i = 0; i < segments; i++)
+        {
+            int i2 = (i + 1) % segments;
+            float c1 = cosA[i];
+            float s1 = sinA[i];
+            float c2 = cosA[i2];
+            float s2 = sinA[i2];
+
+            float x1 = baseX + (rx * c1 + ux * s1) * radius;
+            float y1 = baseY + (ry * c1 + uy * s1) * radius;
+            float z1 = baseZ + (rz * c1 + uz * s1) * radius;
+
+            float x2 = baseX + (rx * c2 + ux * s2) * radius;
+            float y2 = baseY + (ry * c2 + uy * s2) * radius;
+            float z2 = baseZ + (rz * c2 + uz * s2) * radius;
 
             builder.vertex(mat, apexX, apexY, apexZ).color(r, g, b, a);
             builder.vertex(mat, x1, y1, z1).color(r, g, b, a);
@@ -426,32 +441,56 @@ public class Draw
     public static void sphere(BufferBuilder builder, MatrixStack stack, float radius, int rings, int sectors, float r, float g, float b, float a)
     {
         Matrix4f mat = stack.peek().getPositionMatrix();
+        float[] sinV = SCRATCH_SIN_V;
+        float[] cosV = SCRATCH_COS_V;
+        float[] sinU = SCRATCH_SIN_U;
+        float[] cosU = SCRATCH_COS_U;
+
+        for (int i = 0; i <= rings; i++)
+        {
+            double v = Math.PI * i / rings;
+
+            sinV[i] = (float) Math.sin(v);
+            cosV[i] = (float) Math.cos(v);
+        }
+
+        for (int j = 0; j <= sectors; j++)
+        {
+            double u = Math.PI * 2D * j / sectors;
+
+            sinU[j] = (float) Math.sin(u);
+            cosU[j] = (float) Math.cos(u);
+        }
 
         for (int i = 0; i < rings; i++)
         {
-            double v1 = Math.PI * i / rings;
-            double v2 = Math.PI * (i + 1) / rings;
+            float sv1 = sinV[i];
+            float cv1 = cosV[i];
+            float sv2 = sinV[i + 1];
+            float cv2 = cosV[i + 1];
 
             for (int j = 0; j < sectors; j++)
             {
-                double u1 = Math.PI * 2D * j / sectors;
-                double u2 = Math.PI * 2D * (j + 1) / sectors;
+                float cu1 = cosU[j];
+                float su1 = sinU[j];
+                float cu2 = cosU[j + 1];
+                float su2 = sinU[j + 1];
 
-                float x11 = (float) (Math.sin(v1) * Math.cos(u1) * radius);
-                float y11 = (float) (Math.cos(v1) * radius);
-                float z11 = (float) (Math.sin(v1) * Math.sin(u1) * radius);
+                float x11 = sv1 * cu1 * radius;
+                float y11 = cv1 * radius;
+                float z11 = sv1 * su1 * radius;
 
-                float x12 = (float) (Math.sin(v2) * Math.cos(u1) * radius);
-                float y12 = (float) (Math.cos(v2) * radius);
-                float z12 = (float) (Math.sin(v2) * Math.sin(u1) * radius);
+                float x12 = sv2 * cu1 * radius;
+                float y12 = cv2 * radius;
+                float z12 = sv2 * su1 * radius;
 
-                float x21 = (float) (Math.sin(v1) * Math.cos(u2) * radius);
+                float x21 = sv1 * cu2 * radius;
                 float y21 = y11;
-                float z21 = (float) (Math.sin(v1) * Math.sin(u2) * radius);
+                float z21 = sv1 * su2 * radius;
 
-                float x22 = (float) (Math.sin(v2) * Math.cos(u2) * radius);
+                float x22 = sv2 * cu2 * radius;
                 float y22 = y12;
-                float z22 = (float) (Math.sin(v2) * Math.sin(u2) * radius);
+                float z22 = sv2 * su2 * radius;
 
                 builder.vertex(mat, x11, y11, z11).color(r, g, b, a);
                 builder.vertex(mat, x12, y12, z12).color(r, g, b, a);
@@ -464,13 +503,35 @@ public class Draw
         }
     }
 
-    /**
-     * Based on ElGatoPro300's code from BBS mod CML edition
-     */
+    public static void arc3D(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, float r, float g, float b)
+    {
+        arc3D(builder, stack, axis, radius, thickness, r, g, b, 0F, 360F, false);
+    }
+
     public static void arc3D(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, float r, float g, float b, float startDeg, float sweepDeg)
     {
-        int segU = 96;
-        int segV = 24;
+        arc3D(builder, stack, axis, radius, thickness, r, g, b, startDeg, sweepDeg, false);
+    }
+
+    /**
+     * Torus-segment ring. Segment counts scale with sweep so half-rings and short process
+     * arcs stay cheap; {@code lowDetail} is for invisible stencil/pick passes.
+     */
+    public static void arc3D(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, float r, float g, float b, float startDeg, float sweepDeg, boolean lowDetail)
+    {
+        float absSweep = Math.abs(sweepDeg);
+
+        if (absSweep < 0.01F || thickness <= 0F || radius <= 0F)
+        {
+            return;
+        }
+
+        /* Visual: ~64×10 for a full ring (was 96×24). Stencil: ~36×5. Scales with sweep. */
+        int segU = Math.max(lowDetail ? 6 : 12, Math.round((lowDetail ? 36F : 64F) * absSweep / 360F));
+        /* Continuous drags can accumulate past 360°; never write past the scratch buffers. */
+        segU = Math.min(segU, SCRATCH_COS_U.length - 1);
+        int segV = lowDetail ? 5 : 10;
+        segV = Math.min(segV, SCRATCH_COS_V.length - 1);
         double u0 = Math.toRadians(startDeg);
         double uStep = Math.toRadians(sweepDeg / (double) segU);
         double vStep = Math.PI * 2D / (double) segV;
@@ -483,41 +544,57 @@ public class Draw
         float tubeR = thickness * 0.5F;
         Matrix4f mat = stack.peek().getPositionMatrix();
 
+        float[] cosV = SCRATCH_COS_V;
+        float[] sinV = SCRATCH_SIN_V;
+        float[] cosU = SCRATCH_COS_U;
+        float[] sinU = SCRATCH_SIN_U;
+
+        for (int iv = 0; iv <= segV; iv++)
+        {
+            double v = vStep * iv;
+
+            cosV[iv] = (float) Math.cos(v);
+            sinV[iv] = (float) Math.sin(v);
+        }
+
+        for (int iu = 0; iu <= segU; iu++)
+        {
+            double u = u0 + uStep * iu;
+
+            cosU[iu] = (float) Math.cos(u);
+            sinU[iu] = (float) Math.sin(u);
+        }
+
         for (int iu = 0; iu < segU; iu++)
         {
-            double u1 = u0 + uStep * iu;
-            double u2 = u0 + uStep * (iu + 1);
+            float cu1 = cosU[iu];
+            float su1 = sinU[iu];
+            float cu2 = cosU[iu + 1];
+            float su2 = sinU[iu + 1];
 
             for (int iv = 0; iv < segV; iv++)
             {
-                double v1 = vStep * iv;
-                double v2 = vStep * (iv + 1);
-                double cos1 = radius + tubeR * Math.cos(v1);
-                double cos2 = radius + tubeR * Math.cos(v2);
+                float ring1 = radius + tubeR * cosV[iv];
+                float ring2 = radius + tubeR * cosV[iv + 1];
+                float y1 = tubeR * sinV[iv];
+                float y2 = tubeR * sinV[iv + 1];
 
-                float x11 = (float) (cos1 * Math.cos(u1));
-                float z11 = (float) (cos1 * Math.sin(u1));
-                float y11 = (float) (tubeR * Math.sin(v1));
+                float x11 = ring1 * cu1;
+                float z11 = ring1 * su1;
+                float x12 = ring2 * cu1;
+                float z12 = ring2 * su1;
+                float x21 = ring1 * cu2;
+                float z21 = ring1 * su2;
+                float x22 = ring2 * cu2;
+                float z22 = ring2 * su2;
 
-                float x12 = (float) (cos2 * Math.cos(u1));
-                float z12 = (float) (cos2 * Math.sin(u1));
-                float y12 = (float) (tubeR * Math.sin(v2));
+                builder.vertex(mat, x11, y1, z11).color(r, g, b, 1F);
+                builder.vertex(mat, x12, y2, z12).color(r, g, b, 1F);
+                builder.vertex(mat, x22, y2, z22).color(r, g, b, 1F);
 
-                float x21 = (float) (cos1 * Math.cos(u2));
-                float z21 = (float) (cos1 * Math.sin(u2));
-                float y21 = (float) (tubeR * Math.sin(v1));
-
-                float x22 = (float) (cos2 * Math.cos(u2));
-                float z22 = (float) (cos2 * Math.sin(u2));
-                float y22 = (float) (tubeR * Math.sin(v2));
-
-                builder.vertex(mat, x11, y11, z11).color(r, g, b, 1F);
-                builder.vertex(mat, x12, y12, z12).color(r, g, b, 1F);
-                builder.vertex(mat, x22, y22, z22).color(r, g, b, 1F);
-
-                builder.vertex(mat, x11, y11, z11).color(r, g, b, 1F);
-                builder.vertex(mat, x22, y22, z22).color(r, g, b, 1F);
-                builder.vertex(mat, x21, y21, z21).color(r, g, b, 1F);
+                builder.vertex(mat, x11, y1, z11).color(r, g, b, 1F);
+                builder.vertex(mat, x22, y2, z22).color(r, g, b, 1F);
+                builder.vertex(mat, x21, y1, z21).color(r, g, b, 1F);
             }
         }
 
