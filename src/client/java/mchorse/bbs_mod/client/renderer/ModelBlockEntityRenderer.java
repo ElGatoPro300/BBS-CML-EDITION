@@ -51,10 +51,19 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
 
     public static void renderShadow(VertexConsumerProvider provider, MatrixStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz)
     {
-        renderShadow(provider, matrices, tickDelta, x, y, z, tx, ty, tz, 0.5F, 1F);
+        renderShadow(provider, matrices, tickDelta, x, y, z, tx, ty, tz, 0.5F, 0.5F, 1F);
     }
 
     public static void renderShadow(VertexConsumerProvider provider, MatrixStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz, float radius, float opacity)
+    {
+        renderShadow(provider, matrices, tickDelta, x, y, z, tx, ty, tz, radius, radius, opacity);
+    }
+
+    /**
+     * Vanilla ground blob. Minecraft only exposes a single radius, so non-uniform size is
+     * done by scaling the matrix (same idea as Iris caster scale in {@code BaseFilmController}).
+     */
+    public static void renderShadow(VertexConsumerProvider provider, MatrixStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz, float radiusX, float radiusZ, float opacity)
     {
         ClientWorld world = MinecraftClient.getInstance().world;
 
@@ -75,10 +84,15 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
 
         opacity = (float) ((1D - distance / 256D) * opacity);
 
+        float baseRadius = 0.5F;
+        float scaleX = Math.max(0.001F, radiusX / baseRadius);
+        float scaleZ = Math.max(0.001F, radiusZ / baseRadius);
+
         matrices.push();
         matrices.translate(tx, ty, tz);
+        matrices.scale(scaleX, 1F, scaleZ);
 
-        EntityRendererDispatcherInvoker.bbs$renderShadow(matrices, provider, entity, opacity, tickDelta, entity.getWorld(), radius);
+        EntityRendererDispatcherInvoker.bbs$renderShadow(matrices, provider, entity, opacity, tickDelta, entity.getWorld(), baseRadius);
 
         matrices.pop();
     }
