@@ -356,12 +356,12 @@ public abstract class BaseFilmController
             stack.pop();
         }
 
-        /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map
-         * and per-replay / form opacity is applied in the Iris shadow pass above. */
+        /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map.
+         * Blob opacity is the Shadow track only; form Opacity must not fade the ground circle. */
         if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.render.get()
             && !context.isShadowPass && !mchorse.bbs_mod.utils.iris.IrisUtils.isShaderPackEnabled())
         {
-            float shadowOpacity = MathUtils.clamp(opacity * form.getFormOpacity() * context.shadowOpacity, 0F, 1F);
+            float shadowOpacity = MathUtils.clamp(opacity * context.shadowOpacity, 0F, 1F);
 
             if (shadowOpacity > 0F)
             {
