@@ -11,7 +11,8 @@ uniform vec4 FogColor;
 uniform float TextureBlendFactor;
 uniform float TextureBlendActive;
 
-/* rgb = paint color, a = paint strength (0 = off, 1 = full override). PaintOverlay = 1 during Iris second pass. */
+/* rgb = paint color, a = paint strength (−1 = full darken, 0 = off, 1 = full override).
+   PaintOverlay = 1 during Iris second pass. */
 uniform vec4 PaintColor;
 uniform vec4 GlowingColor;
 uniform float PaintOverlay;
@@ -334,8 +335,9 @@ void main()
         return;
     }
 
-    /* Shader-pack paint overlay pass: alpha-blend paint RGB over the Iris first pass.
-       Matches the no-shader mix: final = mix(litTextureRgb, paintRgb, paintStrength). */
+    /* Shader-pack paint overlay pass: alpha-blend over the Iris first pass.
+       Positive: mix toward PaintColor.rgb (SRC_ALPHA ≈ mix(lit, paint, strength)).
+       Negative: darken lit dst toward black (SRC_ALPHA black ≈ multiply by 1+|a|). */
     if (PaintOverlay > 0.5)
     {
         if (abs(PaintColor.a) < 0.001)
@@ -349,7 +351,9 @@ void main()
         }
 
         float paintStrength = clamp(abs(PaintColor.a), 0.0, 1.0);
+
         paintStrength *= bbsPaintEffectMask(formRootPos, PaintEffectInverse, PaintEffectActive, PaintMaskHalf, PaintMaskBottomAnchored, PaintMaskShape);
+
         float outAlpha = paintStrength * texSample.a * rawVertexColor.a * ColorModulator.a;
 
         if (outAlpha < 0.001)
@@ -357,18 +361,27 @@ void main()
             discard;
         }
 
-        vec3 outRgb = PaintColor.rgb;
+        vec3 outRgb;
 
-        if (abs(GlowingColor.a) > 0.001)
+        if (PaintColor.a < 0.0)
         {
-            float glowStrength = GlowingColor.a;
+            outRgb = vec3(0.0);
+        }
+        else
+        {
+            outRgb = PaintColor.rgb;
 
-            if (GlowPaintOnly > 0.5)
+            if (abs(GlowingColor.a) > 0.001)
             {
-                glowStrength *= paintStrength;
-            }
+                float glowStrength = GlowingColor.a;
 
-            outRgb = bbsApplyGlow(outRgb, glowStrength);
+                if (GlowPaintOnly > 0.5)
+                {
+                    glowStrength *= paintStrength;
+                }
+
+                outRgb = bbsApplyGlow(outRgb, glowStrength);
+            }
         }
 
         vec4 color = vec4(outRgb, outAlpha);
