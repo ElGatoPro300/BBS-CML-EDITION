@@ -1414,6 +1414,14 @@ public class UIClips extends UIElement
 
     public void embedView(UIElement element)
     {
+        /* Selecting clips / setClips always call embedView(null). Re-notifying when
+         * already closed made UIClipsPanel re-focus Camera Properties and rebuild the
+         * whole film layout — that letterboxed the workspace (black strip on the right). */
+        if (this.embedded == element)
+        {
+            return;
+        }
+
         this.embeddedClose.removeFromParent();
         this.embeddedLayout.removeFromParent();
 

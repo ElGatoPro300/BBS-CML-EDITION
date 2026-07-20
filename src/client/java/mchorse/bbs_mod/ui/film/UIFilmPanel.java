@@ -2850,17 +2850,32 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
      * Picking a keyframe focuses {@code editArea} (Properties); once the embed
      * closes that panel is empty while a clip remains selected, so restore
      * Camera/Action Properties (or the unified properties host).
+     * <p>
+     * Uses {@code recreateTabs=false}: a full tab-bar rebuild here (via
+     * {@link #focusPanelTab}) mid clip-select / embed-close left the film
+     * workspace letterboxed with a black strip on the right.
      */
     public void focusClipPropertiesTab(boolean cameraTimeline)
     {
-        if (this.shouldRedirectProperties())
-        {
-            this.focusPanelTab("unifiedEditArea");
+        String panelId = this.shouldRedirectProperties()
+            ? "unifiedEditArea"
+            : (cameraTimeline ? "cameraEditArea" : "actionEditArea");
 
-            return;
+        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+        boolean changed = root != null && this.selectPanelInTabbedNode(root, panelId);
+
+        if (changed)
+        {
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
         }
 
-        this.focusPanelTab(cameraTimeline ? "cameraEditArea" : "actionEditArea");
+        UIElement panel = this.panelById.get(panelId);
+        boolean needsRefresh = panel != null && !panel.isVisible();
+
+        if (changed || needsRefresh)
+        {
+            this.setupEditorFlex(true, false, false);
+        }
     }
 
     /**
