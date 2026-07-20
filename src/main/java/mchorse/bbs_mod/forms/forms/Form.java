@@ -3,6 +3,7 @@ package mchorse.bbs_mod.forms.forms;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.IntType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.ITickable;
@@ -34,6 +35,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.entity.LivingEntity;
@@ -552,6 +554,19 @@ public abstract class Form extends ValueGroup
                     }
                 }
             }
+            else
+            {
+                /* Compatible Int dual-write put opacity into color.a; Opacity owns fade now. */
+                BaseValue colorValue = this.get("color");
+
+                if (colorValue instanceof ValueColor valueColor)
+                {
+                    Color color = valueColor.get().copy();
+
+                    color.a = 0F;
+                    valueColor.set(color);
+                }
+            }
         }
     }
 
@@ -583,8 +598,38 @@ public abstract class Form extends ValueGroup
         if (data instanceof MapType map)
         {
             BBSMod.getForms().appendId(this, map);
+
+            if (BBSSettings.isSaveAsCompatible())
+            {
+                this.dualWriteOpacityIntoColor(map);
+            }
         }
 
         return data;
+    }
+
+    /**
+     * Older builds fade via {@code color.a} only. Write Int ARGB (not Map) so Int-only
+     * Color factories in older builds do not ClassCastException.
+     */
+    private void dualWriteOpacityIntoColor(MapType map)
+    {
+        float opacityA = MathUtils.clamp(this.opacity.get(), 0F, 1F);
+
+        if (opacityA > 0.999F)
+        {
+            return;
+        }
+
+        BaseValue colorValue = this.get("color");
+
+        if (!(colorValue instanceof ValueColor valueColor))
+        {
+            return;
+        }
+
+        Color source = valueColor.get().copy();
+
+        map.put("color", new IntType(Colors.setA(source.getRGBColor(), opacityA)));
     }
 }

@@ -12,6 +12,12 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
 public class ColorKeyframeFactory implements IKeyframeFactory<Color>
 {
+    /**
+     * When films dual-write Opacity into ARGB alpha for older builds, modern Blend Color
+     * intensity is stored here so reloads do not treat opacity as tint strength.
+     */
+    public static final String BLEND_A = "blend_a";
+
     private Color i = new Color();
 
     @Override
@@ -25,6 +31,12 @@ public class ColorKeyframeFactory implements IKeyframeFactory<Color>
         if (data instanceof MapType map)
         {
             Color color = Color.rgba(map.getInt("color"));
+
+            /* Prefer explicit blend intensity over dual-written opacity in ARGB alpha. */
+            if (map.has(BLEND_A))
+            {
+                color.a = map.getFloat(BLEND_A);
+            }
 
             if (map.has("transform"))
             {
