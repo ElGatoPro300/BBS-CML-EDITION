@@ -662,18 +662,16 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean noshadingOpacityDefer = !ui && !shadowPass
             && BBSRendering.needsIrisNoshadingOpacityDeferral(opacityAlpha, this.form.noshadingOpacity.get());
         boolean opacityDefer = lowAlphaDefer || noshadingOpacityDefer;
-        /* Soft Opacity + Paint/Blend/Grade with Noshading off: Iris post-deferred draws the
-         * mesh, then frame-end overlays ignore vertex alpha (opaque tint/paint mask). Route
-         * that case through the same BBS deferred queue as Noshading. Full opacity keeps the
-         * Iris live + overlay path so Blend intensity alone never forces a soft redraw. */
-        boolean softOpacityWithMeshEffects = !ui && !shadowPass
+
+        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer;
+        /* Soft Opacity + Noshading off stays on Iris post-deferred (pack body shadows).
+         * Frame-end Blend Color overlays use DST_COLOR and ignore form alpha (opaque mask).
+         * Bake Blend into vertex RGB on that path instead; Noshading still uses the BBS queue. */
+        boolean softOpacityIrisPath = !ui && !shadowPass
             && irisWorldPaintDeferral
             && opacityAlpha > 0.001F
             && opacityAlpha < ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA
-            && (paintActive || colorTransformWanted
-                || (storedFormColor != null && storedFormColor.hasColorAdjustments()));
-
-        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer || softOpacityWithMeshEffects;
+            && !deferTranslucentModel;
         /* Iris live: ColorGradeOverlay keeps pack lighting. No-shader / UI / deferred BBS:
          * FormColorGrade in model.fsh after texture sample (same as Billboard). Never bake
          * form grade into vertex tint — contrast/hue on white (#fff, intensity 0) is a no-op. */
@@ -695,10 +693,23 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Color formColor = (uploadFormGradeToShader || useColorGradeOverlay)
             ? storedFormColor.copyWithBlendIntensityOnly()
             : storedFormColor.copyWithBlendIntensity();
+        boolean bakeSoftIrisBlend = softOpacityIrisPath && colorTransformWanted;
+
+        if (bakeSoftIrisBlend)
+        {
+            /* Uniform mesh tint only — spatial Color transforms need the overlay path / Noshading. */
+            color.r *= formColor.r;
+            color.g *= formColor.g;
+            color.b *= formColor.b;
+        }
+
         /* Multiply tint for Blend Color spatial mask only — Color Grade uses FormColorGrade / overlay. */
-        boolean deferColorTintToOverlay = colorTransformWanted && irisWorldPaintDeferral && !deferTranslucentModel;
+        boolean deferColorTintToOverlay = colorTransformWanted && irisWorldPaintDeferral && !deferTranslucentModel && !bakeSoftIrisBlend;
         boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel || deferColorTintToOverlay);
-        boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
+        /* Soft Iris: paint in the post-deferred mesh (BBS model.fsh) so strength fades with
+         * vertex alpha; skip frame-end overlay which composites like an opaque mask. */
+        boolean softIrisPaintInMesh = softOpacityIrisPath && paintActive && model.supportsBbsModelShaderEffects();
+        boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel && !softIrisPaintInMesh;
         boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
 
         /* Low-alpha Iris redraw: albedo deferred; additive overlay if somehow deferred with glow. */
@@ -975,7 +986,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     TextureBlend textureBlendSnapshotFinal = textureBlendSnapshot;
                     int overlayLight = light;
                     int overlayOverlay = overlay;
-                    Supplier<ShaderProgram> programSnapshot = (irisCamera && !gradeActiveSnapshot)
+                    /* Soft + paint: BBS model.fsh applies PaintColor with vertex alpha in one
+                     * pass (Iris entity shaders have no paint uniforms). Soft without paint
+                     * keeps the Iris program for pack body shadows. */
+                    boolean needsBbsMeshEffects = gradeActiveSnapshot || softIrisPaintInMesh;
+                    Supplier<ShaderProgram> programSnapshot = (irisCamera && !needsBbsMeshEffects)
                         ? program
                         : BBSShaders::getModel;
                     EffectTransform paintTransformQueued = paintTransformSnapshot;
