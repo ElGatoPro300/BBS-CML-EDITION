@@ -662,8 +662,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean noshadingOpacityDefer = !ui && !shadowPass
             && BBSRendering.needsIrisNoshadingOpacityDeferral(opacityAlpha, this.form.noshadingOpacity.get());
         boolean opacityDefer = lowAlphaDefer || noshadingOpacityDefer;
+        /* Soft Opacity + Paint/Blend/Grade with Noshading off: Iris post-deferred draws the
+         * mesh, then frame-end overlays ignore vertex alpha (opaque tint/paint mask). Route
+         * that case through the same BBS deferred queue as Noshading. Full opacity keeps the
+         * Iris live + overlay path so Blend intensity alone never forces a soft redraw. */
+        boolean softOpacityWithMeshEffects = !ui && !shadowPass
+            && irisWorldPaintDeferral
+            && opacityAlpha > 0.001F
+            && opacityAlpha < ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA
+            && (paintActive || colorTransformWanted
+                || (storedFormColor != null && storedFormColor.hasColorAdjustments()));
 
-        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer;
+        boolean deferTranslucentModel = deferForRenderDepth || opacityDefer || softOpacityWithMeshEffects;
         /* Iris live: ColorGradeOverlay keeps pack lighting. No-shader / UI / deferred BBS:
          * FormColorGrade in model.fsh after texture sample (same as Billboard). Never bake
          * form grade into vertex tint — contrast/hue on white (#fff, intensity 0) is a no-op. */
