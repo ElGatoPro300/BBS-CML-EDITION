@@ -357,8 +357,10 @@ public abstract class BaseFilmController
         }
 
         /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map.
-         * Blob opacity is the Shadow track only; form Opacity must not fade the ground circle. */
-        if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.render.get()
+         * Blob opacity is the Shadow track only; form Opacity must not fade the ground circle.
+         * Size X/Z are independent (matrix scale); vanilla API only has one radius. */
+        if (!relative && context.map == null && opacity > 0F
+            && (context.shadowRadiusX > 0F || context.shadowRadiusZ > 0F) && form.render.get()
             && !context.isShadowPass && !mchorse.bbs_mod.utils.iris.IrisUtils.isShaderPackEnabled())
         {
             float shadowOpacity = MathUtils.clamp(opacity * context.shadowOpacity, 0F, 1F);
@@ -372,7 +374,7 @@ public abstract class BaseFilmController
                 stack.push();
                 stack.translate(sx - cx, sy - cy, sz - cz);
 
-                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, sx, sy, sz, 0F, 0F, 0F, context.shadowRadius, shadowOpacity);
+                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, sx, sy, sz, 0F, 0F, 0F, context.shadowRadiusX, context.shadowRadiusZ, shadowOpacity);
 
                 stack.pop();
             }
