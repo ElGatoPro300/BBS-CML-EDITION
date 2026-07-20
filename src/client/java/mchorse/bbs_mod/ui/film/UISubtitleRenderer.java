@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.film;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.clips.misc.Subtitle;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.screen.ColorGradeRenderer;
 import mchorse.bbs_mod.graphics.Framebuffer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
@@ -84,8 +85,21 @@ public class UISubtitleRenderer
         FontRenderer font = Batcher2D.getVanillaTextRenderer();
         TextRenderer vanilla = MinecraftClient.getInstance().textRenderer;
 
+        /*
+         * After ColorGrade raw-GL, the first textured Minecraft draw repairs Sampler0
+         * tracking. If Subtitle is the only HUD clip it would otherwise bake text with
+         * texture 0 bound → black atlas. Image/Hotbar/another Subtitle hide the bug by
+         * drawing a textured quad first; do that here explicitly.
+         */
+        fb.beginWrite(false);
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+        ColorGradeRenderer.resyncMinecraftState(batcher);
+
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
         RenderSystem.disableCull();
+        RenderSystem.enableBlend();
+        RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 
         for (Subtitle subtitle : subtitles)
         {
@@ -125,7 +139,11 @@ public class UISubtitleRenderer
             RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), VertexSorter.BY_Z);
 
             framebuffer.resize(fw, fh);
+            /* Transparent clear — opaque world clear-color would show as a black plate
+             * if text baking still failed. */
+            GL11.glClearColor(0F, 0F, 0F, 0F);
             framebuffer.applyClear();
+            RenderSystem.setShaderTexture(0, 0);
 
             float yy = 5F;
 

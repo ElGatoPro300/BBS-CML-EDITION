@@ -7,8 +7,13 @@ import mchorse.bbs_mod.camera.clips.screen.LensDistortionOverscan;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.texture.AbstractTexture;
+import net.minecraft.util.Identifier;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -697,6 +702,46 @@ public class ColorGradeRenderer
         tempTex.unbind();
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+        fb.beginWrite(false);
+    }
+
+    /**
+     * ColorGrade binds shaders/textures via raw GL, which desyncs {@link RenderSystem}'s
+     * tracker (GL may have texture 0 while RenderSystem still thinks a previous id is bound).
+     * Subtitle text then skips rebinding the font atlas and bakes a black atlas.
+     * <p>
+     * Image / Hotbar / a second Subtitle only appear to "fix" this because they issue a
+     * {@code PositionTexColor} draw first. Emulate that with an invisible textured pixel.
+     */
+    public static void resyncMinecraftState(Batcher2D batcher)
+    {
+        if (batcher == null)
+        {
+            return;
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        mc.getFramebuffer().beginWrite(false);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+
+        /*
+         * Invalidate unit 0 so the following textured draw must call glBindTexture.
+         * A PositionColor-only box is not enough — text needs a live Sampler0 bind path.
+         */
+        RenderSystem.setShaderTexture(0, 0);
+
+        AbstractTexture atlas = mc.getTextureManager().getTexture(Identifier.of("minecraft", "textures/atlas/blocks.png"));
+        int textureId = atlas == null ? 0 : atlas.getGlId();
+
+        if (textureId != 0)
+        {
+            /* Fully transparent 1x1 — no visible flash, forces drawWithGlobalProgram. */
+            batcher.texturedBox(textureId, 0x00000000, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1);
+        }
     }
 
     private static void init()
