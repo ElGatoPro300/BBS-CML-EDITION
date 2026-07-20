@@ -37,16 +37,17 @@ public class UIModelPoseEditor extends UIPoseEditor
         UIPropTransform editor = super.createTransformEditor()
             .callbacks(() -> this.valuePose);
 
+        /* Same signs as FilmPoseGizmoDrag / UIPickableFormRenderer pose-bone prepare. */
         if (ModelFormRenderer.isBobjModel(this.model))
         {
             editor.bobjPoseGizmoTuning();
         }
         else
         {
-            editor.poseModelGizmoTuning();
+            editor.configurePoseRingTuning(false);
+            editor.setAxisProjectedTranslation(false);
         }
 
-        /* Trackball mouse sense is applied in UIModelEditorRenderer.prepareGizmoDrag. */
         editor.setInvertTrackballDragY(false);
         editor.clearTrackballEulerInverts();
 
@@ -71,6 +72,7 @@ public class UIModelPoseEditor extends UIPoseEditor
                 this.transform.translationScale(16F);
                 this.transform.configurePoseRingTuning(false);
                 this.transform.setAxisProjectedTranslation(false);
+                this.transform.clearTrackballEulerInverts();
             }
         }
     }

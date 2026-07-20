@@ -415,6 +415,13 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     @Override
     public boolean subMouseReleased(UIContext context)
     {
+        Pair<Form, String> pendingPick = this.gizmoController.consumePendingTrackballClick();
+
+        if (pendingPick != null && pendingPick.a != null && this.callback != null)
+        {
+            this.callback.accept(pendingPick.b);
+        }
+
         this.gizmoController.stop();
 
         return super.subMouseReleased(context);
@@ -483,10 +490,10 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
         if (gizmoMatrix != null)
         {
-            this.lastGizmoMatrix.set(gizmoMatrix);
-
             stack.push();
             MatrixStackUtils.multiply(stack, gizmoMatrix);
+            /* Full drawn MV (editor camera × bone/origin) — same space as film drag rays. */
+            this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
 
             RenderSystem.disableDepthTest();
             Gizmo.INSTANCE.render(stack);
@@ -583,9 +590,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
                 if (entry != null)
                 {
-                    boolean local = this.transform != null && this.transform.isLocal();
-
-                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local,
+                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, this.transform == null ? null : this.transform.getOrientation(),
                         ModelFormRenderer.isBobjModel(this.form));
                 }
             }
@@ -614,19 +619,20 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
         if (this.formTransformGizmoDrag)
         {
-            /* General transform: natural view-ring + trackball sense (follow mouse). */
+            /* View-ring / Y / Z process bars need a flip with editor full-MV capture; X does not
+             * (global invertRotationArcSweep was reversing the red ring only-wrong). */
             transform.setInvertGizmoViewRing(false);
             transform.setInvertGizmoTrackball(false);
-            transform.setInvertTrackballDragY(false);
+            transform.setInvertFilmPoseGizmoAxes(false);
+            transform.setFilmArcballTrackball(false);
             transform.clearTrackballEulerInverts();
-        }
-        else
-        {
-            /* Pose: same natural sense as General transform — follow mouse drag. */
-            transform.setInvertGizmoViewRing(false);
-            transform.setInvertGizmoTrackball(false);
-            transform.setInvertTrackballDragY(false);
-            transform.clearTrackballEulerInverts();
+            transform.setInvertTrackballDragY(true);
+            transform.setInvertFilmArcballDragY(false);
+            transform.setInvertRotationArcSweep(false);
+            transform.setInvertRotationArcViewRing(true);
+            transform.setInvertRotationArcY(true);
+            transform.setInvertRotationArcZ(true);
+            transform.configurePoseRingTuning(true);
             transform.setFilmMatchPoseTrackball(true);
             transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
                 this.camera,
@@ -637,7 +643,35 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return;
         }
 
-        transform.setFilmMatchPoseTrackball(true);
+        /* Nested model editor Pose (also opened from Model Block → Edit → Models button).
+         * Match FilmPoseGizmoDrag pose signs so .bbs.json X/Z rings, Z translate, white ring
+         * and arcball match BOBJ mouse sense. */
+        boolean bobjModel = ModelFormRenderer.isBobjModel(this.form);
+
+        transform.setModel(false);
+        transform.configurePoseRingTuning(bobjModel);
+        transform.setInvertGizmoViewRing(true);
+        transform.setInvertGizmoTrackball(false);
+        transform.setInvertFilmPoseGizmoAxes(false);
+        transform.clearTrackballEulerInverts();
+
+        if (bobjModel)
+        {
+            transform.invertModelPoseTrackballXZ();
+        }
+
+        transform.setInvertTrackballDragY(false);
+        transform.setInvertFilmArcballDragY(false);
+        transform.setInvertRotationArcSweep(false);
+        transform.setInvertRotationArcY(false);
+        transform.setInvertRotationArcViewRing(false);
+        /* Skip filmArcball X/Z process-bar undo for Z only (same as form-editor pose). */
+        transform.setInvertRotationArcZ(true);
+        transform.setFilmArcballTrackball(true);
+        transform.setFilmMatchPoseTrackball(false);
+        transform.setForceFrozenRotationArc(false);
+        transform.translationScale(bobjModel ? 1F : 16F);
+        transform.setAxisProjectedTranslation(bobjModel);
         transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
             this.camera,
             this.area,

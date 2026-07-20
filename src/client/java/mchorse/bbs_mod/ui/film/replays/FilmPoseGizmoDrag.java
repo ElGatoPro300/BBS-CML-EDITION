@@ -29,6 +29,12 @@ import org.joml.Vector4f;
  */
 public final class FilmPoseGizmoDrag
 {
+    /* Orbit (and any live camera that follows the edited transform) must not update the
+     * drag frame mid-stroke — otherwise rotate → camera/gizmo move → huge ray deltas. */
+    private static final Matrix4f FROZEN_DRAG_GIZMO = new Matrix4f();
+    private static final Matrix4f FROZEN_DRAG_VIEW = new Matrix4f();
+    private static boolean hasFrozenDragFrame;
+
     private FilmPoseGizmoDrag()
     {}
 
@@ -37,6 +43,11 @@ public final class FilmPoseGizmoDrag
         if (panel == null || area == null || transform == null)
         {
             return;
+        }
+
+        if (!Gizmo.INSTANCE.isDragging())
+        {
+            FilmPoseGizmoDrag.hasFrozenDragFrame = false;
         }
 
         final Camera camera = panel.getCamera();
@@ -71,17 +82,25 @@ public final class FilmPoseGizmoDrag
         {
             transform.configurePoseRingTuning(bobjModel);
 
-            /* Cubic pose bodies mirror X/Z relative to euler storage (post-multiplied bone-local
-             * Ry(180°), see shouldInvertRotationRing) — the view ring inherits that sign. BOBJ
-             * bones pre-multiply the flip globally, so their view ring keeps the natural sense.
-             * Trackball arcball clears euler flips each drag via clearTrackballEulerInverts(). */
-            transform.setInvertGizmoViewRing(!bobjModel);
+            /* White ring + sphere: always use .bbs.json (cubic) sense. BOBJ lacks the
+             * bone-local Ry(180°) mirror, so it also gets the cubic X/Z trackball euler flip. */
+            transform.setInvertGizmoViewRing(true);
             transform.setInvertGizmoTrackball(false);
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.clearTrackballEulerInverts();
-            transform.invertFilmArcballDragY();
+
+            if (bobjModel)
+            {
+                transform.invertModelPoseTrackballXZ();
+            }
+
+            transform.setInvertTrackballDragY(false);
+            transform.setInvertFilmArcballDragY(false);
             transform.setFilmArcballTrackball(true);
             transform.setFilmMatchPoseTrackball(false);
+            transform.setInvertRotationArcViewRing(false);
+            transform.setInvertRotationArcZ(false);
+            transform.setForceFrozenRotationArc(false);
 
             /* Pose editor may be built before the model is known (scale defaults to 16). */
             transform.translationScale(bobjModel ? 1F : 16F);
@@ -96,10 +115,10 @@ public final class FilmPoseGizmoDrag
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.setFilmArcballTrackball(false);
             transform.clearTrackballEulerInverts();
-
-            /* The vertical drag flip belongs to the limb context (both formats); the X/Z
-             * euler flips compensate the cubic bone-local Ry(180°) that BOBJ doesn't have. */
-            transform.invertModelPoseTrackballDragY();
+            transform.setInvertTrackballDragY(false);
+            transform.setInvertRotationArcViewRing(false);
+            transform.setInvertRotationArcZ(false);
+            transform.setForceFrozenRotationArc(false);
 
             if (!bobjModel)
             {
@@ -111,6 +130,26 @@ public final class FilmPoseGizmoDrag
             transform.translationScale(bobjModel ? 1F : 16F);
             transform.setAxisProjectedTranslation(bobjModel);
         }
+        else if (anchorTrackGizmo)
+        {
+            transform.anchorGizmoTuning();
+            transform.setInvertGizmoViewRing(false);
+            transform.setInvertGizmoTrackball(false);
+            transform.setInvertFilmPoseGizmoAxes(false);
+            transform.setFilmArcballTrackball(false);
+            transform.clearTrackballEulerInverts();
+            transform.setInvertTrackballDragY(true);
+            transform.setInvertFilmArcballDragY(false);
+            transform.setInvertRotationArcSweep(false);
+            /* White ring value is correct; only its process bar winds the wrong way. */
+            transform.setInvertRotationArcViewRing(true);
+            /* Y value follows the mouse; only the process bar winds the wrong way without this. */
+            transform.setInvertRotationArcY(true);
+            /* Z value follows the mouse; only the process bar winds the wrong way without this. */
+            transform.setInvertRotationArcZ(true);
+            /* Global Anchor still spins the live gizmo matrix — freeze the process bar like Local. */
+            transform.setForceFrozenRotationArc(true);
+        }
         else if (replayTransformGizmo)
         {
             transform.setInvertGizmoViewRing(false);
@@ -118,13 +157,25 @@ public final class FilmPoseGizmoDrag
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.setFilmArcballTrackball(false);
             transform.clearTrackballEulerInverts();
-            transform.invertModelPoseTrackballXYZ();
+            /* Film view-space screen basis: without this, vertical trackball opposes the mouse. */
+            transform.setInvertTrackballDragY(true);
+            transform.setInvertFilmArcballDragY(false);
+            transform.setInvertRotationArcSweep(false);
+            /* White ring value is correct; only its process bar winds the wrong way. */
+            transform.setInvertRotationArcViewRing(true);
+            /* Y ring value follows the mouse; only the green process bar winds the wrong way. */
+            transform.setInvertRotationArcY(true);
+            transform.setInvertRotationArcZ(false);
+            transform.setForceFrozenRotationArc(false);
+            transform.configurePoseRingTuning(true);
         }
         else
         {
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.setFilmArcballTrackball(false);
             transform.clearTrackballEulerInverts();
+            transform.setInvertTrackballDragY(filmTransformGizmo);
+            transform.setInvertFilmArcballDragY(false);
         }
 
         transform.setFilmMatchPoseTrackball(filmTransformGizmo);
@@ -185,11 +236,33 @@ public final class FilmPoseGizmoDrag
             return false;
         }
 
+        if (Gizmo.INSTANCE.isDragging())
+        {
+            FilmPoseGizmoDrag.ensureFrozenDragFrame(panel);
+            matrix.set(FilmPoseGizmoDrag.FROZEN_DRAG_GIZMO);
+
+            return FilmPoseGizmoDrag.hasFrozenDragFrame;
+        }
+
         /* Same depth-based composition as the visual pass, so drags grab the
          * handle exactly where it is drawn regardless of the shader path. */
         Gizmo.composeVisualMatrix(panel.lastGizmoMatrix, BBSRendering.camera, panel.lastProjection, matrix);
 
         return true;
+    }
+
+    private static void ensureFrozenDragFrame(UIFilmPanel panel)
+    {
+        if (FilmPoseGizmoDrag.hasFrozenDragFrame || panel == null || !panel.hasLastGizmoMatrix)
+        {
+            return;
+        }
+
+        /* Same depth-based composition as the visual pass, snapshotted once at drag
+         * start so orbit / transform feedback cannot spin the ray frame. */
+        Gizmo.composeVisualMatrix(panel.lastGizmoMatrix, BBSRendering.camera, panel.lastProjection, FilmPoseGizmoDrag.FROZEN_DRAG_GIZMO);
+        FilmPoseGizmoDrag.FROZEN_DRAG_VIEW.set(panel.lastView);
+        FilmPoseGizmoDrag.hasFrozenDragFrame = true;
     }
 
     private static Vector3f getViewSpaceMouseDirection(Matrix4f projection, int mx, int my, int vx, int vy, int vw, int vh)
@@ -224,7 +297,21 @@ public final class FilmPoseGizmoDrag
     public static void syncDragCamera(UIFilmPanel panel, Camera camera)
     {
         camera.copy(panel.getWorldCamera());
-        camera.view.set(panel.lastView);
+
+        if (Gizmo.INSTANCE.isDragging())
+        {
+            FilmPoseGizmoDrag.ensureFrozenDragFrame(panel);
+        }
+
+        if (FilmPoseGizmoDrag.hasFrozenDragFrame && Gizmo.INSTANCE.isDragging())
+        {
+            camera.view.set(FilmPoseGizmoDrag.FROZEN_DRAG_VIEW);
+        }
+        else
+        {
+            camera.view.set(panel.lastView);
+        }
+
         camera.projection.set(panel.lastProjection);
     }
 

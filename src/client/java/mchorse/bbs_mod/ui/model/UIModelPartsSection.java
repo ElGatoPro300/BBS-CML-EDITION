@@ -9,6 +9,7 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.UIFormModelEditor;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -65,7 +66,34 @@ public class UIModelPartsSection extends UIModelSection
             }
         });
         
-        this.poseEditor = new UIPoseEditor();
+        /* Drag signs come from UIModelEditorRenderer.prepareGizmoDrag. Do not enable the legacy
+         * setModel() path — it permanently forces X/Z ring invert and fights that prepare. */
+        this.poseEditor = new UIPoseEditor()
+        {
+            @Override
+            protected boolean useModelGizmoDrag()
+            {
+                return false;
+            }
+
+            @Override
+            protected float getGizmoTranslationScale()
+            {
+                ModelConfig cfg = UIModelPartsSection.this.config;
+
+                if (cfg != null)
+                {
+                    ModelInstance instance = BBSModClient.getModels().getModel(cfg.getId());
+
+                    if (instance != null && ModelFormRenderer.isBobjModel(instance.model))
+                    {
+                        return 1F;
+                    }
+                }
+
+                return 16F;
+            }
+        };
         this.poseEditor.onChange = this.editor::dirty;
         this.poseEditor.pickCallback = (bone) ->
         {

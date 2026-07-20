@@ -52,6 +52,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyAction;
@@ -1209,9 +1210,8 @@ public class UIFilmController extends UIElement
         {
             if (this.panel.hasLastGizmoMatrix)
             {
-                /* Prefer camera * capture (same as no-shader); fall back to baked capture
-                 * only when that composition leaves the frustum (Iris paths that already
-                 * baked the camera into the world-pass matrix). */
+                /* Resolve camera-baked vs camera-free capture so the colored gizmo stays
+                 * on the bone instead of sticking to the screen when orbiting. */
                 Gizmo.composeVisualMatrix(this.panel.lastGizmoMatrix, BBSRendering.camera, this.panel.lastProjection, this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.hasGizmoMatrix = true;
@@ -1539,7 +1539,7 @@ public class UIFilmController extends UIElement
         RenderSystem.enableDepthTest();
     }
 
-    public Pair<String, Boolean> getBone()
+    public Pair<String, TransformOrientation> getBone()
     {
         UIKeyframeEditor keyframeEditor = this.panel.replayEditor.keyframeEditor;
 
@@ -1621,54 +1621,52 @@ public class UIFilmController extends UIElement
         }
         else
         {
-            /* Bone pick across every visible replay so duplicated actors in front
-             * of the selected one remain clickable (same as Alt entity pick coverage). */
-            Pair<String, Boolean> bone = this.getBone();
-            Replay currentReplay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), this.panel.replayEditor.replays.replays.getIndex());
+            /* Bone pick only the selected replay. Without Alt, limbs on other actors
+             * must not be clickable (Alt is the way to target/switch other replays). */
+            Pair<String, TransformOrientation> bone = this.getBone();
+            int currentIndex = this.panel.replayEditor.replays.replays.getIndex();
+            Replay currentReplay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), currentIndex);
             boolean markedBonesOnly = BBSSettings.replayMarkedBonesOnly.get() && !Window.isShiftPressed();
 
-            for (Map.Entry<Integer, IEntity> entry : this.getEntities().entrySet())
+            if (currentReplay != null && this.editorController != null
+                && this.editorController.isReplayVisible(currentReplay, currentReplay.getTick(cursorTick)))
             {
-                Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), entry.getKey());
+                IEntity currentEntity = this.getEntities().get(currentIndex);
 
-                if (replay == null || this.editorController == null || !this.editorController.isReplayVisible(replay, replay.getTick(cursorTick)))
+                if (currentEntity != null)
                 {
-                    continue;
-                }
+                    this.stencilMap.allowedBones = null;
 
-                this.stencilMap.allowedBones = null;
-
-                if (markedBonesOnly)
-                {
-                    Form form = replay.form.get();
-
-                    if (form instanceof ModelForm modelForm)
+                    if (markedBonesOnly)
                     {
-                        ModelInstance model = ModelFormRenderer.getModel(modelForm);
-                        String poseGroup = model == null ? modelForm.model.get() : model.poseGroup;
+                        Form form = currentReplay.form.get();
 
-                        if (poseGroup == null || poseGroup.isEmpty())
+                        if (form instanceof ModelForm modelForm)
                         {
-                            poseGroup = model == null ? modelForm.model.get() : model.id;
-                        }
+                            ModelInstance model = ModelFormRenderer.getModel(modelForm);
+                            String poseGroup = model == null ? modelForm.model.get() : model.poseGroup;
 
-                        if (UIPoseEditor.hasMarkedBones(poseGroup))
-                        {
-                            this.stencilMap.allowedBones = UIPoseEditor.getMarkedBones(poseGroup);
+                            if (poseGroup == null || poseGroup.isEmpty())
+                            {
+                                poseGroup = model == null ? modelForm.model.get() : model.id;
+                            }
+
+                            if (UIPoseEditor.hasMarkedBones(poseGroup))
+                            {
+                                this.stencilMap.allowedBones = UIPoseEditor.getMarkedBones(poseGroup);
+                            }
                         }
                     }
+
+                    BaseFilmController.renderEntity(FilmControllerContext.instance
+                        .setup(this.getEntities(), currentEntity, currentReplay, renderContext)
+                        .film(this.panel.getData())
+                        .filmTick(cursorTick)
+                        .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
+                        .stencil(this.stencilMap)
+                        .relative(currentReplay.relative.get())
+                        .bone(bone != null ? bone.a : null, bone != null ? bone.b : TransformOrientation.PARENT));
                 }
-
-                boolean current = replay == currentReplay;
-
-                BaseFilmController.renderEntity(FilmControllerContext.instance
-                    .setup(this.getEntities(), entry.getValue(), replay, renderContext)
-                    .film(this.panel.getData())
-                    .filmTick(cursorTick)
-                    .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
-                    .stencil(this.stencilMap)
-                    .relative(replay.relative.get())
-                    .bone(current && bone != null ? bone.a : null, current && bone != null && bone.b));
             }
         }
 

@@ -39,6 +39,7 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -316,7 +317,7 @@ public abstract class BaseFilmController
 
             if (UIBaseMenu.renderAxes)
             {
-                if (context.bone != null && !context.local)
+                if (context.bone != null && context.orientation == TransformOrientation.PARENT)
                 {
                     Form root = FormUtils.getRoot(form);
                     MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
@@ -347,8 +348,8 @@ public abstract class BaseFilmController
                         stack.pop();
                     }
                 }
-                if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
-                if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
+                if (context.bone != null) renderAxes(context.bone, context.orientation, context.map, form, entity, transition, stack);
+                if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.orientation2, context.map, form, entity, transition, stack);
             }
         }
         finally
@@ -1252,7 +1253,7 @@ public abstract class BaseFilmController
         }
     }
 
-    private static void renderAxes(String bone, boolean local, StencilMap stencilMap, Form form, IEntity entity, float transition, MatrixStack stack)
+    private static void renderAxes(String bone, TransformOrientation space, StencilMap stencilMap, Form form, IEntity entity, float transition, MatrixStack stack)
     {
         Form root = FormUtils.getRoot(form);
         MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
@@ -1267,10 +1268,11 @@ public abstract class BaseFilmController
         Form rootForm = FormUtils.getRoot(form);
         boolean bobj = rootForm instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
 
-        matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local, bobj);
+        matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, space, bobj);
 
         if (matrix != null)
         {
+            Gizmo.INSTANCE.setActiveOrientation(space);
             stack.push();
             MatrixStackUtils.multiply(stack, matrix);
 

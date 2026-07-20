@@ -71,6 +71,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
@@ -505,19 +506,22 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         {
             return true;
         }
-        else if (stencil.hasPicked() && context.mouseButton == 0)
+
+        UIPropTransform editableTransform = this.getGizmoDragTransform();
+
+        this.renderer.setPoseBoneGizmoDrag(this.isPoseBoneGizmo(editableTransform));
+
+        if (context.mouseButton == 0 && this.renderer.getGizmoController().tryStartHandleDrag(context, editableTransform))
+        {
+            return true;
+        }
+
+        if (stencil.hasPicked() && context.mouseButton == 0)
         {
             Pair<Form, String> pair = stencil.getPicked();
 
             if (pair != null)
             {
-                UIPropTransform editableTransform = this.getGizmoDragTransform();
-
-                if (this.renderer.getGizmoController().tryStartHandleDrag(context, editableTransform))
-                {
-                    return true;
-                }
-
                 this.pickFormFromRenderer(pair);
 
                 return true;
@@ -525,6 +529,21 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         }
 
         return false;
+    }
+
+    /** Completes a pending trackball press: click-through selects the bone/form under the
+     *  sphere; otherwise just stops any active gizmo drag. */
+    public void finishGizmoPendingClick()
+    {
+        Pair<Form, String> formPick = this.renderer.getGizmoController().consumePendingTrackballClick();
+
+        if (formPick != null)
+        {
+            this.pickFormFromRenderer(formPick);
+        }
+
+        this.renderer.getGizmoController().stop();
+        this.statesKeyframes.finishGizmoPendingClick();
     }
 
     /** Which transform the gizmo should drag: the selected body part's transform when the
@@ -564,6 +583,28 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         }
 
         return this.editor.generalPanel.transform;
+    }
+
+    /** Pose bone handles (Model Block Edit / form palette Pose), not General or body-part. */
+    private boolean isPoseBoneGizmo(UIPropTransform transform)
+    {
+        if (transform == null || this.gizmoTargetsBodyPart || this.gizmoTargetsTransform)
+        {
+            return false;
+        }
+
+        if (this.modelSettingsEditor != null && this.modelSettingsEditor.isVisible())
+        {
+            UIPoseEditor poseEditor = this.modelSettingsEditor.getPoseEditor();
+
+            if (poseEditor != null && transform == poseEditor.transform)
+            {
+                return true;
+            }
+        }
+
+        return this.editor instanceof UIModelForm modelForm
+            && transform == modelForm.getPoseGizmoTransform();
     }
 
     public boolean isGizmoTargetingFormTransform()
@@ -648,7 +689,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
         String path = StringUtils.combinePaths(FormUtils.getPath(owner), String.valueOf(index));
 
-        return normalizeOriginBasis(this.editor.getOrigin(transition, path, this.bodyPartEditor.transform.isLocal()));
+        return normalizeOriginBasis(this.editor.getOrigin(transition, path, this.bodyPartEditor.transform.getOrientation()));
     }
 
     /** Strips scale/skew/mirroring out of a gizmo origin matrix, leaving only position and a
@@ -1413,7 +1454,8 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             /* "#origin" makes UIForm.getOrigin() return the form's own pivot (entry.origin()),
              * i.e. the point its own transform rotates/scales around, ignoring any pose bone -
              * exactly the model's bottom/pivot the transform panel's numbers apply to. */
-            Matrix4f matrix = this.editor.getOrigin(transition, FormUtils.getPath(this.editor.form) + "#origin", false);
+            TransformOrientation orientation = this.editor.generalPanel != null ? this.editor.generalPanel.transform.getOrientation() : TransformOrientation.PARENT;
+            Matrix4f matrix = this.editor.getOrigin(transition, FormUtils.getPath(this.editor.form) + "#origin", orientation);
 
             if (matrix == null || matrix == Matrices.EMPTY_4F)
             {
@@ -1421,9 +1463,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             }
 
             Transform formTransform = this.editor.form.transform.get();
-            boolean local = this.editor.generalPanel != null && this.editor.generalPanel.transform.isLocal();
-
-            return GizmoMatrixUtils.withLocalRotation(matrix, formTransform, local);
+            return GizmoMatrixUtils.withLocalRotation(matrix, formTransform, orientation);
         }
 
         if (this.modelSettingsEditor != null && this.modelSettingsEditor.isVisible())
