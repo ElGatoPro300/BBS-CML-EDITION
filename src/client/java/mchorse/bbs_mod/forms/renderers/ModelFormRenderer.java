@@ -706,10 +706,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Multiply tint for Blend Color spatial mask only — Color Grade uses FormColorGrade / overlay. */
         boolean deferColorTintToOverlay = colorTransformWanted && irisWorldPaintDeferral && !deferTranslucentModel && !bakeSoftIrisBlend;
         boolean colorTransformActive = colorTransformWanted && (bbsModelShader || deferTranslucentModel || deferColorTintToOverlay);
-        /* Soft Iris: paint in the post-deferred mesh (BBS model.fsh) so strength fades with
-         * vertex alpha; skip frame-end overlay which composites like an opaque mask. */
-        boolean softIrisPaintInMesh = softOpacityIrisPath && paintActive && model.supportsBbsModelShaderEffects();
-        boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel && !softIrisPaintInMesh;
+        /* Paint stays on the Iris frame-end overlay (keeps pack body shadows with Noshading off).
+         * Do not redraw soft+paint with model.fsh on the Iris post-deferred path — wrong MVP
+         * made actors fully invisible. Overlay outAlpha already multiplies form vertex alpha. */
+        boolean deferPaintToOverlay = model.supportsBbsModelShaderEffects() && paintActive && irisWorldPaintDeferral && !deferTranslucentModel;
         boolean shaderOverlay = model.supportsBbsModelShaderEffects() && irisWorldPaintDeferral && syncedGlow && !paintActive && !deferTranslucentModel;
 
         /* Low-alpha Iris redraw: albedo deferred; additive overlay if somehow deferred with glow. */
@@ -974,7 +974,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     Pose poseSnapshot = this.getPose().copy();
                     float transitionSnapshot = transition;
                     float paintStrengthSnapshot = paintStrength;
-                    boolean paintActiveSnapshot = paintActive;
+                    /* Iris soft mesh ignores PaintColor; only apply in-mesh when this draw is
+                     * BBS (e.g. grade) and paint is not already a frame-end overlay. */
+                    boolean paintInDeferredMeshSnapshot = paintActive && !deferPaintToOverlay;
                     boolean stripGlowSnapshot = stripMainPassGlow || shapeKeyPositiveOverlay;
                     boolean hasGlowSnapshot = hasGlow;
                     boolean glowDeferredSnapshot = glowDeferredToOverlay;
@@ -986,11 +988,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     TextureBlend textureBlendSnapshotFinal = textureBlendSnapshot;
                     int overlayLight = light;
                     int overlayOverlay = overlay;
-                    /* Soft + paint: BBS model.fsh applies PaintColor with vertex alpha in one
-                     * pass (Iris entity shaders have no paint uniforms). Soft without paint
-                     * keeps the Iris program for pack body shadows. */
-                    boolean needsBbsMeshEffects = gradeActiveSnapshot || softIrisPaintInMesh;
-                    Supplier<ShaderProgram> programSnapshot = (irisCamera && !needsBbsMeshEffects)
+                    Supplier<ShaderProgram> programSnapshot = (irisCamera && !gradeActiveSnapshot)
                         ? program
                         : BBSShaders::getModel;
                     EffectTransform paintTransformQueued = paintTransformSnapshot;
@@ -1033,7 +1031,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                                 ModelVAORenderer.setGradeEffectTransforms(gradeBrightnessTransformSnapshot, gradeContrastTransformSnapshot, gradeHueTransformSnapshot, gradeSaturationTransformSnapshot);
                             }
 
-                            if (paintActiveSnapshot)
+                            if (paintInDeferredMeshSnapshot)
                             {
                                 ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformQueued, paintMaskHalfQueued);
                                 ModelVAORenderer.setPaint(paintSnapshot.r, paintSnapshot.g, paintSnapshot.b, paintStrengthSnapshot);
