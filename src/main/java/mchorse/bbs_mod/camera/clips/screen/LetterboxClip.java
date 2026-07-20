@@ -168,7 +168,7 @@ public class LetterboxClip extends CameraClip
             float offX = (float) this.valueDouble(this.offsetX, this.uniform.offsetX, t, 0D);
             float offY = (float) this.valueDouble(this.offsetY, this.uniform.offsetY, t, 0D);
 
-            this.effect.size = sz * factor;
+            this.effect.size = Math.max(0F, sz * factor);
             this.effect.width = barWidth;
             this.effect.smoothness = smooth;
             this.effect.color = Colors.setA(this.valueColor(this.color, this.uniform.color, t, DEFAULT_COLOR).getARGBColor(), 1F);

@@ -51,12 +51,14 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
 
         this.color = this.createColorField(this.clip.color, this.clip.uniform.color);
 
-        this.rotation = this.createDoubleTrackpad(this.clip.rotation, this.clip.uniform.rotation, -45F, 45F, UIKeys.SCREEN_PANELS_LETTERBOX_ROTATION);
-        this.zoom = this.createDoubleTrackpad(this.clip.zoom, this.clip.uniform.zoom, 0.1F, 10F, UIKeys.SCREEN_PANELS_LETTERBOX_ZOOM);
-        this.width = this.createDoubleTrackpad(this.clip.width, this.clip.uniform.width, UIKeys.SCREEN_PANELS_LETTERBOX_WIDTH);
-        this.height = this.createDoubleTrackpad(this.clip.height, this.clip.uniform.height, UIKeys.SCREEN_PANELS_LETTERBOX_HEIGHT);
-        this.offsetX = this.createDoubleTrackpad(this.clip.offsetX, this.clip.uniform.offsetX, -1F, 1F, UIKeys.SCREEN_PANELS_LETTERBOX_OFFSET_X);
-        this.offsetY = this.createDoubleTrackpad(this.clip.offsetY, this.clip.uniform.offsetY, -1F, 1F, UIKeys.SCREEN_PANELS_LETTERBOX_OFFSET_Y);
+        /* All numeric letterbox fields: 0 → ∞ (no upper cap). */
+        this.rotation = this.createDoubleTrackpad(this.clip.rotation, this.clip.uniform.rotation, 0F, UIKeys.SCREEN_PANELS_LETTERBOX_ROTATION);
+        this.zoom = this.createDoubleTrackpad(this.clip.zoom, this.clip.uniform.zoom, 0F, UIKeys.SCREEN_PANELS_LETTERBOX_ZOOM);
+        this.width = this.createDoubleTrackpad(this.clip.width, this.clip.uniform.width, 0F, UIKeys.SCREEN_PANELS_LETTERBOX_WIDTH);
+        this.height = this.createDoubleTrackpad(this.clip.height, this.clip.uniform.height, 0F, UIKeys.SCREEN_PANELS_LETTERBOX_HEIGHT);
+        this.height.increment(0.01D).values(0.1D, 0.01D, 0.25D);
+        this.offsetX = this.createDoubleTrackpad(this.clip.offsetX, this.clip.uniform.offsetX, 0F, UIKeys.SCREEN_PANELS_LETTERBOX_OFFSET_X);
+        this.offsetY = this.createDoubleTrackpad(this.clip.offsetY, this.clip.uniform.offsetY, 0F, UIKeys.SCREEN_PANELS_LETTERBOX_OFFSET_Y);
 
         this.useKeyframes = new UIToggle(UIKeys.SCREEN_PANELS_USE_KEYFRAMES, (b) ->
         {
@@ -123,11 +125,11 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
         return trackpad;
     }
 
-    private UITrackpad createDoubleTrackpad(KeyframeChannel<Double> channel, ValueDouble uniform, float min, float max, IKey tooltip)
+    private UITrackpad createDoubleTrackpad(KeyframeChannel<Double> channel, ValueDouble uniform, float min, IKey tooltip)
     {
         UITrackpad trackpad = this.createDoubleTrackpad(channel, uniform, tooltip);
 
-        trackpad.limit(min, max);
+        trackpad.limit(min);
 
         return trackpad;
     }
@@ -172,7 +174,8 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
             UIReplaysEditor.renderBackground(context, editor.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
         });
         editor.view.duration(() -> this.clip.duration.get());
-        editor.view.changed(() -> this.fillData());
+        /* Do not call fillData on every keyframe edit — that rebuilt sheets via setChannels
+         * and cleared the selection (closing the value editor while typing/dragging). */
         editor.setUndoId(undoId);
 
         return editor;
@@ -208,17 +211,27 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
     {
         super.fillData();
 
-        this.color.setColor(Colors.setA(this.getColorValue(this.clip.color, this.clip.uniform.color, DEFAULT_COLOR).getARGBColor(), 1F));
-        this.rotation.setValue(this.getDoubleValue(this.clip.rotation, this.clip.uniform.rotation, 0D));
-        this.zoom.setValue(this.getDoubleValue(this.clip.zoom, this.clip.uniform.zoom, 1D));
-        this.width.setValue(this.getDoubleValue(this.clip.width, this.clip.uniform.width, 1D));
-        this.height.setValue(this.getHeightValue());
-        this.offsetX.setValue(this.getDoubleValue(this.clip.offsetX, this.clip.uniform.offsetX, 0D));
-        this.offsetY.setValue(this.getDoubleValue(this.clip.offsetY, this.clip.uniform.offsetY, 0D));
+        /* Skip rewriting focused keyframe factory inputs mid-edit. */
+        if (!this.keyframes.isEditorInputFocused())
+        {
+            this.color.setColor(Colors.setA(this.getColorValue(this.clip.color, this.clip.uniform.color, DEFAULT_COLOR).getARGBColor(), 1F));
+            this.rotation.setValue(this.getDoubleValue(this.clip.rotation, this.clip.uniform.rotation, 0D));
+            this.zoom.setValue(this.getDoubleValue(this.clip.zoom, this.clip.uniform.zoom, 1D));
+            this.width.setValue(this.getDoubleValue(this.clip.width, this.clip.uniform.width, 1D));
+            this.height.setValue(this.getHeightValue());
+            this.offsetX.setValue(this.getDoubleValue(this.clip.offsetX, this.clip.uniform.offsetX, 0D));
+            this.offsetY.setValue(this.getDoubleValue(this.clip.offsetY, this.clip.uniform.offsetY, 0D));
+        }
+
         this.useKeyframes.setValue(this.clip.useKeyframes.get());
         this.updateKeyframesControls();
 
-        this.keyframes.setChannels(this.clip.channels);
+        /* Avoid rebuilding sheets on every scrub/edit — setChannels clears keyframe pick. */
+        if (this.keyframes.view.getGraph().getSheets().isEmpty()
+            || this.keyframes.view.getGraph().getSheets().size() != this.clip.channels.length)
+        {
+            this.keyframes.setChannels(this.clip.channels);
+        }
 
         for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
         {
@@ -229,14 +242,24 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
             else if ("width".equals(sheet.id))
             {
                 sheet.defaultInsertValue = 1D;
+                sheet.limit(0D, null);
             }
             else if ("height".equals(sheet.id) || "size".equals(sheet.id))
             {
                 sheet.defaultInsertValue = 0.4D;
+                sheet.limit(0D, null);
             }
             else if ("zoom".equals(sheet.id))
             {
                 sheet.defaultInsertValue = 1D;
+                sheet.limit(0D, null);
+            }
+            else if ("rotation".equals(sheet.id)
+                || "offsetX".equals(sheet.id)
+                || "offsetY".equals(sheet.id)
+                || "smoothness".equals(sheet.id))
+            {
+                sheet.limit(0D, null);
             }
         }
 
