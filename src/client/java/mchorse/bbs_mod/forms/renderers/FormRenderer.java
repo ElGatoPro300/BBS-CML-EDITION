@@ -6,11 +6,7 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
-import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
-import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
@@ -18,7 +14,6 @@ import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
-import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -110,23 +105,8 @@ public abstract class FormRenderer <T extends Form>
 
     public final void render(FormRenderingContext context)
     {
-        boolean shadowPass = context.isShadowPass || BBSRendering.isIrisShadowPass();
-
-        if (shadowPass)
-        {
-            BaseValue colorValue = this.form.get("color");
-            Color formColor = colorValue instanceof ValueColor valueColor ? valueColor.get() : null;
-
-            /* Paint / Blend Color fringe fix must not disable casting (Complementary speck fix).
-             * Fully transparent Opacity forms skip casting via BaseFilmController / vertex alpha. */
-            if (this.form.getFormOpacity() > 0.001F
-                && PaintSettings.isFixBugShaderShadow(FormColorBlend.resolveEffectShaderShadow(
-                formColor, this.form.paintSettings.get(), this.form.paintColor.get())))
-            {
-                this.form.shaderShadow.setRuntimeValue(true);
-            }
-        }
-
+        /* Transparent forms skip casting via opacity / vertex alpha in the shadow path.
+         * Color-track paint/blend/grade must not disable Form.shaderShadow. */
         if (!this.form.shaderShadow.get() && BBSRendering.isIrisShadowPass())
         {
             return;

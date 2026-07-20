@@ -26,7 +26,6 @@ import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
-import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
 import mchorse.bbs_mod.forms.values.ValueIllusion;
@@ -35,7 +34,6 @@ import mchorse.bbs_mod.mixin.client.ClientPlayerEntityAccessor;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
@@ -273,8 +271,6 @@ public abstract class BaseFilmController
                     return;
                 }
 
-                PaintSettings paint = form.paintSettings.get();
-                Color legacyPaint = form.paintColor.get();
                 float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
 
                 if (shadowAlpha <= 0.001F)
@@ -282,23 +278,8 @@ public abstract class BaseFilmController
                     return;
                 }
 
-                /* Paint / Blend Color → SHADER_SHADOW_FIX_BUG (0.001) fringe fix. Softens
-                 * shadow-map alpha only — Form.shaderShadow stays on so casting is kept. */
-                Color formColor = null;
-                BaseValue colorValue = form.get("color");
-
-                if (colorValue instanceof ValueColor valueColor)
-                {
-                    formColor = valueColor.get();
-                }
-
-                float fix = FormColorBlend.resolveEffectShaderShadow(formColor, paint, legacyPaint);
-
-                if (PaintSettings.isFixBugShaderShadow(fix))
-                {
-                    shadowAlpha *= fix;
-                }
-
+                /* Replay shadowOpacity only — Color-track effects must not crush caster alpha
+                 * (Iris would drop the ground shadow). Opacity 0 already returned above. */
                 formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
 
                 if (context.shadowOffsetX != 0F || context.shadowOffsetY != 0F || context.shadowOffsetZ != 0F)

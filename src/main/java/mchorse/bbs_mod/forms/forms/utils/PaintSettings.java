@@ -15,8 +15,11 @@ public class PaintSettings
     public static final float MIN_INTENSITY = -1F;
     public static final float MAX_INTENSITY = 1F;
     public static final float SHADER_SHADOW_DEFAULT = 1F;
-    /** Complementary / Iris workaround: keep painted forms from leaving a cursor-side shadow speck. */
-    public static final float SHADER_SHADOW_FIX_BUG = 0.001F;
+    /**
+     * Legacy Complementary fringe flag. Must stay high enough to pass Iris/Complementary
+     * shadow-map alpha tests (~0.1); crushing to ~0.001 removed ground shadows entirely.
+     */
+    public static final float SHADER_SHADOW_FIX_BUG = SHADER_SHADOW_DEFAULT;
     public static final float SHADER_SHADOW_FIX_BUG_THRESHOLD = 0.01F;
     /* Legacy constant; Opacity 0 no longer forces a faint caster silhouette. */
     public static final float SHADER_SHADOW_ZERO_OPACITY = 0F;
@@ -91,14 +94,18 @@ public class PaintSettings
         return 0F;
     }
 
+    /**
+     * Paint / pose paint no longer softens shadow-map alpha (that killed ground shadows under
+     * Iris). Casting is controlled by {@code Form.shaderShadow} and form opacity only.
+     */
     public static float resolveAutoShaderShadow(float intensity)
     {
-        return intensity != 0F ? SHADER_SHADOW_FIX_BUG : SHADER_SHADOW_DEFAULT;
+        return SHADER_SHADOW_DEFAULT;
     }
 
     public static float resolveAutoShaderShadowForPoseAlpha(float paintAlpha)
     {
-        return paintAlpha != 0F ? SHADER_SHADOW_FIX_BUG : SHADER_SHADOW_DEFAULT;
+        return SHADER_SHADOW_DEFAULT;
     }
 
     /**

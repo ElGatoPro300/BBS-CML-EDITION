@@ -20,9 +20,12 @@ public class FormColorBlend
     }
 
     /**
-     * Complementary / Iris fringe fix: Paint and Blend Color both use
-     * {@link PaintSettings#SHADER_SHADOW_FIX_BUG} (0.001) on shadow-pass alpha so the
-     * cursor-side speck stays gone without disabling casting.
+     * Shadow-map alpha scale for Paint / Blend Color / Color Grade.
+     * <p>
+     * Previously returned {@code 0.001} whenever any Color-track intensity was non-zero so
+     * Complementary would drop a cursor-side fringe. Iris shadow programs still alpha-test
+     * around ~0.1, so that crush also deleted the actor's ground shadow. Casting now stays
+     * at full shadow-pass alpha; opacity 0 still skips via callers / {@code applyFormOpacity}.
      */
     public static float resolveEffectShaderShadow(Color storedFormColor, PaintSettings paintSettings, Color legacyPaint)
     {
@@ -34,25 +37,12 @@ public class FormColorBlend
      */
     public static float resolveEffectShaderShadow(Color storedFormColor, PaintSettings paintSettings, Color legacyPaint, boolean anyPaintActive)
     {
-        float shadow = PaintSettings.SHADER_SHADOW_DEFAULT;
-
-        if (anyPaintActive || (paintSettings != null && paintSettings.resolveIntensity(legacyPaint) != 0F))
-        {
-            shadow = Math.min(shadow, PaintSettings.SHADER_SHADOW_FIX_BUG);
-        }
-
-        if (wantsColorTintOverlay(storedFormColor))
-        {
-            shadow = Math.min(shadow, PaintSettings.SHADER_SHADOW_FIX_BUG);
-        }
-
-        return shadow;
+        return PaintSettings.SHADER_SHADOW_DEFAULT;
     }
 
     /**
-     * Paint/Blend Color fringe fix on a shadow pass. Softens shadow-map alpha for the
-     * Complementary cursor speck; does not restore alpha when the form is fully transparent
-     * (Opacity 0 must cast no ground shadow).
+     * Kept for call-site compatibility. No longer multiplies shadow-pass alpha for Color-track
+     * effects (see {@link #resolveEffectShaderShadow}).
      */
     public static void applyShadowPassColorFix(Color color, Color storedFormColor, PaintSettings paintSettings, Color legacyPaint, boolean shadowPass)
     {
@@ -61,22 +51,7 @@ public class FormColorBlend
 
     public static void applyShadowPassColorFix(Color color, Color storedFormColor, PaintSettings paintSettings, Color legacyPaint, boolean shadowPass, boolean anyPaintActive)
     {
-        if (color == null || !shadowPass)
-        {
-            return;
-        }
-
-        if (color.a <= 0.001F)
-        {
-            return;
-        }
-
-        float fix = resolveEffectShaderShadow(storedFormColor, paintSettings, legacyPaint, anyPaintActive);
-
-        if (PaintSettings.isFixBugShaderShadow(fix))
-        {
-            color.a *= fix;
-        }
+        /* no-op: crushing alpha for the Complementary fringe removed ground shadows under Iris */
     }
 
     public enum BlendMode
