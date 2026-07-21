@@ -109,6 +109,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private boolean constraintsAppliedThisRender;
 
     private int lastAge = -1;
+    private int lastUiAnimTick = Integer.MIN_VALUE;
 
     private IEntity entity = new StubEntity();
 
@@ -319,6 +320,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 poseTransform.glowingColor.lerp(value.glowingColor, value.fix);
                 poseTransform.glowIntensity = Lerps.lerp(poseTransform.glowIntensity, value.glowIntensity, value.fix);
                 poseTransform.glowRadius = Lerps.lerp(poseTransform.glowRadius, value.glowRadius, value.fix);
+                poseTransform.opacity = Lerps.lerp(poseTransform.opacity, value.opacity, value.fix);
                 poseTransform.lighting = Lerps.lerp(poseTransform.lighting, value.lighting, value.fix);
             }
             else
@@ -328,6 +330,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 poseTransform.glowingColor.lerp(value.glowingColor, Math.abs(value.glowIntensity));
                 poseTransform.glowIntensity = Lerps.lerp(poseTransform.glowIntensity, value.glowIntensity, Math.abs(value.glowIntensity));
                 poseTransform.glowRadius = Lerps.lerp(poseTransform.glowRadius, value.glowRadius, Math.abs(value.glowRadius) > 0F ? Math.abs(value.glowRadius) : 1F);
+                poseTransform.opacity *= value.opacity;
                 poseTransform.lighting += value.lighting;
             }
 
@@ -457,7 +460,23 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             model.model.resetPose();
 
-            this.animator.applyActions(null, model, context.getTransition());
+            /* Morph / form-list thumbnails stay on bind pose until the form is selected
+             * (clicked); then idle and other actions play. Mouse orbit is separate. */
+            if (FormUtilsClient.isUIPreviewAnimating() && this.animator != null)
+            {
+                MinecraftClient client = MinecraftClient.getInstance();
+                int tick = client.world != null ? (int) (client.world.getTime() & 0x7FFFFFFF) : this.lastUiAnimTick + 1;
+
+                /* Advance animator once per game tick — apply every frame for smooth blend. */
+                if (tick != this.lastUiAnimTick)
+                {
+                    this.lastUiAnimTick = tick;
+                    this.animator.update(this.entity);
+                }
+
+                this.animator.applyActions(null, model, context.getTransition());
+            }
+
             model.model.applyPose(this.getPose());
 
             MatrixStackUtils.multiply(stack, uiMatrix);
@@ -627,6 +646,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
 
         boolean shadowPass = (renderContext != null && renderContext.isShadowPass) || BBSRendering.isIrisShadowPass();
+        /* Orbit form/model editors draw outside the world post-deferred flush — treat like UI
+         * so soft opacity stays live in the preview instead of vanishing into that queue. */
+        boolean orbitEditor = renderContext != null && renderContext.modelRenderer;
+        boolean softOpacityLive = ui || orbitEditor;
         boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
         boolean paintActive = this.hasAnyPaint(model);
         boolean bbsModelShader = this.usesBbsModelShader(model);
@@ -646,7 +669,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Positive glow stays on the Iris entity pass for pack emission/bloom. Occlusion
          * uses deferred queue only when another occluder (panel / other entity) is in front —
          * not when this form alone is slightly translucent (that stole Iris lighting at #fa). */
-        boolean deferForRenderDepth = !ui && !shadowPass
+        boolean deferForRenderDepth = !softOpacityLive && !shadowPass
             && !hasEmissiveGlow
             && renderContext != null
             && renderContext.renderDepthFrame != null
@@ -658,8 +681,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 FormRenderDepth.getEntityDistanceSq(renderContext.entity, renderContext.camera, transition),
                 renderContext.renderDepthFrame.occluders);
         float opacityAlpha = color.a;
-        boolean lowAlphaDefer = !ui && !shadowPass && BBSRendering.needsIrisTranslucentModelDeferral(opacityAlpha);
-        boolean noshadingOpacityDefer = !ui && !shadowPass
+        boolean lowAlphaDefer = !softOpacityLive && !shadowPass && BBSRendering.needsIrisTranslucentModelDeferral(opacityAlpha);
+        boolean noshadingOpacityDefer = !softOpacityLive && !shadowPass
             && BBSRendering.needsIrisNoshadingOpacityDeferral(opacityAlpha, this.form.noshadingOpacity.get());
         boolean opacityDefer = lowAlphaDefer || noshadingOpacityDefer;
 
@@ -667,7 +690,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Soft Opacity + Noshading off stays on Iris post-deferred (pack body shadows).
          * Frame-end Blend Color overlays use DST_COLOR and ignore form alpha (opaque mask).
          * Bake Blend into vertex RGB on that path instead; Noshading still uses the BBS queue. */
-        boolean softOpacityIrisPath = !ui && !shadowPass
+        boolean softOpacityIrisPath = !softOpacityLive && !shadowPass
             && irisWorldPaintDeferral
             && opacityAlpha > 0.001F
             && opacityAlpha < ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA
@@ -722,7 +745,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Opacity defer replaces the live Iris mesh. Color-grade overlay keeps Iris live. */
         boolean drawIrisLive = !deferTranslucentModel;
 
-        if (!deferTranslucentModel && !ui && !shadowPass)
+        if (!deferTranslucentModel && !softOpacityLive && !shadowPass)
         {
             color.a = BBSRendering.easeIrisModelAlpha(opacityAlpha);
         }
@@ -956,10 +979,13 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             if (drawIrisLive)
             {
                 /* Complementary VL: soft opacity waits until after translucent terrain
-                 * (water/lava/portals). Near-opaque stays live with depth for pack shading. */
+                 * (water/lava/portals). Near-opaque stays live with depth for pack shading.
+                 * Orbit editors / UI previews must stay live — post-deferred never redraws them. */
                 boolean filmRenderDepth = renderContext != null && renderContext.renderDepthFrame != null;
+                boolean delaySoftOpacity = !softOpacityLive
+                    && ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, filmRenderDepth);
 
-                if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, filmRenderDepth))
+                if (delaySoftOpacity)
                 {
                     /* Iris: entity-local matrices + restore camera ModelView.
                      * No-shader: camera-baked matrices + identity ModelView (BBS path). */
