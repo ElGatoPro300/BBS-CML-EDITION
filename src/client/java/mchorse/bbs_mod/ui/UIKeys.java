@@ -1033,8 +1033,11 @@ public class UIKeys
     public static final IKey STRUCTURE_PICKER_MODE_CONE = L10n.lang("bbs.ui.items.structure_picker.mode.cone");
     public static final IKey STRUCTURE_PICKER_MODE_CYLINDER = L10n.lang("bbs.ui.items.structure_picker.mode.cylinder");
     public static final IKey STRUCTURE_PICKER_CONFIRM_TITLE = L10n.lang("bbs.ui.items.structure_picker.confirm.title");
+    public static final IKey STRUCTURE_PICKER_NAME = L10n.lang("bbs.ui.items.structure_picker.name");
+    public static final IKey STRUCTURE_PICKER_NAME_PLACEHOLDER = L10n.lang("bbs.ui.items.structure_picker.name_placeholder");
     public static final IKey STRUCTURE_PICKER_MAKE_MODEL_BLOCK = L10n.lang("bbs.ui.items.structure_picker.confirm.model_block");
     public static final IKey STRUCTURE_PICKER_IMPORT_FILM = L10n.lang("bbs.ui.items.structure_picker.confirm.import_film");
+    public static final IKey STRUCTURE_PICKER_IMPORT_FILM_DISABLED = L10n.lang("bbs.ui.items.structure_picker.confirm.import_film_disabled");
     public static final IKey STRUCTURE_PICKER_APPLY = L10n.lang("bbs.ui.items.structure_picker.confirm.apply");
     public static final IKey STRUCTURE_PICKER_REMOVE_SELECTION = L10n.lang("bbs.ui.items.structure_picker.remove_selection");
     public static final IKey STRUCTURE_PICKER_SUBTRACT_SELECTION = L10n.lang("bbs.ui.items.structure_picker.subtract_selection");
@@ -1540,6 +1543,7 @@ public class UIKeys
     public static final IKey SCENE_REPLAYS_CONTEXT_FROM_CAMERA = L10n.lang("bbs.ui.scene.replays.context.from_camera");
     public static final IKey SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK = L10n.lang("bbs.ui.scene.replays.context.from_model_block");
     public static final IKey SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK_DESCRIPTION = L10n.lang("bbs.ui.scene.replays.context.from_model_block-description");
+    public static final IKey SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK_DISTANCE = L10n.lang("bbs.ui.scene.replays.context.from_model_block-distance");
     public static final IKey SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK_TITLE = L10n.lang("bbs.ui.scene.replays.context.from_model_block-title");
     public static final IKey SCENE_REPLAYS_CONTEXT_OFFSET_TIME = L10n.lang("bbs.ui.scene.replays.context.offset_time");
     public static final IKey SCENE_REPLAYS_CONTEXT_OFFSET_TIME_DESCRIPTION = L10n.lang("bbs.ui.scene.replays.context.offset_time-description");
