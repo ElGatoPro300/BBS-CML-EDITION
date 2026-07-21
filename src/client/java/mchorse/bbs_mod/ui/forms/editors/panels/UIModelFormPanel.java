@@ -27,6 +27,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.shapes.UIShapeKeys;
 import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -35,6 +36,7 @@ import java.util.Set;
 public class UIModelFormPanel extends UIFormPanel<ModelForm>
 {
     public UIColor color;
+    public UITrackpad blendIntensity;
     public UIFormColorAdjustments colorAdjustments;
     public UIEffectTransformCollapse colorTransform;
     public UIColor paintColor;
@@ -42,6 +44,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
     public UIEffectTransformCollapse paintTransform;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
+    public UITrackpad opacity;
 
     public UIPoseSectionCollapse colorSection;
     public UIPoseSectionCollapse glowSection;
@@ -86,17 +89,28 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.color = new UIColor((c) ->
         {
             Color color = this.form.color.get().copy();
-            Color value = new Color().set(c);
+            Color value = Color.rgb(c);
+            float intensity = color.a;
 
-            color.set(value.r, value.g, value.b, value.a);
+            color.set(value.r, value.g, value.b, intensity);
             this.form.color.set(color);
-        }).withAlpha();
+        });
         this.color.direction(Direction.LEFT);
         this.color.context((menu) -> menu.action(Icons.COLOR, UIKeys.KEYFRAMES_RESET_COLOR, this::resetMainColor));
+        this.blendIntensity = new UITrackpad((value) ->
+        {
+            Color color = this.form.color.get().copy();
+
+            color.a = MathUtils.clamp(value.floatValue(), 0F, 1F);
+            this.form.color.set(color);
+        });
+        this.blendIntensity.limit(0F, 1F).values(0.1D, 0.05D, 0.2D);
+        this.blendIntensity.tooltip(UIKeys.FORMS_EDITORS_BLEND_INTENSITY);
         this.colorAdjustments = new UIFormColorAdjustments(() -> this.form.color.get(), (color) ->
         {
             this.form.color.setRuntimeValue(null);
             this.form.color.set(color);
+            this.blendIntensity.setValue(MathUtils.clamp(color.a, 0F, 1F));
         });
         this.colorTransform = new UIEffectTransformCollapse((apply) ->
         {
@@ -182,12 +196,20 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         });
         this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
         this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
+        this.opacity = new UITrackpad((value) ->
+        {
+            this.form.opacity.set(MathUtils.clamp(value.intValue(), 0, 255) / 255F);
+        });
+        this.opacity.integer().limit(0, 255).plainFormat().values(1D, 1D, 16D);
+        this.opacity.tooltip(UIKeys.FILM_REPLAY_TRACK_OPACITY);
         this.colorSection = new UIPoseSectionCollapse(
             UIKeys.FILM_REPLAY_TRACK_COLOR,
             UIReplaysEditor.getColor("color"),
             UI.column(
                 UI.label(UIKeys.FORMS_EDITORS_BLEND_COLOR).marginTop(4),
                 this.color,
+                UI.label(UIKeys.FORMS_EDITORS_BLEND_INTENSITY),
+                this.blendIntensity,
                 this.colorTransform,
                 UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR).marginTop(4),
                 this.paintColor,
@@ -253,7 +275,13 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             this.options.add(this.pbrNormalIntensity, this.pbrSpecularIntensity);
         }
 
-        this.options.add(this.colorSection, this.glowSection, this.poseEditor);
+        this.options.add(
+            this.colorSection,
+            this.glowSection,
+            UI.label(UIKeys.FILM_REPLAY_TRACK_OPACITY).marginTop(4),
+            this.opacity,
+            this.poseEditor
+        );
     }
 
     private void resetMainColor()
@@ -266,7 +294,8 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         Color white = Color.white();
 
         this.form.color.set(white.copy());
-        this.color.setColor(white.getARGBColor());
+        this.color.setColor(white.getRGBColor());
+        this.blendIntensity.setValue(MathUtils.clamp(white.a, 0F, 1F));
         this.colorTransform.setEffectTransform(new EffectTransform());
         this.colorAdjustments.syncFromForm();
         this.editor.startEdit(this.form);
@@ -329,10 +358,11 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.poseEditor.fillGroups(model == null ? null : model.model, model == null ? null : model.flippedParts, true);
         this.pbrNormalIntensity.setValue(form.pbrNormalIntensity.get());
         this.pbrSpecularIntensity.setValue(form.pbrSpecularIntensity.get());
-        this.color.setColor(form.color.get().getARGBColor());
-        this.colorAdjustments.syncFromForm();
         Color formColor = form.color.get();
 
+        this.color.setColor(formColor.getRGBColor());
+        this.blendIntensity.setValue(MathUtils.clamp(formColor.a, 0F, 1F));
+        this.colorAdjustments.syncFromForm();
         this.colorTransform.setEffectTransform(formColor.transform == null ? new EffectTransform() : formColor.transform);
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
@@ -346,8 +376,8 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
         glow.resolveColor(form.glowingColor.get(), glowDisplay);
         this.glowingColor.setColor(glowDisplay.getRGBColor());
-
         this.glowIntensity.setValue(glow.intensity);
+        this.opacity.setValue(Math.round(MathUtils.clamp(form.opacity.get(), 0F, 1F) * 255F));
 
         this.shapeKeys.removeFromParent();
 

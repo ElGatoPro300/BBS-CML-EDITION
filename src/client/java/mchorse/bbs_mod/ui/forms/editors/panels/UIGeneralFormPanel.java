@@ -41,6 +41,7 @@ public class UIGeneralFormPanel extends UIFormPanel
     public UIToggle animatable;
     public UITextbox trackName;
     public UIToggle lighting;
+    public UIToggle noshadingOpacity;
     public UIToggle shaderShadow;
     public UITrackpad renderDepth;
     public UIToggle renderDepthEnabled;
@@ -109,6 +110,8 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.trackName.tooltip(UIKeys.FORMS_EDITORS_GENERAL_TRACK_NAME_TOOLTIP);
         this.lighting = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_LIGHTING, (b) -> this.form.lighting.set(b.getValue() ? 1F : 0F));
         this.lighting.tooltip(UIKeys.FORMS_EDITORS_GENERAL_LIGHTING_TOOLTIP);
+        this.noshadingOpacity = new UIToggle(UIKeys.FORMS_EDITORS_COLOR_NOSHADING_OPACITY, (b) -> this.form.noshadingOpacity.set(b.getValue()));
+        this.noshadingOpacity.tooltip(UIKeys.FORMS_EDITORS_COLOR_NOSHADING_OPACITY_TOOLTIP);
         this.shaderShadow = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_SHADER_SHADOW, (b) -> this.form.shaderShadow.set(b.getValue()));
         this.renderDepth = new UITrackpad((v) -> this.form.renderDepth.set(v.floatValue()));
         this.renderDepth.tooltip(UIKeys.FORMS_EDITORS_GENERAL_RENDER_DEPTH_TOOLTIP);
@@ -252,7 +255,7 @@ public class UIGeneralFormPanel extends UIFormPanel
         );
 
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_DISPLAY), this.name);
-        this.options.add(this.hotkey, this.visible, this.animatable, this.trackName, this.lighting, this.shaderShadow);
+        this.options.add(this.hotkey, this.visible, this.animatable, this.trackName, this.lighting, this.noshadingOpacity, this.shaderShadow);
         this.options.add(this.renderDepthEnabled, this.renderDepth);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_UI_SCALE), this.uiScale);
         this.options.add(this.transform.marginTop(8));
@@ -343,6 +346,7 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.animatable.setValue(form.animatable.get());
         this.trackName.setText(form.trackName.get());
         this.lighting.setValue(form.lighting.get() > 0F);
+        this.noshadingOpacity.setValue(form.noshadingOpacity.get());
         this.shaderShadow.setValue(form.shaderShadow.get());
         this.renderDepth.setValue(form.renderDepth.get());
         this.renderDepthEnabled.setValue(form.renderDepthEnabled.get());

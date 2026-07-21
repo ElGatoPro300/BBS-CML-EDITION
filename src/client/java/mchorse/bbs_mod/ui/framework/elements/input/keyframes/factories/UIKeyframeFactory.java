@@ -83,6 +83,11 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         FACTORIES.put(clazz, factory);
     }
 
+    private static boolean isFormColorPropertyId(String id)
+    {
+        return "color".equals(id) || (id != null && id.endsWith("/color"));
+    }
+
     public static void saveScroll(UIKeyframeFactory editor)
     {
         if (editor != null)
@@ -110,7 +115,10 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         {
             UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
 
-            if (sheet != null && "height".equals(sheet.id) && editor.getGraph().getSheet("color") != null)
+            /* Eye blink only — Letterbox also has height+color and must stay unbounded. */
+            if (sheet != null && "height".equals(sheet.id)
+                && editor.getGraph().getSheet("color") != null
+                && editor.getGraph().getSheet("color_opacity") != null)
             {
                 @SuppressWarnings("unchecked")
                 Keyframe<Double> doubleKeyframe = (Keyframe<Double>) keyframe;
@@ -147,7 +155,8 @@ public abstract class UIKeyframeFactory <T> extends UIElement
                 return new UIBossBarColorKeyframeFactory(colorKeyframe, editor);
             }
 
-            if (sheet != null && "color".equals(sheet.id))
+            /* Form Color track (property-bound). Camera clips like Letterbox/Eye use simple color+alpha. */
+            if (sheet != null && sheet.property != null && isFormColorPropertyId(sheet.id))
             {
                 @SuppressWarnings("unchecked")
                 Keyframe<Color> colorKeyframe = (Keyframe<Color>) keyframe;
