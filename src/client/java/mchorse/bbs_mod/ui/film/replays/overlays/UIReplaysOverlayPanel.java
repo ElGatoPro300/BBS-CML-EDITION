@@ -22,6 +22,7 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPoseSectionCollapse;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
@@ -400,29 +401,9 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
     private void addPropertySection(IKey title, UIElement content)
     {
-        UIElement section = new UIElement();
+        UIPoseSectionCollapse section = new UIPoseSectionCollapse(title, Colors.ACTIVE, content);
 
-        section.column(4).vertical().stretch();
-
-        UICollapseHeader header = new UICollapseHeader(title);
-
-        header.h(16);
-        header.onToggle(() ->
-        {
-            if (header.expanded)
-            {
-                section.add(content);
-            }
-            else
-            {
-                section.remove(content);
-            }
-
-            this.resize();
-        });
-
-        section.add(header, content);
-
+        section.setExpanded(true);
         this.replayProperties.add(section);
     }
 
@@ -903,58 +884,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         if (this.replays.getList().isEmpty())
         {
             UIDataUtils.renderRightClickHere(context, this.replays.area, 0xFF141418);
-        }
-    }
-
-    public static class UICollapseHeader extends UIElement
-    {
-        public IKey title;
-        public boolean expanded = true;
-
-        private Runnable onToggle;
-
-        public UICollapseHeader(IKey title)
-        {
-            this.title = title;
-        }
-
-        public UICollapseHeader onToggle(Runnable onToggle)
-        {
-            this.onToggle = onToggle;
-
-            return this;
-        }
-
-        @Override
-        protected boolean subMouseClicked(UIContext context)
-        {
-            if (this.area.isInside(context) && context.mouseButton == 0)
-            {
-                this.expanded = !this.expanded;
-
-                if (this.onToggle != null)
-                {
-                    this.onToggle.run();
-                }
-
-                return true;
-            }
-
-            return super.subMouseClicked(context);
-        }
-
-        @Override
-        public void render(UIContext context)
-        {
-            boolean hover = this.area.isInside(context);
-            int background = Colors.setA(BBSSettings.primaryColor.get(), hover ? 0.5F : 0.3F);
-            int textHeight = context.batcher.getFont().getHeight();
-
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), background);
-            context.batcher.icon(this.expanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT, Colors.WHITE, this.area.x + 4, this.area.my(), 0F, 0.5F);
-            context.batcher.textShadow(this.title.get(), this.area.x + 18, this.area.my() - textHeight / 2, Colors.WHITE);
-
-            super.render(context);
         }
     }
 }

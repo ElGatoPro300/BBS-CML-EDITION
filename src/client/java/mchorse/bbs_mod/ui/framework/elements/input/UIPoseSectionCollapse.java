@@ -14,10 +14,11 @@ public class UIPoseSectionCollapse extends UIElement
 {
     private static final IKey EXPANDED_ARROW = IKey.constant(" ▼");
 
-    private final IKey baseLabel;
+    private IKey baseLabel;
     private final UIButton toggle;
     private final UIAnimatedCollapseShell shell;
     private final Runnable onExpand;
+    private Runnable onToggle;
     private boolean expanded;
 
     public UIPoseSectionCollapse(IKey label, int trackColor, UIElement content)
@@ -33,13 +34,28 @@ public class UIPoseSectionCollapse extends UIElement
 
         this.baseLabel = label;
         this.onExpand = onExpand;
-        this.toggle = new UIButton(label, (b) -> this.setExpanded(!this.expanded));
+        this.toggle = new UIButton(label, (b) ->
+        {
+            if (this.onToggle != null)
+            {
+                this.onToggle.run();
+            }
+
+            this.setExpanded(!this.expanded);
+        });
         this.toggle.color(trackColor & Colors.RGB).h(20);
         this.toggle.full(this);
 
         this.shell = new UIAnimatedCollapseShell(content);
 
         this.add(this.toggle);
+    }
+
+    public UIPoseSectionCollapse onToggle(Runnable onToggle)
+    {
+        this.onToggle = onToggle;
+
+        return this;
     }
 
     public UIButton getToggle()
@@ -55,6 +71,14 @@ public class UIPoseSectionCollapse extends UIElement
     public boolean isExpanded()
     {
         return this.expanded;
+    }
+
+    public void setBaseLabel(IKey label)
+    {
+        this.baseLabel = label;
+        this.toggle.label = this.expanded
+            ? IKey.comp(Arrays.asList(this.baseLabel, EXPANDED_ARROW))
+            : this.baseLabel;
     }
 
     public void setExpanded(boolean expanded)
