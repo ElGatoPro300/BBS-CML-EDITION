@@ -2540,12 +2540,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             }).target(this.filmPanel.editArea);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
-            /* Reset */
-            if (lastEditor != null)
-            {
-                this.keyframeEditor.view.copyViewport(lastEditor);
-            }
-
             this.keyframeEditor.view.backgroundRenderer((context) ->
             {
                 UIKeyframes view = this.keyframeEditor.view;
@@ -2621,6 +2615,17 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 this.keyframeEditor.view.addSheet(sheet);
             }
 
+            /* Restore viewport after sheets exist so Y scroll is not clamped away. */
+            if (lastEditor != null)
+            {
+                this.keyframeEditor.view.copyViewport(lastEditor);
+            }
+
+            if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet dopeSheet)
+            {
+                dopeSheet.onSheetsRebuilt();
+            }
+
             this.add(this.keyframeEditor);
             this.applyToolbarDockLayout();
 
@@ -2631,6 +2636,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
 
         this.resize();
+
+        if (this.keyframeEditor != null && this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet dopeSheet)
+        {
+            dopeSheet.reanchorFoldAfterLayout();
+        }
 
         if (this.keyframeEditor != null && lastEditor == null)
         {
