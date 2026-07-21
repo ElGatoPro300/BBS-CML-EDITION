@@ -43,6 +43,8 @@ import net.minecraft.client.util.BufferAllocator;
 
 import org.joml.Matrix4f;
 
+import org.lwjgl.glfw.GLFW;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.ArrayList;
@@ -1590,7 +1592,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     @Override
     public void postRender(UIContext context)
     {
-        this.dopeSheet.renderScrollbar(context.batcher);
+        this.dopeSheet.renderScrollbar(context);
         this.renderSidebarScrollbar(context);
     }
 
@@ -1623,6 +1625,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
         Area knob = this.sidebarScrollbar.getScrollbarArea();
         Scroll.bar(context.batcher, knob.x, knob.y, knob.ex(), knob.ey(), scrollbarColor);
+
+        if (this.sidebarScrollbar.dragging || (context.mouseY >= y && context.mouseY < y + barHeight && context.mouseX >= trackX && context.mouseX < trackX + trackW))
+        {
+            context.requestCursor(GLFW.GLFW_HAND_CURSOR);
+        }
     }
 
     private void updateSidebarScrollLimits(UIContext context)

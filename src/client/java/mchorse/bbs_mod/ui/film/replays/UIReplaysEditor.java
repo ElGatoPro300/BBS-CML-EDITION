@@ -207,7 +207,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         COLORS.put("paint", Colors.INACTIVE);
         COLORS.put("glow", Colors.YELLOW);
         COLORS.put("lighting", Colors.YELLOW);
-        COLORS.put("render_depth", Colors.CYAN);
+        COLORS.put("render_depth", 0x1a6a7a);
         COLORS.put("look_at", 0x007f70);
         COLORS.put("inverse_kinematics", 0x6b4c9a);
         COLORS.put("illusion", Colors.DEEP_PINK);

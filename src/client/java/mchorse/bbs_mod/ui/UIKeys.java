@@ -70,6 +70,7 @@ public class UIKeys
     public static final IKey CAMERA_EDITOR_KEYS_EDITOR_NEXT_CLIP = L10n.lang("bbs.ui.camera.editor.keys.editor.next_clip");
     public static final IKey CAMERA_EDITOR_KEYS_EDITOR_PLAUSE = L10n.lang("bbs.ui.camera.editor.keys.editor.plause");
     public static final IKey CAMERA_EDITOR_KEYS_EDITOR_PLAY_FILM = L10n.lang("bbs.ui.camera.editor.keys.editor.play_film");
+    public static final IKey CAMERA_EDITOR_KEYS_EDITOR_PLAY_FULLSCREEN = L10n.lang("bbs.ui.camera.editor.keys.editor.play_fullscreen");
     public static final IKey CAMERA_EDITOR_KEYS_EDITOR_PREV = L10n.lang("bbs.ui.camera.editor.keys.editor.prev");
     public static final IKey CAMERA_EDITOR_KEYS_EDITOR_PREV_CLIP = L10n.lang("bbs.ui.camera.editor.keys.editor.prev_clip");
     public static final IKey CAMERA_EDITOR_KEYS_EDITOR_REDO = L10n.lang("bbs.ui.camera.editor.keys.editor.redo");
@@ -723,6 +724,8 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_GENERAL_MOVEMENT_SPEED_TOOLTIP = L10n.lang("bbs.ui.forms.editors.general.movement_speed-tooltip");
     public static final IKey FORMS_EDITORS_GENERAL_RENDER_DEPTH = L10n.lang("bbs.ui.forms.editors.general.render_depth");
     public static final IKey FORMS_EDITORS_GENERAL_RENDER_DEPTH_TOOLTIP = L10n.lang("bbs.ui.forms.editors.general.render_depth-tooltip");
+    public static final IKey FORMS_EDITORS_GENERAL_RENDER_DEPTH_OFF = L10n.lang("bbs.ui.forms.editors.general.render_depth_off");
+    public static final IKey FORMS_EDITORS_GENERAL_RENDER_DEPTH_ON = L10n.lang("bbs.ui.forms.editors.general.render_depth_on");
     public static final IKey FORMS_EDITORS_GENERAL_LOOK_AT = L10n.lang("bbs.ui.forms.editors.general.look_at");
     public static final IKey FORMS_EDITORS_GENERAL_ILLUSION = L10n.lang("bbs.ui.forms.editors.general.illusion");
     public static final IKey FORMS_EDITORS_GENERAL_ILLUSION_COUNT = L10n.lang("bbs.ui.forms.editors.general.illusion_count");
@@ -775,6 +778,7 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_GENERAL_ILLUSION_GLOW_INVERT_TOOLTIP = L10n.lang("bbs.ui.forms.editors.general.illusion_glow_invert-tooltip");
     public static final IKey FORMS_EDITORS_GENERAL_SHADER_SHADOW = L10n.lang("bbs.ui.forms.editors.general.shader_shadow");
     public static final IKey FORMS_EDITORS_GENERAL_STEP_HEIGHT = L10n.lang("bbs.ui.forms.editors.general.step_height");
+    public static final IKey FORMS_EDITORS_GENERAL_TRACK_NAME = L10n.lang("bbs.ui.forms.editors.general.track_name");
     public static final IKey FORMS_EDITORS_GENERAL_TRACK_NAME_TOOLTIP = L10n.lang("bbs.ui.forms.editors.general.track_name-tooltip");
     public static final IKey FORMS_EDITORS_GENERAL_UI_SCALE = L10n.lang("bbs.ui.forms.editors.general.ui_scale");
     public static final IKey FORMS_EDITORS_GENERAL_VISIBLE = L10n.lang("bbs.ui.forms.editors.general.visible");

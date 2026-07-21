@@ -3,7 +3,9 @@ package mchorse.bbs_mod.forms;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.Framebuffer;
 import mchorse.bbs_mod.graphics.Renderbuffer;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -29,18 +31,25 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Caches form UI previews (color + depth) keyed by form id/revision and orbit angle.
- * List thumbnails always use this cache (budgeted fills). Selected forms can still
- * live-render via {@link FormUtilsClient#renderUI}.
+ * Caches form UI previews (color + depth) keyed by form instance, revision, and orbit angle.
+ * List cells clip with scissors — those must be disabled while filling the scratch FBO
+ * or thumbnails bake black. Keys use identity hash (not {@link Form#getFormId()}) so
+ * different models of the same type do not share one thumbnail.
+ * <p>
+ * Incomplete ModelForm loads (BBS spinner) are never cached — otherwise a frozen spinner
+ * sticks until the form list is rebuilt.
  */
 public final class FormUIPreviewCache
 {
     private static final int MAX_ENTRIES = 512;
     private static final int ANGLE_BUCKETS = 48;
-    private static final int MAX_FILLS_PER_FRAME = 16;
-    private static final long FRAME_BUDGET_NS = 12_000_000L;
-    /* Render thumbnails larger than the on-screen cell, then downscale with linear filter. */
-    private static final int SUPERSAMPLE = 3;
+    private static final int MAX_FILLS_PER_FRAME = 96;
+    private static final long FRAME_BUDGET_NS = 28_000_000L;
+    /* Bake at 2× cell size, then linear-downscale for sharper morph thumbs. */
+    private static final int SUPERSAMPLE_STATIC = 2;
+    private static final int SUPERSAMPLE_FOLLOW = 2;
+    /* Bump when bake settings change so stale soft thumbs are discarded. */
+    private static final int BAKE_QUALITY = 2;
 
     private static final Map<Long, CacheEntry> CACHE = new LinkedHashMap<>()
     {
@@ -65,6 +74,7 @@ public final class FormUIPreviewCache
     private static int scratchHeight;
     private static long budgetFrameNs;
     private static int fillsThisFrame;
+    private static int clearedBakeQuality = -1;
 
     private FormUIPreviewCache()
     {}
@@ -81,6 +91,21 @@ public final class FormUIPreviewCache
 
     public static void render(Form form, UIContext context, int x1, int y1, int x2, int y2)
     {
+        render(form, context, x1, y1, x2, y2, true);
+    }
+
+    /**
+     * @param followMouse when false, uses a fixed preview angle (cheap; for category-card
+     *                    mini-thumbs that must not thrash the fill budget on mouse move).
+     */
+    public static void render(Form form, UIContext context, int x1, int y1, int x2, int y2, boolean followMouse)
+    {
+        if (clearedBakeQuality != BAKE_QUALITY)
+        {
+            clearedBakeQuality = BAKE_QUALITY;
+            clear();
+        }
+
         if (form == null)
         {
             return;
@@ -94,10 +119,16 @@ public final class FormUIPreviewCache
             return;
         }
 
-        /* List thumbs stay on the budgeted cache. Callers that need live motion
-         * (selected cell) use FormUtilsClient.renderUI directly. */
+        /* Never bake the BBS loading spinner into the cache. */
+        if (!isPreviewReady(form))
+        {
+            FormUtilsClient.renderUI(form, context, x1, y1, x2, y2, false);
+
+            return;
+        }
+
         int revision = form.getEditRevision();
-        int angleBucket = getAngleBucket(context, x1, x2);
+        int angleBucket = followMouse ? getAngleBucket(context, x1, x2) : getFixedAngleBucket();
         long key = buildKey(form, width, height, angleBucket);
         CacheEntry entry = CACHE.get(key);
 
@@ -118,7 +149,7 @@ public final class FormUIPreviewCache
             }
             else
             {
-                /* Always show something: live static pose when the cache is busy. */
+                /* Live draw still works under the cell scissor. */
                 FormUtilsClient.renderUI(form, context, x1, y1, x2, y2, false);
             }
 
@@ -131,8 +162,31 @@ public final class FormUIPreviewCache
             CACHE.put(key, entry);
         }
 
-        thisRenderToEntry(form, context, entry, width, height, revision, angleBucket);
+        int supersample = followMouse ? SUPERSAMPLE_FOLLOW : SUPERSAMPLE_STATIC;
+
+        thisRenderToEntry(form, context, entry, width, height, revision, angleBucket, supersample);
         thisBlit(context, entry.texture, x1, y1, width, height);
+    }
+
+    /**
+     * Model forms are ready only after the mesh finished loading. Other forms can bake immediately.
+     */
+    public static boolean isPreviewReady(Form form)
+    {
+        if (!(form instanceof ModelForm modelForm))
+        {
+            return true;
+        }
+
+        String modelId = modelForm.model.get();
+
+        if (modelId == null || modelId.isEmpty())
+        {
+            return true;
+        }
+
+        /* Priority bump for anything the UI is trying to show right now. */
+        return BBSModClient.getModels().getModel(modelId, true) != null;
     }
 
     private static void thisBlit(UIContext context, Texture texture, int x1, int y1, int width, int height)
@@ -179,7 +233,7 @@ public final class FormUIPreviewCache
 
     private static CacheEntry thisFindFallback(Form form, int width, int height, int revision)
     {
-        int formKey = formCacheKey(form);
+        int formKey = System.identityHashCode(form);
 
         for (CacheEntry entry : CACHE.values())
         {
@@ -193,10 +247,10 @@ public final class FormUIPreviewCache
         return null;
     }
 
-    private static void thisRenderToEntry(Form form, UIContext context, CacheEntry entry, int width, int height, int revision, int angleBucket)
+    private static void thisRenderToEntry(Form form, UIContext context, CacheEntry entry, int width, int height, int revision, int angleBucket, int supersample)
     {
-        int renderW = Math.max(1, width * SUPERSAMPLE);
-        int renderH = Math.max(1, height * SUPERSAMPLE);
+        int renderW = Math.max(1, width * supersample);
+        int renderH = Math.max(1, height * supersample);
 
         ensureScratchFramebuffer(renderW, renderH);
 
@@ -236,11 +290,15 @@ public final class FormUIPreviewCache
 
         try
         {
+            /* Bake with the keyed yaw — scratch FBO coords would otherwise use
+             * screen mouseX and face the wrong way. */
+            ModelFormRenderer.setUIAngleOverride(angleFromBucket(angleBucket));
             FormUtilsClient.renderUI(form, context, 0, 0, renderW, renderH);
             context.batcher.flush();
         }
         finally
         {
+            ModelFormRenderer.setUIAngleOverride(null);
             FormRenderer.setSuppressFormDisplayName(false);
         }
 
@@ -258,7 +316,7 @@ public final class FormUIPreviewCache
 
         if (client != null && client.getFramebuffer() != null)
         {
-            /* Do not clear — world may already be in the main FB (immersive morph UI). */
+            /* Do not clear — wiping the main FB mid-UI causes white wash / text corruption. */
             client.getFramebuffer().beginWrite(false);
         }
 
@@ -269,11 +327,14 @@ public final class FormUIPreviewCache
             GlStateManager._enableScissorTest();
         }
 
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+
         entry.revision = revision;
         entry.angleBucket = angleBucket;
         entry.width = width;
         entry.height = height;
-        entry.formKey = formCacheKey(form);
+        entry.formKey = System.identityHashCode(form);
     }
 
     private static void ensureScratchFramebuffer(int width, int height)
@@ -311,6 +372,11 @@ public final class FormUIPreviewCache
         scratchHeight = height;
     }
 
+    private static int getFixedAngleBucket()
+    {
+        return toAngleBucket(-MathUtils.PI + MathUtils.PI / 8F);
+    }
+
     private static int getAngleBucket(UIContext context, int x1, int x2)
     {
         float angle = MathUtils.toRad(context.mouseX - (x1 + x2) / 2) + MathUtils.PI;
@@ -320,25 +386,24 @@ public final class FormUIPreviewCache
             angle = -MathUtils.PI + MathUtils.PI / 8F;
         }
 
+        return toAngleBucket(angle);
+    }
+
+    private static int toAngleBucket(float angle)
+    {
         int bucket = (int) (angle * ANGLE_BUCKETS / (MathUtils.PI * 2F));
 
         return Math.floorMod(bucket, ANGLE_BUCKETS);
     }
 
-    private static int formCacheKey(Form form)
+    private static float angleFromBucket(int bucket)
     {
-        String formId = form.getFormId();
-
-        return formId != null && !formId.isEmpty()
-            ? formId.hashCode()
-            : System.identityHashCode(form);
+        return (bucket + 0.5F) * (MathUtils.PI * 2F) / ANGLE_BUCKETS;
     }
 
     private static long buildKey(Form form, int width, int height, int angleBucket)
     {
-        /* Prefer stable form id so recreating the morph palette still hits warm cache.
-         * Fall back to identity for anonymous / duplicated instances without an id. */
-        int formKey = formCacheKey(form);
+        int formKey = System.identityHashCode(form);
 
         return ((long) formKey << 32)
             ^ ((long) width << 16)

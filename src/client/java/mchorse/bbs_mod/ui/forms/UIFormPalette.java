@@ -241,9 +241,16 @@ public class UIFormPalette extends UIElement implements IUIFormList
     @Override
     public void render(UIContext context)
     {
-        if (this.background && (!this.immersive || this.list.isVisible()))
+        /* Immersive pick: scrim while the list is open. Immersive edit (Film Edit):
+         * keep the same dark halo behind the model editor so it is not a flat void. */
+        boolean showScrim = this.background && (
+            !this.immersive
+                || this.list.isVisible()
+                || this.editor.isEditing()
+        );
+
+        if (showScrim)
         {
-            /* Dark scrim so form cells stay readable over the live world. */
             this.area.render(context.batcher, Colors.A75 | 0x0B0B0B);
         }
 

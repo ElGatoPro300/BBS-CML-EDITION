@@ -38,6 +38,8 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 
+import org.lwjgl.glfw.GLFW;
+
 import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
@@ -386,7 +388,8 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             int color = Colors.setA(BBSSettings.primaryColor.get(), this.dockedResizer.isDragging() || this.dockedResizer.area.isInside(context) ? 0.75F : 0.45F);
 
             context.batcher.box(this.dockedResizer.area.x, this.dockedResizer.area.y + 2, this.dockedResizer.area.ex(), this.dockedResizer.area.ey() - 2, color);
-        }).dragEnd(this::flushDockedReplaysHeight);
+        }).dragEnd(this::flushDockedReplaysHeight)
+            .cursors(GLFW.GLFW_VRESIZE_CURSOR, GLFW.GLFW_VRESIZE_CURSOR);
 
         this.content.add(this.replays, this.replayProperties, this.groupProperties, this.dockedResizer);
         this.replayProperties.relative(this.content).x(0).y(0).w(1F).h(1F);
@@ -403,8 +406,9 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     {
         UIPoseSectionCollapse section = new UIPoseSectionCollapse(title, Colors.ACTIVE, content);
 
-        section.setExpanded(true);
+        /* Parent first — setExpanded attaches the body as the next sibling. */
         this.replayProperties.add(section);
+        section.setExpanded(true);
     }
 
     public void attachPropertiesHost(UIElement host)

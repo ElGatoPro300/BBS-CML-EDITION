@@ -163,7 +163,16 @@ public class FormUtilsClient
      */
     public static void renderUICached(Form form, UIContext context, int x1, int y1, int x2, int y2)
     {
-        FormUIPreviewCache.render(form, context, x1, y1, x2, y2);
+        FormUIPreviewCache.render(form, context, x1, y1, x2, y2, true);
+    }
+
+    /**
+     * Cached thumbnail at a fixed orbit angle — for category-card previews that must not
+     * refill on every mouse move.
+     */
+    public static void renderUICachedStatic(Form form, UIContext context, int x1, int y1, int x2, int y2)
+    {
+        FormUIPreviewCache.render(form, context, x1, y1, x2, y2, false);
     }
 
     public static void render(Form form, FormRenderingContext context)

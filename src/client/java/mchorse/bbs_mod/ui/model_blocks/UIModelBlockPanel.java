@@ -8,6 +8,7 @@ import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -269,9 +270,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
         this.pickEdit = new UINestedEdit((editing) -> {
             Consumer<Form> callback = (f) -> {
+                Form copy = FormUtils.copy(f);
+
                 this.beginUndoCapture();
-                this.pickEdit.setForm(f);
-                this.modelBlock.getProperties().setForm(f);
+                this.pickEdit.setForm(copy);
+                this.modelBlock.getProperties().setForm(copy);
                 this.endUndoCapture();
             };
 
@@ -1248,11 +1251,21 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                 int midY = resizer.area.y + resizer.area.h / 2;
                 int color = active ? activeColor : idleColor;
                 c.batcher.box(resizer.area.x, midY - 1, resizer.area.ex(), midY + 1, color);
+
+                if (active)
+                {
+                    c.requestCursor(GLFW.GLFW_VRESIZE_CURSOR);
+                }
             } else {
                 /* Vertical splitter — full column height, 2px bar centered. */
                 int midX = resizer.area.x + resizer.area.w / 2;
                 int color = active ? activeColor : idleColor;
                 c.batcher.box(midX - 1, resizer.area.y, midX + 1, resizer.area.ey(), color);
+
+                if (active)
+                {
+                    c.requestCursor(GLFW.GLFW_HRESIZE_CURSOR);
+                }
             }
         } else {
             int color = active ? (0xFF000000 | BBSSettings.primaryColor.get()) : 0xFF888888;
@@ -1261,6 +1274,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             c.batcher.box(rx + 2, ry + 5, rx + 6, ry + 6, color);
             c.batcher.box(rx + 4, ry + 3, rx + 6, ry + 4, color);
             c.batcher.box(rx + 5, ry + 1, rx + 6, ry + 2, color);
+
+            if (active)
+            {
+                c.requestCursor(GLFW.GLFW_HRESIZE_CURSOR);
+            }
         }
     }
 
@@ -2393,6 +2411,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         }
 
         MinecraftClient mc = MinecraftClient.getInstance();
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
 
         this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
 
@@ -2416,7 +2437,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.gizmoStencil.unbind(this.gizmoStencilMap);
         this.gizmoController.updateHover();
 
-        mc.getFramebuffer().beginWrite(true);
+        /* beginWrite(true) clears the main FB → white wash + corrupted GUI text. */
+        BBSRendering.ensureMainFramebuffer();
+        mc.getFramebuffer().beginWrite(false);
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
     }
 
     @Override

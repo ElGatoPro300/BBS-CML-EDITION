@@ -5,7 +5,6 @@ import mchorse.bbs_mod.math.molang.MolangParser;
 import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPoseSectionCollapse;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -15,7 +14,7 @@ import java.util.function.Consumer;
 public abstract class UIParticleSchemeSection extends UIElement
 {
     public UIPoseSectionCollapse section;
-    public UIButton title;
+    public UIPoseSectionCollapse.SectionHeader title;
     public UIElement fields;
 
     protected ParticleScheme scheme;
@@ -30,11 +29,11 @@ public abstract class UIParticleSchemeSection extends UIElement
         this.fields.column().stretch().vertical().height(20);
 
         this.section = new UIPoseSectionCollapse(this.getTitle(), Colors.ACTIVE, this.fields);
-        this.section.setExpanded(true);
         this.title = this.section.getToggle();
 
         this.column().stretch().vertical();
         this.add(this.section);
+        this.section.setExpanded(true);
     }
 
     protected void resizeParent()

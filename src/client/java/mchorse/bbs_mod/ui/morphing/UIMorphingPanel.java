@@ -7,6 +7,7 @@ import mchorse.bbs_mod.morphing.IMorphProvider;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.dashboard.EditorSpectatorHelper;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.forms.UIFormPalette;
@@ -106,9 +107,20 @@ public class UIMorphingPanel extends UIDashboardPanel
     }
 
     @Override
+    public boolean canPause()
+    {
+        /* Same as Film / Model Block morph pickers: keep the world ticking so
+         * selected form thumbnails can advance idle (UI anim uses world time). */
+        return false;
+    }
+
+    @Override
     public void appear()
     {
         super.appear();
+
+        /* Morphing must never force Spectator — restore if Film/Model Block left it on. */
+        EditorSpectatorHelper.restore();
 
         if (MinecraftClient.getInstance().player == null)
         {

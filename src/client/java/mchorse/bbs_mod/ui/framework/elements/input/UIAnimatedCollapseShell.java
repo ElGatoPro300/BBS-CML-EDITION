@@ -111,6 +111,17 @@ public class UIAnimatedCollapseShell extends UIElement
      */
     public void setExpanded(boolean expanded, UIElement host)
     {
+        if (expanded)
+        {
+            this.attachAfter(host);
+
+            /* Host not parented yet — do not claim open (avoids ▼ with empty body). */
+            if (!this.hasParent())
+            {
+                return;
+            }
+        }
+
         if (this.open == expanded && !this.animating && this.hasParent() == expanded)
         {
             return;
@@ -126,7 +137,6 @@ public class UIAnimatedCollapseShell extends UIElement
 
         if (expanded)
         {
-            this.attachAfter(host);
             this.naturalHeight = this.measureNaturalHeightQuiet();
             this.applyHeight(true);
         }

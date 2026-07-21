@@ -95,6 +95,7 @@ import java.util.function.Supplier;
 public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITickable
 {
     private static Matrix4f uiMatrix = new Matrix4f();
+    private static final ThreadLocal<Float> UI_ANGLE_OVERRIDE = new ThreadLocal<>();
 
     private MatrixCache bones = new MatrixCache();
 
@@ -142,16 +143,43 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
     }
 
+    /**
+     * Optional yaw (radians) for UI thumbnails — used when baking preview cache so
+     * scratch-FBO fills match the intended orbit bucket instead of screen mouseX.
+     */
+    public static void setUIAngleOverride(Float angleRadians)
+    {
+        if (angleRadians == null)
+        {
+            UI_ANGLE_OVERRIDE.remove();
+        }
+        else
+        {
+            UI_ANGLE_OVERRIDE.set(angleRadians);
+        }
+    }
+
     public static Matrix4f getUIMatrix(UIContext context, int x1, int y1, int x2, int y2)
     {
         float scale = (y2 - y1) / 2.5F;
         int x = x1 + (x2 - x1) / 2;
         float y = y1 + (y2 - y1) * 0.85F;
-        float angle = MathUtils.toRad(context.mouseX - (x1 + x2) / 2) + MathUtils.PI;
+        Float override = UI_ANGLE_OVERRIDE.get();
+        float angle;
 
-        if (BBSSettings.freezeModels.get())
+        if (override != null)
         {
-            angle = -MathUtils.PI + MathUtils.PI / 8;
+            angle = override;
+        }
+        else
+        {
+            /* +PI aligns model north toward the UI camera (same as world render flip). */
+            angle = MathUtils.toRad(context.mouseX - (x1 + x2) / 2) + MathUtils.PI;
+
+            if (BBSSettings.freezeModels.get())
+            {
+                angle = -MathUtils.PI + MathUtils.PI / 8F;
+            }
         }
 
         uiMatrix.identity();
@@ -461,7 +489,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             model.model.resetPose();
 
             /* Morph / form-list thumbnails stay on bind pose until the form is selected
-             * (clicked); then idle and other actions play. Mouse orbit is separate. */
+             * (clicked); then idle plays. Mouse orbit is separate. */
             if (FormUtilsClient.isUIPreviewAnimating() && this.animator != null)
             {
                 MinecraftClient client = MinecraftClient.getInstance();
@@ -471,6 +499,14 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 if (tick != this.lastUiAnimTick)
                 {
                     this.lastUiAnimTick = tick;
+
+                    /* Recent / applied forms often share this renderer with the world tick.
+                     * Sync movement tracking so UI never inherits a fake "running" action. */
+                    if (this.animator instanceof Animator keyframeAnimator)
+                    {
+                        keyframeAnimator.syncUIPreviewEntity(this.entity);
+                    }
+
                     this.animator.update(this.entity);
                 }
 
@@ -512,11 +548,19 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         else
         {
             String modelId = this.form.model.get();
-            if (modelId != null && BBSModClient.getModels().isLoading(modelId))
+
+            if (modelId != null && !modelId.isEmpty())
             {
-                float cx = x1 + (x2 - x1) / 2.0F;
-                float cy = y1 + (y2 - y1) / 2.0F;
-                UILoader.draw(context, cx, cy, 1.25F, null);
+                /* Visible cells jump the load queue ahead of background preload. */
+                BBSModClient.getModels().getModel(modelId, true);
+
+                if (BBSModClient.getModels().isLoading(modelId))
+                {
+                    float cx = x1 + (x2 - x1) / 2.0F;
+                    float cy = y1 + (y2 - y1) / 2.0F;
+
+                    UILoader.draw(context, cx, cy, 1.25F, null);
+                }
             }
         }
     }
