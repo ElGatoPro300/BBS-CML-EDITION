@@ -202,6 +202,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public UIItemStack armorFeet;
     public UIElement properties;
 
+    private UIFormPalette formPalette;
     private ModelBlockEntity modelBlock;
     private ModelBlockEntity hovered;
     private Vector3f mouseDirection = new Vector3f();
@@ -267,45 +268,81 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.modelBlocks.background(0);
 
         this.pickEdit = new UINestedEdit((editing) -> {
-            UIFormPalette palette = UIFormPalette.open(this, editing, this.modelBlock.getProperties().getForm(),
-                    (f) -> {
-                        this.beginUndoCapture();
-                        this.pickEdit.setForm(f);
-                        this.modelBlock.getProperties().setForm(f);
-                        this.endUndoCapture();
-                    });
+            Consumer<Form> callback = (f) -> {
+                this.beginUndoCapture();
+                this.pickEdit.setForm(f);
+                this.modelBlock.getProperties().setForm(f);
+                this.endUndoCapture();
+            };
 
-            palette.immersive();
-            palette.editor.keys().register(Keys.MODEL_BLOCKS_TOGGLE_RENDERING,
-                    () -> toggleRendering = !toggleRendering);
-            palette.editor.renderer.full(dashboard.getRoot());
-            palette.editor.renderer.setTarget(this.modelBlock.getEntity());
-            /* Interaction (gizmos / bone pick) can stay on with F7 when the setting allows it;
-             * the mesh itself is still suppressed so the world copy is not doubled. */
-            palette.editor.renderer.setRenderForm(() ->
-                !toggleRendering || BBSSettings.gizmosWorldRendering.get());
-            palette.editor.renderer.setRenderFormMesh(() -> !toggleRendering);
-            palette.getEvents().register(UIToggleEditorEvent.class, (e) ->
-            {
-                if (e.editing)
-                {
-                    this.addCameraController(palette);
-                }
-                else
-                {
-                    this.removeCameraController();
-                }
-            });
-            palette.getEvents().register(UIRemovedEvent.class, (e) ->
-            {
-                /* resize() recomputes every card's visibility from scratch. */
-                this.resize();
-            });
+            UIFormPalette palette = this.formPalette;
 
-            palette.resize();
+            if (palette != null && palette.getParent() == null)
+            {
+                palette.callback = callback;
+                palette.resetFlex().full(this);
+                this.add(palette);
+                palette.setSelected(this.modelBlock.getProperties().getForm());
+                palette.edit(editing);
+                palette.resize();
+            }
+            else if (palette != null && palette.getParent() != null)
+            {
+                palette.callback = callback;
+                palette.setSelected(this.modelBlock.getProperties().getForm());
+                palette.edit(editing);
+                palette.resize();
+            }
+            else
+            {
+                UIFormPalette created = UIFormPalette.open(this, editing, this.modelBlock.getProperties().getForm(), callback);
+
+                if (created == null)
+                {
+                    return;
+                }
+
+                this.formPalette = created;
+                created.immersive();
+                created.editor.keys().register(Keys.MODEL_BLOCKS_TOGGLE_RENDERING,
+                        () -> toggleRendering = !toggleRendering);
+                created.editor.renderer.full(dashboard.getRoot());
+                created.editor.renderer.setTarget(this.modelBlock.getEntity());
+                /* Interaction (gizmos / bone pick) can stay on with F7 when the setting allows it;
+                 * the mesh itself is still suppressed so the world copy is not doubled. */
+                created.editor.renderer.setRenderForm(() ->
+                    !toggleRendering || BBSSettings.gizmosWorldRendering.get());
+                created.editor.renderer.setRenderFormMesh(() -> !toggleRendering);
+                created.getEvents().register(UIToggleEditorEvent.class, (e) ->
+                {
+                    if (e.editing)
+                    {
+                        this.addCameraController(created);
+                    }
+                    else
+                    {
+                        this.removeCameraController();
+                    }
+                });
+                created.getEvents().register(UIRemovedEvent.class, (e) ->
+                {
+                    /* resize() recomputes every card's visibility from scratch. */
+                    this.resize();
+                });
+                created.resize();
+            }
+
+            final UIFormPalette activePalette = this.formPalette;
+
+            if (activePalette == null)
+            {
+                return;
+            }
+
+            activePalette.editor.renderer.setTarget(this.modelBlock.getEntity());
 
             if (editing) {
-                this.addCameraController(palette);
+                this.addCameraController(activePalette);
             }
 
             /*

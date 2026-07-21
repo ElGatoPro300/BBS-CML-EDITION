@@ -243,7 +243,8 @@ public class UIFormPalette extends UIElement implements IUIFormList
     {
         if (this.background && (!this.immersive || this.list.isVisible()))
         {
-            this.area.render(context.batcher, Colors.A75);
+            /* Dark scrim so form cells stay readable over the live world. */
+            this.area.render(context.batcher, Colors.A75 | 0x0B0B0B);
         }
 
         super.render(context);

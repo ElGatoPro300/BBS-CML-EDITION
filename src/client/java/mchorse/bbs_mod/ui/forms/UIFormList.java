@@ -45,6 +45,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -96,7 +97,7 @@ public class UIFormList extends UIElement
     private static final long POPUP_DRAG_DELAY_MS = 250L;
     private static final int MAX_CATEGORY_NAME_LENGTH = 20;
     private static final int MAX_TAB_TITLE_LENGTH = 10;
-    private static final long SEARCH_DEBOUNCE_MS = 150L;
+    private static final long SEARCH_DEBOUNCE_MS = 220L;
     private static final int CATEGORY_VIRTUALIZATION_BUFFER_ROWS = 1;
     private static final int CATEGORY_PREVIEW_TOGGLE_SIZE = 14;
     private static final int CATEGORY_HIDDEN_ICON_SIZE = 50;
@@ -1304,6 +1305,35 @@ public class UIFormList extends UIElement
         this.search.relative(this.bar).x(searchX).y(0).w(1F, -(searchX + rightOffset)).h(ACTIONS_BAR_HEIGHT);
     }
 
+    /**
+     * Re-layout Morph / Demorph / Edit icons after they are added or visibility changes.
+     */
+    public void refreshActionBar()
+    {
+        this.layoutActionBar();
+        this.bar.resize();
+    }
+
+    /**
+     * Morph/form-list thumbnails: static cached pose by default; selected form animates live.
+     */
+    public void renderFormThumbnail(UIContext context, Form form, int x1, int y1, int x2, int y2)
+    {
+        if (form == null)
+        {
+            return;
+        }
+
+        if (form == this.getSelected())
+        {
+            FormUtilsClient.renderUI(form, context, x1, y1, x2, y2, true);
+        }
+        else
+        {
+            FormUtilsClient.renderUICached(form, context, x1, y1, x2, y2);
+        }
+    }
+
     public void setFavoriteCategoryChangedListener(Consumer<String> callback)
     {
         this.favoriteCategoryChanged = callback;
@@ -2447,11 +2477,20 @@ public class UIFormList extends UIElement
 
     }
 
+    /**
+     * Settle category-card expansion height/scroll before the UI tree draws.
+     */
+    public static void tickCategoryCards()
+    {
+        UICategoryCardsGrid.tickAll();
+    }
+
     private class UICategoryCardsGrid extends UIElement
     {
         private static final int EXPANDED_CELL_WIDTH = 80;
         private static final int EXPANDED_CELL_HEIGHT = 100;
         private static final int EXPANDED_HEADER_HEIGHT = 24;
+        private static final List<UICategoryCardsGrid> ACTIVE = new ArrayList<>();
 
         private final List<ExpandedItem> expandedItems = new ArrayList<>();
         private int expandedPanelX;
@@ -2471,9 +2510,7 @@ public class UIFormList extends UIElement
 
         private float expansionTransition = 0F;
         private float targetExpansion = 0F;
-        private long lastRenderTime = -1L;
-
-
+        private long lastTickTime = -1L;
 
         private final List<UIFormCategory> filteredCategories = new ArrayList<>();
         private final List<CategoryCell> cardCells = new ArrayList<>();
@@ -2486,7 +2523,6 @@ public class UIFormList extends UIElement
         private CategoryCell dragCell;
         private long dragStart = -1L;
         private boolean draggingCategory;
-
 
         private enum CardGroup
         {
@@ -2504,10 +2540,37 @@ public class UIFormList extends UIElement
             }
         }
 
+        private UICategoryCardsGrid()
+        {
+            if (!ACTIVE.contains(this))
+            {
+                ACTIVE.add(this);
+            }
+        }
+
+        /**
+         * Run before {@code root.render} so height/scroll settle before draw
+         * (avoids the close jump from mid-render {@code resize()}).
+         */
+        private static void tickAll()
+        {
+            if (ACTIVE.isEmpty())
+            {
+                return;
+            }
+
+            for (UICategoryCardsGrid grid : ACTIVE)
+            {
+                if (grid.hasParent())
+                {
+                    grid.tickAnimation();
+                }
+            }
+        }
+
         public void invalidateCache()
         {
             this.dirty = true;
-            this.lastHeight = 0;
             this.previewCache.clear();
         }
 
@@ -2528,69 +2591,33 @@ public class UIFormList extends UIElement
 
         private void navigateFolder(ModelFormCategory.Folder targetFolder, boolean goingDeeper)
         {
-            if (BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get())
-            {
-                UIFormList.this.activeExpandedFolder = targetFolder;
-                this.folderTransition = 1F;
-                this.invalidateCache();
-
-                return;
-            }
-
-            this.oldExpandedItems.clear();
-            this.oldExpandedItems.addAll(this.expandedItems);
-            this.oldExpandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
-
+            /* Instant folder switch — no slide (matches B morph menu). */
             UIFormList.this.activeExpandedFolder = targetFolder;
-            this.folderTransition = 0F;
-            this.transitionDirection = goingDeeper ? 1 : -1;
+            this.folderTransition = 1F;
+            this.oldExpandedItems.clear();
             this.invalidateCache();
         }
 
-        private void updateAnimations(UIContext context)
+        private void tickAnimation()
         {
-            long now = System.currentTimeMillis();
-            float delta = this.lastRenderTime > 0L ? (now - this.lastRenderTime) / 1000F : 0F;
+            this.updateAnimations();
+            this.applyContentHeight();
+        }
 
-            this.lastRenderTime = now;
+        private void updateAnimations()
+        {
+            this.lastTickTime = System.currentTimeMillis();
 
-            if (BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get())
+            /* Snap expand/collapse instantly — no height ease / folder slide. */
+            if (this.expansionTransition != this.targetExpansion)
             {
-                if (this.expansionTransition != this.targetExpansion)
-                {
-                    this.expansionTransition = this.targetExpansion;
-                    this.invalidateCache();
-                }
-
-                if (this.folderTransition != 1F)
-                {
-                    this.folderTransition = 1F;
-                    this.invalidateCache();
-                }
-
-                return;
-            }
-
-            if (UIFormList.this.expandedCategory != null && this.targetExpansion == 0F && this.expansionTransition == 0F)
-            {
-                this.targetExpansion = 1F;
-                this.expansionTransition = 0F;
-            }
-
-            if (this.expansionTransition < this.targetExpansion)
-            {
-                this.expansionTransition = Math.min(this.targetExpansion, this.expansionTransition + delta * 4F);
-                this.invalidateCache();
-            }
-            else if (this.expansionTransition > this.targetExpansion)
-            {
-                this.expansionTransition = Math.max(this.targetExpansion, this.expansionTransition - delta * 4F);
+                this.expansionTransition = this.targetExpansion;
                 this.invalidateCache();
             }
 
-            if (this.folderTransition < 1F)
+            if (this.folderTransition != 1F)
             {
-                this.folderTransition = Math.min(1F, this.folderTransition + delta * 4F);
+                this.folderTransition = 1F;
                 this.invalidateCache();
             }
 
@@ -2599,6 +2626,54 @@ public class UIFormList extends UIElement
                 UIFormList.this.expandedCategory = null;
                 UIFormList.this.activeExpandedFolder = null;
                 this.invalidateCache();
+            }
+        }
+
+        /**
+         * @param shrinkPx positive when the expanded panel got shorter (closing)
+         */
+        private void applyContentHeight()
+        {
+            this.rebuildIfNeeded();
+
+            int contentHeight = this.contentHeight;
+
+            if (this.lastHeight == contentHeight)
+            {
+                return;
+            }
+
+            int previousHeight = this.lastHeight;
+            int shrinkPx = previousHeight > 0 ? previousHeight - contentHeight : 0;
+
+            this.lastHeight = contentHeight;
+            this.h(contentHeight);
+
+            UIElement parent = this.getParent();
+
+            if (parent == null)
+            {
+                return;
+            }
+
+            UIScrollView scrollView = parent instanceof UIScrollView view ? view : null;
+            Scroll scroll = scrollView == null ? null : scrollView.scroll;
+            double scrollBefore = scroll == null ? 0D : scroll.getScroll();
+
+            parent.resize();
+
+            if (scroll != null)
+            {
+                if (shrinkPx > 0)
+                {
+                    scroll.setScroll(scrollBefore - shrinkPx);
+                }
+                else
+                {
+                    scroll.setScroll(scrollBefore);
+                }
+
+                scroll.clamp();
             }
         }
 
@@ -2671,32 +2746,18 @@ public class UIFormList extends UIElement
             if (UIFormList.this.expandedCategory == cell.category)
             {
                 this.targetExpansion = 0F;
+                this.expansionTransition = 0F;
+                UIFormList.this.expandedCategory = null;
+                UIFormList.this.activeExpandedFolder = null;
+                this.oldExpandedItems.clear();
             }
             else
             {
-                boolean wasExpanded = UIFormList.this.expandedCategory != null && this.expansionTransition >= 1F;
-                boolean simplify = BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get();
-
-                if (wasExpanded && !simplify)
-                {
-                    int oldIdx = UIFormList.this.categories.indexOf(UIFormList.this.expandedCategory);
-                    int newIdx = UIFormList.this.categories.indexOf(cell.category);
-
-                    this.oldExpandedItems.clear();
-                    this.oldExpandedItems.addAll(this.expandedItems);
-                    this.oldExpandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
-
-                    this.folderTransition = 0F;
-                    this.transitionDirection = newIdx > oldIdx ? 1 : -1;
-                }
-
                 UIFormList.this.expandedCategory = cell.category;
                 this.targetExpansion = 1F;
-
-                if (!wasExpanded)
-                {
-                    this.expansionTransition = simplify ? 1F : 0F;
-                }
+                this.expansionTransition = 1F;
+                this.folderTransition = 1F;
+                this.oldExpandedItems.clear();
 
                 if (cell.category.category instanceof ModelFormCategory.Folder folder)
                 {
@@ -2959,20 +3020,8 @@ public class UIFormList extends UIElement
         @Override
         public void render(UIContext context)
         {
-            this.updateAnimations(context);
+            /* Height/scroll already settled in tickAll() before the UI tree draws. */
             this.rebuildIfNeeded();
-            int contentHeight = this.contentHeight;
-
-            if (this.lastHeight != contentHeight)
-            {
-                this.lastHeight = contentHeight;
-                this.h(contentHeight);
-
-                if (this.getParent() != null)
-                {
-                    this.getParent().resize();
-                }
-            }
 
             if (this.cardCells.isEmpty() && UIFormList.this.appliedSearchQuery.isEmpty())
             {
@@ -3231,7 +3280,7 @@ public class UIFormList extends UIElement
                 }
 
                 context.batcher.clip(renderX, renderY, renderW, renderH, context);
-                FormUtilsClient.renderUI(form, context, renderX, renderY, renderX + renderW, renderY + renderH);
+                UIFormList.this.renderFormThumbnail(context, form, renderX, renderY, renderX + renderW, renderY + renderH);
                 context.batcher.unclip(context);
 
                 FavoriteMarker marker = UIFormList.this.getFavoriteMarker(form);
@@ -3346,7 +3395,7 @@ public class UIFormList extends UIElement
             else if (item.form != null)
             {
                 context.batcher.clip(cx, cy, EXPANDED_CELL_WIDTH, EXPANDED_CELL_HEIGHT, context);
-                FormUtilsClient.renderUI(item.form, context, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
+                UIFormList.this.renderFormThumbnail(context, item.form, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
                 context.batcher.unclip(context);
 
                 FavoriteMarker marker = UIFormList.this.getFavoriteMarker(item.form);
@@ -3408,7 +3457,7 @@ public class UIFormList extends UIElement
 
             context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
             context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
-            FormUtilsClient.renderUI(dragItem.form, context, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
+            UIFormList.this.renderFormThumbnail(context, dragItem.form, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
         }
 
 
@@ -3749,7 +3798,7 @@ public class UIFormList extends UIElement
 
                         context.batcher.box(px, py, px + cellW, py + cellH, Colors.A25);
                         context.batcher.clip(px, py, cellW, cellH, context);
-                        FormUtilsClient.renderUI(forms.get(i), context, px, py, px + cellW, py + cellH);
+                        FormUtilsClient.renderUICached(forms.get(i), context, px, py, px + cellW, py + cellH);
                         context.batcher.unclip(context);
 
                         if (marker != null)
@@ -4026,7 +4075,7 @@ public class UIFormList extends UIElement
                 }
 
                 context.batcher.clip(cx, cy, POPUP_CELL_WIDTH, POPUP_CELL_HEIGHT, context);
-                FormUtilsClient.renderUI(form, context, cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT);
+                UIFormList.this.renderFormThumbnail(context, form, cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT);
                 context.batcher.unclip(context);
                 FavoriteMarker marker = UIFormList.this.getFavoriteMarker(form);
 
@@ -4074,7 +4123,7 @@ public class UIFormList extends UIElement
 
                 context.batcher.box(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
                 context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
-                FormUtilsClient.renderUI(forms.get(this.dragIndex), context, cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT);
+                UIFormList.this.renderFormThumbnail(context, forms.get(this.dragIndex), cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT);
             }
         }
 
