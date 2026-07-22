@@ -73,7 +73,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
 
             if (ModelVAORenderer.isPaintPass())
             {
-                if (effectivePaintStrength <= 0F && effectiveGlowStrength == 0F)
+                if (effectivePaintStrength == 0F && effectiveGlowStrength == 0F)
                 {
                     return false;
                 }
@@ -84,6 +84,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
                     effectiveGlowG,
                     effectiveGlowB,
                     effectiveGlowStrength);
+                ModelVAORenderer.setGroupFormColorGrade(group.color);
 
                 this.bindGroupTexture(group);
 
@@ -103,6 +104,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
 
                 ModelVAORenderer.setGroupPaint(effectivePaintR, effectivePaintG, effectivePaintB, effectivePaintStrength);
                 ModelVAORenderer.setGroupGlowing(effectiveGlowR, effectiveGlowG, effectiveGlowB, effectiveGlowStrength);
+                ModelVAORenderer.setGroupFormColorGrade(group.color);
             }
 
             if (!ModelVAORenderer.isGlowingUniformActive())
@@ -181,86 +183,6 @@ public class CubicVAORenderer extends CubicCubeRenderer
             BBSModClient.getTextures().bindTexture(defaultLink);
             ModelVAORenderer.setTextureBlend(group.textureOverride, blend);
         }
-    }
-
-    private float resolveEffectiveGlowStrength(ModelGroup group)
-    {
-        if (group.glowIntensity != 0F)
-        {
-            return group.glowIntensity;
-        }
-
-        return ModelVAORenderer.getBaseGlowingStrength();
-    }
-
-    private float resolveEffectiveGlowR(ModelGroup group)
-    {
-        if (group.glowIntensity != 0F)
-        {
-            return group.glowingColor.r;
-        }
-
-        return ModelVAORenderer.getBaseGlowingR();
-    }
-
-    private float resolveEffectiveGlowG(ModelGroup group)
-    {
-        if (group.glowIntensity != 0F)
-        {
-            return group.glowingColor.g;
-        }
-
-        return ModelVAORenderer.getBaseGlowingG();
-    }
-
-    private float resolveEffectiveGlowB(ModelGroup group)
-    {
-        if (group.glowIntensity != 0F)
-        {
-            return group.glowingColor.b;
-        }
-
-        return ModelVAORenderer.getBaseGlowingB();
-    }
-
-    private float resolveEffectivePaintStrength(ModelGroup group)
-    {
-        if (group.paintColor.a != 0F)
-        {
-            return group.paintColor.a;
-        }
-
-        return ModelVAORenderer.getBasePaintStrength();
-    }
-
-    private float resolveEffectivePaintR(ModelGroup group)
-    {
-        if (group.paintColor.a != 0F)
-        {
-            return group.paintColor.r;
-        }
-
-        return ModelVAORenderer.getBasePaintR();
-    }
-
-    private float resolveEffectivePaintG(ModelGroup group)
-    {
-        if (group.paintColor.a != 0F)
-        {
-            return group.paintColor.g;
-        }
-
-        return ModelVAORenderer.getBasePaintG();
-    }
-
-    private float resolveEffectivePaintB(ModelGroup group)
-    {
-        if (group.paintColor.a != 0F)
-        {
-            return group.paintColor.b;
-        }
-
-        return ModelVAORenderer.getBasePaintB();
     }
 
     /**

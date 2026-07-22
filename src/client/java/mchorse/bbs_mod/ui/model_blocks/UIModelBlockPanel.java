@@ -8,6 +8,7 @@ import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -190,6 +191,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public UIToggle hitbox;
     public UIToggle global;
     public UIToggle lookAt;
+    public UIToggle chromaSky;
     public UITrackpad lightLevel;
     public UITrackpad hardness;
     public UIPropTransform transform;
@@ -201,6 +203,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public UIItemStack armorFeet;
     public UIElement properties;
 
+    private UIFormPalette formPalette;
     private ModelBlockEntity modelBlock;
     private ModelBlockEntity hovered;
     private Vector3f mouseDirection = new Vector3f();
@@ -266,41 +269,83 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.modelBlocks.background(0);
 
         this.pickEdit = new UINestedEdit((editing) -> {
-            UIFormPalette palette = UIFormPalette.open(this, editing, this.modelBlock.getProperties().getForm(),
-                    (f) -> {
-                        this.beginUndoCapture();
-                        this.pickEdit.setForm(f);
-                        this.modelBlock.getProperties().setForm(f);
-                        this.endUndoCapture();
-                    });
+            Consumer<Form> callback = (f) -> {
+                Form copy = FormUtils.copy(f);
 
-            palette.immersive();
-            palette.editor.keys().register(Keys.MODEL_BLOCKS_TOGGLE_RENDERING,
-                    () -> toggleRendering = !toggleRendering);
-            palette.editor.renderer.full(dashboard.getRoot());
-            palette.editor.renderer.setTarget(this.modelBlock.getEntity());
-            palette.editor.renderer.setRenderForm(() -> !toggleRendering);
-            palette.getEvents().register(UIToggleEditorEvent.class, (e) ->
-            {
-                if (e.editing)
-                {
-                    this.addCameraController(palette);
-                }
-                else
-                {
-                    this.removeCameraController();
-                }
-            });
-            palette.getEvents().register(UIRemovedEvent.class, (e) ->
-            {
-                /* resize() recomputes every card's visibility from scratch. */
-                this.resize();
-            });
+                this.beginUndoCapture();
+                this.pickEdit.setForm(copy);
+                this.modelBlock.getProperties().setForm(copy);
+                this.endUndoCapture();
+            };
 
-            palette.resize();
+            UIFormPalette palette = this.formPalette;
+
+            if (palette != null && palette.getParent() == null)
+            {
+                palette.callback = callback;
+                palette.resetFlex().full(this);
+                this.add(palette);
+                palette.setSelected(this.modelBlock.getProperties().getForm());
+                palette.edit(editing);
+                palette.resize();
+            }
+            else if (palette != null && palette.getParent() != null)
+            {
+                palette.callback = callback;
+                palette.setSelected(this.modelBlock.getProperties().getForm());
+                palette.edit(editing);
+                palette.resize();
+            }
+            else
+            {
+                UIFormPalette created = UIFormPalette.open(this, editing, this.modelBlock.getProperties().getForm(), callback);
+
+                if (created == null)
+                {
+                    return;
+                }
+
+                this.formPalette = created;
+                created.immersive();
+                created.editor.keys().register(Keys.MODEL_BLOCKS_TOGGLE_RENDERING,
+                        () -> toggleRendering = !toggleRendering);
+                created.editor.renderer.full(dashboard.getRoot());
+                created.editor.renderer.setTarget(this.modelBlock.getEntity());
+                /* Interaction (gizmos / bone pick) can stay on with F7 when the setting allows it;
+                 * the mesh itself is still suppressed so the world copy is not doubled. */
+                created.editor.renderer.setRenderForm(() ->
+                    !toggleRendering || BBSSettings.gizmosWorldRendering.get());
+                created.editor.renderer.setRenderFormMesh(() -> !toggleRendering);
+                created.getEvents().register(UIToggleEditorEvent.class, (e) ->
+                {
+                    if (e.editing)
+                    {
+                        this.addCameraController(created);
+                    }
+                    else
+                    {
+                        this.removeCameraController();
+                    }
+                });
+                created.getEvents().register(UIRemovedEvent.class, (e) ->
+                {
+                    /* resize() recomputes every card's visibility from scratch. */
+                    this.resize();
+                });
+                created.resize();
+            }
+
+            final UIFormPalette activePalette = this.formPalette;
+
+            if (activePalette == null)
+            {
+                return;
+            }
+
+            activePalette.editor.renderer.setTarget(this.modelBlock.getEntity());
 
             if (editing) {
-                this.addCameraController(palette);
+                this.addCameraController(activePalette);
             }
 
             /*
@@ -356,6 +401,14 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             this.modelBlock.getProperties().setLookAt(b.getValue());
             this.endUndoCapture();
         });
+        this.chromaSky = new UIToggle(UIKeys.MODEL_BLOCKS_CHROMA_SKY, (b) -> {
+            if (this.modelBlock == null)
+                return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setChromaSky(b.getValue());
+            this.endUndoCapture();
+        });
+        this.chromaSky.tooltip(UIKeys.MODEL_BLOCKS_CHROMA_SKY_TOOLTIP);
 
         this.lightLevel = new UITrackpad((v) -> {
             if (this.modelBlock == null)
@@ -495,7 +548,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                 this.sectionHeader(UIKeys.MODEL_BLOCKS_DISPLAY),
                 UI.row(4, this.enabled, this.shadow),
                 UI.row(4, this.global, this.lookAt),
-                this.hitbox,
+                UI.row(4, this.hitbox, this.chromaSky),
                 this.sectionHeader(UIKeys.MODEL_BLOCKS_BLOCK),
                 UI.row(4, lightGroup, hardnessGroup),
                 this.sectionHeader(UIKeys.MODEL_BLOCKS_EQUIPMENT),
@@ -1198,11 +1251,21 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                 int midY = resizer.area.y + resizer.area.h / 2;
                 int color = active ? activeColor : idleColor;
                 c.batcher.box(resizer.area.x, midY - 1, resizer.area.ex(), midY + 1, color);
+
+                if (active)
+                {
+                    c.requestCursor(GLFW.GLFW_VRESIZE_CURSOR);
+                }
             } else {
                 /* Vertical splitter — full column height, 2px bar centered. */
                 int midX = resizer.area.x + resizer.area.w / 2;
                 int color = active ? activeColor : idleColor;
                 c.batcher.box(midX - 1, resizer.area.y, midX + 1, resizer.area.ey(), color);
+
+                if (active)
+                {
+                    c.requestCursor(GLFW.GLFW_HRESIZE_CURSOR);
+                }
             }
         } else {
             int color = active ? (0xFF000000 | BBSSettings.primaryColor.get()) : 0xFF888888;
@@ -1211,6 +1274,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             c.batcher.box(rx + 2, ry + 5, rx + 6, ry + 6, color);
             c.batcher.box(rx + 4, ry + 3, rx + 6, ry + 4, color);
             c.batcher.box(rx + 5, ry + 1, rx + 6, ry + 2, color);
+
+            if (active)
+            {
+                c.requestCursor(GLFW.GLFW_HRESIZE_CURSOR);
+            }
         }
     }
 
@@ -1886,6 +1954,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.hitbox.setValue(properties.isHitbox());
         this.global.setValue(properties.isGlobal());
         this.lookAt.setValue(properties.isLookAt());
+        this.chromaSky.setValue(properties.isChromaSky());
         this.lightLevel.setValue(properties.getLightLevel());
         this.hardness.setValue(properties.getHardness());
 
@@ -1935,6 +2004,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
     @Override
     public boolean subMouseReleased(UIContext context) {
+        this.gizmoController.consumePendingTrackballClick();
         this.gizmoController.stop();
 
         return super.subMouseReleased(context);
@@ -2251,7 +2321,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         /* Don't draw/pick this panel's own gizmo while the block's nested form/model editor is
          * open on top - that editor has its own gizmo (rendered in its own viewport), and
          * showing both at once would double up and fight over the same drag. */
-        if (this.modelBlock == null || this.isEditing(this.modelBlock))
+        if (this.modelBlock == null || this.isEditing(this.modelBlock) || !UIBaseMenu.renderAxes)
         {
             this.gizmoStencil.clearPicking();
             this.gizmoController.updateHover();
@@ -2323,18 +2393,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
     private void applyGizmoCaptureToSingleton()
     {
-        if (BBSRendering.isIrisShadersEnabled())
-        {
-            Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
-        }
-        else
-        {
-            /* Without shaders the world pass does not bake BBSRendering.camera into the
-             * captured matrix; premultiply it here so the UI draw matches the shader path. */
-            Gizmo.INSTANCE.lastGizmoMatrix.set(BBSRendering.camera);
-            Gizmo.INSTANCE.lastGizmoMatrix.mul(this.gizmoInterfaceMatrix);
-        }
-
+        /* Whether the captured matrix already bakes BBSRendering.camera depends on the
+         * render path (Iris pack vs. vanilla). composeVisualMatrix detects double-camera
+         * by view-space origin distance and keeps the gizmo on the block. */
+        Gizmo.composeVisualMatrix(this.gizmoInterfaceMatrix, BBSRendering.camera, this.gizmoProjection, Gizmo.INSTANCE.lastGizmoMatrix);
         Gizmo.INSTANCE.hasGizmoMatrix = true;
     }
 
@@ -2349,6 +2411,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         }
 
         MinecraftClient mc = MinecraftClient.getInstance();
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
 
         this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
 
@@ -2372,7 +2437,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.gizmoStencil.unbind(this.gizmoStencilMap);
         this.gizmoController.updateHover();
 
-        mc.getFramebuffer().beginWrite(true);
+        /* beginWrite(true) clears the main FB → white wash + corrupted GUI text. */
+        BBSRendering.ensureMainFramebuffer();
+        mc.getFramebuffer().beginWrite(false);
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
     }
 
     @Override
@@ -2385,6 +2453,12 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         if (transform == null) {
             return;
         }
+
+        /* Y/Z ring and white view-ring values follow the mouse; only those process bars
+         * wind the wrong way (especially in Local). */
+        transform.setInvertRotationArcY(true);
+        transform.setInvertRotationArcZ(true);
+        transform.setInvertRotationArcViewRing(true);
 
         transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider() {
             @Override

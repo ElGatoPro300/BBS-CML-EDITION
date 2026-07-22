@@ -31,6 +31,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.KeyframeType;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
@@ -283,6 +284,11 @@ public class UIKeyframes extends UIElement
         this.keys().register(Keys.KEYFRAMES_SPREAD, this::spreadKeyframes).category(category);
         this.keys().register(Keys.KEYFRAMES_ADJUST_VALUES, this::adjustValues).category(category);
 
+        Supplier<Boolean> poseLimbActive = this::hasOpenPoseLimbTracks;
+
+        this.keys().register(Keys.POSE_LIMB_KEYFRAME, () -> UITransformKeyframeFactory.keyframeOpenPoseLimbs(this, this.getPlayheadTick(), false)).inside().category(UIKeys.POSE_LIMB_KEYS_CATEGORY).active(poseLimbActive);
+        this.keys().register(Keys.POSE_LIMB_KEYFRAME_DEFAULT, () -> UITransformKeyframeFactory.keyframeOpenPoseLimbs(this, this.getPlayheadTick(), true)).inside().category(UIKeys.POSE_LIMB_KEYS_CATEGORY).active(poseLimbActive);
+
         this.sidebarResizer = new UIDraggable((context) ->
         {
             int width = context.mouseX - this.area.x;
@@ -300,6 +306,7 @@ public class UIKeyframes extends UIElement
                     UIKeyframes.this.dopeSheet.setSidebarWidth(IUIKeyframeGraph.SIDEBAR_WIDTH);
                     UIKeyframes.this.updateSidebarResizerState();
                     UIKeyframes.this.resize();
+                    UIKeyframes.this.persistSidebarWidth();
 
                     return true;
                 }
@@ -312,8 +319,14 @@ public class UIKeyframes extends UIElement
             int color = Colors.setA(BBSSettings.primaryColor.get(), alpha);
 
             context.batcher.box(this.sidebarResizer.area.x, this.sidebarResizer.area.y, this.sidebarResizer.area.ex(), this.sidebarResizer.area.ey(), color);
-        });
+        }).dragEnd(this::persistSidebarWidth);
         this.add(this.sidebarResizer);
+
+        if (BBSSettings.uiLayoutPreferences != null)
+        {
+            this.dopeSheet.setSidebarWidth(BBSSettings.uiLayoutPreferences.getKeyframeSidebarWidth(IUIKeyframeGraph.SIDEBAR_WIDTH));
+        }
+
         this.updateSidebarResizerState();
     }
 
@@ -399,7 +412,7 @@ public class UIKeyframes extends UIElement
 
             for (Keyframe keyframe : selected)
             {
-                keyframe.setValue(factory.yToValue(factory.getY(keyframe.getValue()) + difference));
+                keyframe.setValue(sheet.clampValue(factory.yToValue(factory.getY(keyframe.getValue()) + difference)));
             }
 
             sheet.channel.postNotify();
@@ -408,7 +421,20 @@ public class UIKeyframes extends UIElement
 
     public UIKeyframes changed(Runnable runnable)
     {
-        this.changeCallback = runnable;
+        if (this.changeCallback == null)
+        {
+            this.changeCallback = runnable;
+        }
+        else
+        {
+            Runnable previous = this.changeCallback;
+
+            this.changeCallback = () ->
+            {
+                previous.run();
+                runnable.run();
+            };
+        }
 
         return this;
     }
@@ -425,6 +451,24 @@ public class UIKeyframes extends UIElement
     public UIKeyframeDopeSheet getDopeSheet()
     {
         return this.dopeSheet;
+    }
+
+    protected float getPlayheadTick()
+    {
+        return 0F;
+    }
+
+    protected boolean hasOpenPoseLimbTracks()
+    {
+        for (UIKeyframeSheet sheet : this.currentGraph.getSheets())
+        {
+            if (!sheet.groupHeader && UITransformKeyframeFactory.isPoseLimbTrack(sheet))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected void selectNextKeyframe(int direction)
@@ -695,6 +739,11 @@ public class UIKeyframes extends UIElement
     public boolean isModifyingKeyframes()
     {
         return !this.scaling;
+    }
+
+    public boolean isDraggingKeyframes()
+    {
+        return this.dragging > 0;
     }
 
     public boolean hasSelectedKeyframes()
@@ -1568,6 +1617,11 @@ public class UIKeyframes extends UIElement
 
     public void submitKeyframes()
     {
+        if (this.cache == null)
+        {
+            return;
+        }
+
         /* Cache selection indices */
         Map<UIKeyframeSheet, Pair<List<Integer>, List<Integer>>> selection = new HashMap<>();
 
@@ -2433,6 +2487,16 @@ public class UIKeyframes extends UIElement
 
         this.sidebarResizer.relative(this).x(x - this.area.x).y(y - this.area.y).w(6).h(40);
         this.sidebarResizer.resize();
+    }
+
+    private void persistSidebarWidth()
+    {
+        if (BBSSettings.uiLayoutPreferences == null)
+        {
+            return;
+        }
+
+        BBSSettings.uiLayoutPreferences.setKeyframeSidebarWidth(this.dopeSheet.getSidebarWidth());
     }
 
     /* Caching state */

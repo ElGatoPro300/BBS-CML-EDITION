@@ -2,8 +2,10 @@ package mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs;
 
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.interps.Interpolation;
@@ -18,6 +20,11 @@ public interface IUIKeyframeGraph
 {
     public static final int TOP_MARGIN = 15;
     public static final int SIDEBAR_WIDTH = 140;
+
+    public default UIKeyframes getHostKeyframes()
+    {
+        return null;
+    }
 
     public default int getSidebarWidth()
     {
@@ -128,9 +135,11 @@ public interface IUIKeyframeGraph
 
         if (value == null)
         {
-            if ("shadow_size".equals(sheet.id))
+            if ("shadow".equals(sheet.id) || "shadow_size".equals(sheet.id) || "shadow_size_z".equals(sheet.id))
             {
-                value = 0.5D;
+                value = "shadow".equals(sheet.id)
+                    ? sheet.channel.getFactory().createEmpty()
+                    : 0.5D;
             }
             else if ("shadow_opacity".equals(sheet.id))
             {
@@ -141,6 +150,10 @@ public interface IUIKeyframeGraph
                 value = segment.createInterpolated();
                 extra = segment.a;
             }
+            else if (sheet.defaultInsertValue != null)
+            {
+                value = sheet.channel.getFactory().copy(sheet.defaultInsertValue);
+            }
             else if (property != null)
             {
                 value = sheet.channel.getFactory().copy(property.get());
@@ -150,6 +163,8 @@ public interface IUIKeyframeGraph
                 value = sheet.channel.getFactory().createEmpty();
             }
         }
+
+        value = sheet.clampValue(value);
 
         int index = sheet.channel.insert(tick, value);
         Keyframe keyframe = sheet.channel.get(index);
@@ -170,6 +185,8 @@ public interface IUIKeyframeGraph
     {
         UIKeyframeSheet sheet = this.getSheet(keyframe);
 
+        UIReplaysEditorUtils.removeCompanionPaintForColorKeyframe(this.getHostKeyframes(), keyframe);
+
         sheet.remove(keyframe);
         this.clearSelection();
         this.pickKeyframe(null);
@@ -177,6 +194,8 @@ public interface IUIKeyframeGraph
 
     public default void removeSelected()
     {
+        UIReplaysEditorUtils.removeCompanionPaintForSelectedColor(this.getHostKeyframes());
+
         for (UIKeyframeSheet sheet : this.getSheets())
         {
             sheet.selection.removeSelected();
@@ -208,6 +227,8 @@ public interface IUIKeyframeGraph
         }
 
         float diff = tick - selected.getTick();
+
+        UIReplaysEditorUtils.moveCompanionPaintForSelectedColor(this.getHostKeyframes(), diff);
 
         for (UIKeyframeSheet sheet : this.getSheets())
         {

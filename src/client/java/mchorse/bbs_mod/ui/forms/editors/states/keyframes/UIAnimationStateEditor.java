@@ -28,6 +28,7 @@ import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
+import mchorse.bbs_mod.ui.forms.editors.utils.UIBlockRepeatKeyframeUtils;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIPickableFormRenderer;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -35,13 +36,16 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIVisibleRenderKeyframeUtils;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -56,7 +60,6 @@ import mchorse.bbs_mod.utils.pose.Transform;
 
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -154,12 +157,18 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
         List<UIKeyframeSheet> sheets = new ArrayList<>();
         Set<String> propertyPaths = new LinkedHashSet<>(FormUtils.collectPropertyPaths(this.editor.form));
         this.collectLimbTracks(this.editor.form, propertyPaths);
+        FormUtils.addPairedRenderPropertyPaths(propertyPaths, propertyPaths);
 
         List<UIKeyframeSheet> rawSheets = new ArrayList<>();
 
         /* Form properties */
         for (String key : propertyPaths)
         {
+            if (UIVisibleRenderKeyframeUtils.isRenderTimelineHidden(key))
+            {
+                continue;
+            }
+
             KeyframeChannel property = this.state.properties.getOrCreate(this.editor.form, key);
 
             if (property != null)
@@ -207,6 +216,8 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
             }
         }
         sheets = grouped;
+
+        UIBlockRepeatKeyframeUtils.groupRepeatSheets(sheets, this.collapsedModelTracks, () -> this.setState(this.state));
 
         this.keys.clear();
 
@@ -340,15 +351,22 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
     {
         this.gizmoStencil = stencil;
 
+        UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
+
+        if (context.mouseButton == 0 && this.gizmoController.tryStartHandleDrag(context, editableTransform))
+        {
+            return true;
+        }
+
         if (stencil.hasPicked() && this.state != null)
         {
             Pair<Form, String> pair = stencil.getPicked();
 
             if (pair != null && context.mouseButton < 2)
             {
-                if (this.gizmoController.tryStartHandleDrag(context, UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor)))
+                if (pair.a == null)
                 {
-                    return true;
+                    return false;
                 }
 
                 if (context.mouseButton == 0)
@@ -368,6 +386,25 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
         }
 
         return false;
+    }
+
+    public void finishGizmoPendingClick()
+    {
+        Pair<Form, String> pendingPick = this.gizmoController.consumePendingTrackballClick();
+
+        if (pendingPick != null && pendingPick.a != null)
+        {
+            if (Window.isShiftPressed())
+            {
+                UIReplaysEditorUtils.offerHierarchy(this.getContext(), pendingPick.a, pendingPick.b, (bone) -> this.pickForm(pendingPick.a, bone));
+            }
+            else
+            {
+                this.pickForm(pendingPick.a, pendingPick.b);
+            }
+        }
+
+        this.gizmoController.stop();
     }
 
     @Override
@@ -428,7 +465,7 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
             return Matrices.EMPTY_4F;
         }
 
-        Pair<String, Boolean> bone = this.keyframeEditor.getBone();
+        Pair<String, TransformOrientation> bone = this.keyframeEditor.getBone();
 
         if (bone == null)
         {
@@ -450,31 +487,15 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
             return Matrices.EMPTY_4F;
         }
 
-        Matrix4f matrix;
-
         if (forceOrigin)
         {
-            matrix = entry.origin();
-        }
-        else if (bone.b)
-        {
-            Matrix4f localMatrix = entry.matrix();
-            Matrix4f originMatrix = entry.origin();
+            Matrix4f matrix = entry.origin();
 
-            if (localMatrix != null && originMatrix != null)
-            {
-                matrix = new Matrix4f(localMatrix);
-                matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
-            }
-            else
-            {
-                matrix = localMatrix != null ? localMatrix : originMatrix;
-            }
+            return matrix == null ? Matrices.EMPTY_4F : matrix;
         }
-        else
-        {
-            matrix = entry.origin();
-        }
+
+        boolean bobj = root instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+        Matrix4f matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, bone.b, bobj);
 
         return matrix == null ? Matrices.EMPTY_4F : matrix;
     }

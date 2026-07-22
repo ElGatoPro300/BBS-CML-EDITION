@@ -26,6 +26,10 @@ public class BBSShaders
     private static ShaderProgram pickerBillboardNoShading;
     private static ShaderProgram pickerParticles;
     private static ShaderProgram pickerModels;
+    private static ShaderProgram blockPaintOverlay;
+    private static ShaderProgram flatPaintOverlay;
+    private static ShaderProgram blockColorTintOverlay;
+    private static ShaderProgram flatColorTintOverlay;
 
     static
     {
@@ -43,6 +47,10 @@ public class BBSShaders
         if (pickerBillboardNoShading != null) pickerBillboardNoShading.close();
         if (pickerParticles != null) pickerParticles.close();
         if (pickerModels != null) pickerModels.close();
+        if (blockPaintOverlay != null) blockPaintOverlay.close();
+        if (flatPaintOverlay != null) flatPaintOverlay.close();
+        if (blockColorTintOverlay != null) blockColorTintOverlay.close();
+        if (flatColorTintOverlay != null) flatColorTintOverlay.close();
 
         ShaderLoader loader = MinecraftClient.getInstance().getShaderLoader();
         Defines defines = Defines.EMPTY;
@@ -112,5 +120,4 @@ public class BBSShaders
     {
         return pickerModels;
     }
-
 }

@@ -21,6 +21,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.model.IUIModelPanelHost;
 import mchorse.bbs_mod.ui.model.UIModelArmorSection;
+import mchorse.bbs_mod.ui.model.UIModelConstraintsPanel;
 import mchorse.bbs_mod.ui.model.UIModelEditorRenderer;
 import mchorse.bbs_mod.ui.model.UIModelFirstPersonTransformEditor;
 import mchorse.bbs_mod.ui.model.UIModelGeneralSection;
@@ -62,6 +63,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
     public UIModelIKPanel ikPanel;
     public UIModelPhysBonePanel physBonesPanel;
+    public UIModelConstraintsPanel constraintsPanel;
     public UIModelGeometryPanel geometryPanel;
 
     private final List<UIModelSection> sections = new ArrayList<>();
@@ -107,6 +109,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
         this.ikPanel = new UIModelIKPanel(this);
         this.physBonesPanel = new UIModelPhysBonePanel(this);
+        this.constraintsPanel = new UIModelConstraintsPanel(this);
         this.geometryPanel = new UIModelGeometryPanel(this);
 
         this.addSection(new UIModelGeneralSection(this));
@@ -123,6 +126,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
         this.registerWorkspacePanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerWorkspacePanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
         this.registerWorkspacePanel(this.physBonesPanel, UIKeys.MODELS_PHYS_BONES_EDITOR, Icons.DYNAMIC_BONES);
+        this.registerWorkspacePanel(this.constraintsPanel, UIKeys.MODELS_CONSTRAINTS_EDITOR, Icons.LOCKED);
         this.registerWorkspacePanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         UIElement iconSpacer = new UIElement();
@@ -299,6 +303,11 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
         if (this.physBonesPanel != null)
         {
             this.physBonesPanel.setConfig(loaded);
+        }
+
+        if (this.constraintsPanel != null)
+        {
+            this.constraintsPanel.setConfig(loaded);
         }
 
         if (this.geometryPanel != null)
@@ -656,6 +665,16 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
         {
             this.ikPanel.onBoneSelected(bone);
         }
+
+        if (this.physBonesPanel != null && this.physBonesPanel.hasParent())
+        {
+            this.physBonesPanel.onBoneSelected(bone);
+        }
+
+        if (this.constraintsPanel != null && this.constraintsPanel.hasParent())
+        {
+            this.constraintsPanel.onBoneSelected(bone);
+        }
     }
 
     @Override
@@ -710,7 +729,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
         {
             if (section instanceof UIModelGeneralSection)
             {
-                section.fields.setVisible(true);
+                section.section.setExpanded(true);
             }
         }
 

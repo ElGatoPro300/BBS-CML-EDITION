@@ -2,19 +2,21 @@ package mchorse.bbs_mod.particles.emitter;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
-import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.math.IExpression;
 import mchorse.bbs_mod.math.Variable;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.particles.components.IComponentEmitterInitialize;
 import mchorse.bbs_mod.particles.components.IComponentEmitterUpdate;
 import mchorse.bbs_mod.particles.components.IComponentParticleInitialize;
 import mchorse.bbs_mod.particles.components.IComponentParticleRender;
 import mchorse.bbs_mod.particles.components.IComponentParticleUpdate;
+import mchorse.bbs_mod.particles.components.appearance.ParticleComponentAppearanceBillboard;
+import mchorse.bbs_mod.forms.renderers.utils.FlatGlowOverlayPass;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.gl.ShaderProgram;
@@ -22,6 +24,7 @@ import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexFormat;
@@ -56,7 +59,10 @@ public class ParticleEmitter
     public World world;
     public boolean lit;
     public boolean modelRenderer;
-    public boolean worldVertices;
+
+    public GlowSettings glowSettings;
+    public Color legacyGlow;
+    public float glowAlpha = 1F;
 
     public boolean running = true;
     private Particle uiParticle;
@@ -176,6 +182,32 @@ public class ParticleEmitter
         this.user4 = d;
         this.user5 = e;
         this.user6 = f;
+    }
+
+    public void setGlow(GlowSettings glowSettings, Color legacyGlow, float alpha)
+    {
+        this.glowSettings = glowSettings;
+        this.legacyGlow = legacyGlow;
+        this.glowAlpha = alpha;
+    }
+
+    public void clearGlow()
+    {
+        this.glowSettings = null;
+        this.legacyGlow = null;
+        this.glowAlpha = 1F;
+    }
+
+    public float getGlowIntensity()
+    {
+        if (this.glowSettings == null)
+        {
+            return 0F;
+        }
+
+        Color fallback = this.legacyGlow == null ? new Color(1F, 1F, 1F, 1F) : this.legacyGlow;
+
+        return this.glowSettings.resolveIntensity(fallback);
     }
 
     /* Variable related code */
@@ -482,6 +514,9 @@ public class ParticleEmitter
             RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
             RenderSystem.disableCull();
             BufferRenderer.drawWithGlobalProgram(builder.end());
+
+            this.renderGlowOverlay(stack, transition, true);
+
             RenderSystem.enableCull();
         }
     }
@@ -525,23 +560,9 @@ public class ParticleEmitter
             RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
             RenderSystem.disableCull();
-
-            boolean irisWorld = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
-
-            if (irisWorld)
-            {
-                /* Vertex positions already include the camera-relative transform from
-                 * ParticleFormRenderer; Iris leaves a stale terrain model-view here
-                 * (same fix as MorphFireRenderer / Gizmo). */
-                MatrixStackUtils.pushIdentityModelView();
-            }
-
             BufferRenderer.drawWithGlobalProgram(builder.end());
 
-            if (irisWorld)
-            {
-                MatrixStackUtils.popModelView();
-            }
+            this.renderGlowOverlay(stack, overlay, transition, false);
 
             RenderSystem.enableCull();
             RenderSystem.disableBlend();
@@ -551,6 +572,62 @@ public class ParticleEmitter
         {
             component.postRender(this, transition);
         }
+    }
+
+    private void renderGlowOverlay(MatrixStack stack, float transition, boolean ui)
+    {
+        this.renderGlowOverlay(stack, OverlayTexture.DEFAULT_UV, transition, ui);
+    }
+
+    private void renderGlowOverlay(MatrixStack stack, int overlay, float transition, boolean ui)
+    {
+        float glowIntensity = this.getGlowIntensity();
+
+        if (glowIntensity <= 0F || this.glowSettings == null)
+        {
+            return;
+        }
+
+        ParticleComponentAppearanceBillboard billboard = this.scheme.get(ParticleComponentAppearanceBillboard.class);
+
+        if (billboard == null)
+        {
+            return;
+        }
+
+        Matrix4f matrix = stack.peek().getPositionMatrix();
+
+        this.bindTexture();
+
+        FlatGlowOverlayPass.render(this.glowSettings, this.legacyGlow, this.glowAlpha, glowIntensity, (glowColor) ->
+        {
+            BufferBuilder glowBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+
+            RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+
+            if (ui)
+            {
+                if (this.uiParticle == null || this.uiParticle.isDead())
+                {
+                    return;
+                }
+
+                this.setEmitterVariables(transition);
+                this.setParticleVariables(this.uiParticle, transition);
+                billboard.renderUIGlowOverlay(this.uiParticle, glowBuilder, matrix, transition, glowColor);
+            }
+            else
+            {
+                for (Particle particle : this.particles)
+                {
+                    this.setEmitterVariables(transition);
+                    this.setParticleVariables(particle, transition);
+                    billboard.renderGlowOverlay(this, particle, glowBuilder, matrix, overlay, transition, glowColor);
+                }
+            }
+
+            BufferRenderer.drawWithGlobalProgram(glowBuilder.end());
+        });
     }
 
     private void bindTexture()

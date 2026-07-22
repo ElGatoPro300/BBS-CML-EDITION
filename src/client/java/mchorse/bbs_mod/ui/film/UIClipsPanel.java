@@ -55,6 +55,8 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
     }
 
     private UIElement target;
+    /** Last embed reported to {@link #onEmbedViewChanged}; used to detect real leave. */
+    private UIElement lastEmbeddedView;
 
     public UIClipsPanel(UIFilmPanel panel, IFactory<Clip, ClipFactoryData> factory, boolean isCameraTimeline)
     {
@@ -131,6 +133,9 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
     private void onEmbedViewChanged(UIElement embed)
     {
+        UIElement previous = this.lastEmbeddedView;
+
+        this.lastEmbeddedView = embed;
         this.cancelToolbarInteraction();
 
         if (embed instanceof UIKeyframeEditor editor)
@@ -149,6 +154,18 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         else
         {
             this.applyDefaultToolbarSections();
+
+            /* Only when actually leaving an embedded keyframe editor (not every
+             * embedView(null) from clip selection / setClips). Properties (editArea)
+             * may still be selected from picking a keyframe and would be empty;
+             * restore Camera/Action Properties for the selected clip. Skip when
+             * keyframe props use the floating side panel. */
+            if (embed == null
+                && previous instanceof UIKeyframeEditor
+                && !BBSSettings.isEmbeddedKeyframeSidePanelEnabled())
+            {
+                this.filmPanel.focusClipPropertiesTab(this.isCameraTimeline);
+            }
         }
 
         this.applyToolbarDockLayout();

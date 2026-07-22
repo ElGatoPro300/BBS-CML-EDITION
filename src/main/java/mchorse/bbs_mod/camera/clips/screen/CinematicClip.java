@@ -18,6 +18,9 @@ public class CinematicClip extends CameraClip
     public final KeyframeChannel<Double> rain = new KeyframeChannel<>("rain", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> dust = new KeyframeChannel<>("dust", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> lightLeak = new KeyframeChannel<>("lightLeak", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> heatStrength = new KeyframeChannel<>("heat_strength", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> heatSpeed = new KeyframeChannel<>("heat_speed", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> heatScale = new KeyframeChannel<>("heat_scale", KeyframeFactories.DOUBLE);
 
     public final KeyframeChannel<Double>[] channels;
 
@@ -34,6 +37,9 @@ public class CinematicClip extends CameraClip
             this.rain,
             this.dust,
             this.lightLeak,
+            this.heatStrength,
+            this.heatSpeed,
+            this.heatScale,
         };
 
         this.add(this.aberration);
@@ -44,6 +50,9 @@ public class CinematicClip extends CameraClip
         this.add(this.rain);
         this.add(this.dust);
         this.add(this.lightLeak);
+        this.add(this.heatStrength);
+        this.add(this.heatSpeed);
+        this.add(this.heatScale);
     }
 
     @Override
@@ -63,19 +72,27 @@ public class CinematicClip extends CameraClip
         float rn = (this.rain.isEmpty() ? 0F : (float) (double) this.rain.interpolate(t)) * 0.25F;
         float ds = (this.dust.isEmpty() ? 0F : (float) (double) this.dust.interpolate(t)) * 0.25F;
         float ll = (this.lightLeak.isEmpty() ? 0F : (float) (double) this.lightLeak.interpolate(t)) * 0.25F;
+        float hs = (this.heatStrength.isEmpty() ? 0F : (float) (double) this.heatStrength.interpolate(t)) * 0.25F;
+        float hsp = (this.heatSpeed.isEmpty() ? 1F : (float) (double) this.heatSpeed.interpolate(t)) * 0.25F;
+        float hsc = (this.heatScale.isEmpty() ? 1F : (float) (double) this.heatScale.interpolate(t)) * 0.25F;
 
-        if (ab != 0F || vh != 0F || ld != 0F || vt != 0F || rb != 0F || rn != 0F || ds != 0F || ll != 0F)
+        float lens = ld * factor;
+
+        if (ab != 0F || vh != 0F || ld != 0F || vt != 0F || rb != 0F || rn != 0F || ds != 0F || ll != 0F || hs != 0F)
         {
             this.effect.hasCinematic = true;
             this.effect.aberration = ab * factor;
             this.effect.vhs = vh * factor;
-            this.effect.lensDistortion = ld * factor;
+            this.effect.lensDistortion = lens;
             this.effect.vintage = vt * factor;
             this.effect.radialBlur = rb * factor;
             this.effect.rain = rn * factor;
             this.effect.dust = ds * factor;
             this.effect.lightLeak = ll * factor;
-            this.effect.time = t / 20.0F; // Convert timeline ticks to seconds
+            this.effect.heatStrength = hs * factor;
+            this.effect.heatSpeed = hsp * factor;
+            this.effect.heatScale = hsc * factor;
+            this.effect.time = t / 20.0F; /* Convert timeline ticks to seconds */
 
             ColorClip.getEffects(context).add(this.effect);
         }

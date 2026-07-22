@@ -35,10 +35,12 @@
         "LivingEntityItemAccessor",
         "FireworkRocketEntityAccessor",
         "iris.IrisRenderingPipelineAccessor",
+        "iris.IrisRenderingPipelineMixin",
         "iris.CustomUniformsBuilderMixin",
         "iris.CustomUniformsAccessor",
         "iris.JcppProcessorMixin",
         "iris.ShaderPackMixin",
+        "iris.ShaderPropertiesMixin",
         "iris.IrisMixin",
         "iris.SliderElementWidgetMixin",
         "iris.StringElementWidgetInvoker",
@@ -48,9 +50,13 @@
         "LivingEntityRendererInvoker",
         "EntityRenderDispatcherMixin",
         "iris.ShadowRendererMixin",
+        "iris.ShadowMatricesMixin",
+        "iris.CelestialUniformsMixin",
         "audio.SoundEngineMixin",
         "TitleScreenMixin",
-        "SelectWorldScreenMixin"
+        "SelectWorldScreenMixin",
+        "ModelPartMixin",
+        "YggdrasilServicesKeyInfoMixin"
     ],
     "injectors": {
         "defaultRequire": 1

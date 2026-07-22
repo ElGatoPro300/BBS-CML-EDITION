@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.mixin.client;
 
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.SunPathRotation;
 import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.gl.Framebuffer;
@@ -33,7 +34,7 @@ public class WorldRendererMixin
 */
 
     @Inject(method = "renderSky(Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;FLnet/minecraft/client/render/Camera;ZLjava/lang/Runnable;)V", at = @At("HEAD"), cancellable = true, require = 0)
-    public void onRenderSky(CallbackInfo info)
+    public void onRenderSky(Matrix4f modelView, Matrix4f projectionMatrix, float tickDelta, Camera camera, boolean thickFog, Runnable fogCallback, CallbackInfo info)
     {
         if (BBSRendering.isChromaSkyEnabled())
         {
@@ -44,7 +45,17 @@ public class WorldRendererMixin
             /* RenderSystem.setShaderFogColor(color.r, color.g, color.b, 1F); */
 
             info.cancel();
+
+            return;
         }
+
+        SunPathRotation.begin(modelView);
+    }
+
+    @Inject(method = "renderSky(Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;FLnet/minecraft/client/render/Camera;ZLjava/lang/Runnable;)V", at = @At("RETURN"), require = 0)
+    public void onRenderSkyReturn(Matrix4f modelView, Matrix4f projectionMatrix, float tickDelta, Camera camera, boolean thickFog, Runnable fogCallback, CallbackInfo info)
+    {
+        SunPathRotation.end(modelView);
     }
 
     @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)

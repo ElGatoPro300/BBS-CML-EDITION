@@ -5,6 +5,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
+import mchorse.bbs_mod.forms.forms.utils.ShadowSettings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.utils.interps.IInterp;
@@ -24,6 +25,7 @@ import org.joml.Vector2d;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.TreeSet;
 
 public class ReplayKeyframes extends ValueGroup
 {
@@ -35,7 +37,7 @@ public class ReplayKeyframes extends ValueGroup
     public static final String GROUP_EXTRA1 = "extra1";
     public static final String GROUP_EXTRA2 = "extra2";
 
-    public static final List<String> CURATED_CHANNELS = Arrays.asList("x", "y", "z", "pitch", "yaw", "headYaw", "bodyYaw", "sneaking", "riding", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "grounded", "damage", "death_time", "using_item", "item_use_time", "fire", "particles", "active_hand", "vX", "vY", "vZ", "shadow_size", "shadow_opacity");
+    public static final List<String> CURATED_CHANNELS = Arrays.asList("x", "y", "z", "pitch", "yaw", "headYaw", "bodyYaw", "sneaking", "riding", "sprinting", "swimming", "flying", "fall_flying", "crawling", "climbing", "blocking", "sleeping", "riptide", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "grounded", "damage", "death_time", "using_item", "item_use_time", "fire", "particles", "active_hand", "vX", "vY", "vZ", "shadow");
 
     public final KeyframeChannel<Double> x = new KeyframeChannel<>("x", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> y = new KeyframeChannel<>("y", KeyframeFactories.DOUBLE);
@@ -52,6 +54,14 @@ public class ReplayKeyframes extends ValueGroup
 
     public final KeyframeChannel<Double> sneaking = new KeyframeChannel<>("sneaking", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> sprinting = new KeyframeChannel<>("sprinting", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> swimming = new KeyframeChannel<>("swimming", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> flying = new KeyframeChannel<>("flying", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> fallFlying = new KeyframeChannel<>("fall_flying", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> crawling = new KeyframeChannel<>("crawling", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> climbing = new KeyframeChannel<>("climbing", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> blocking = new KeyframeChannel<>("blocking", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> sleeping = new KeyframeChannel<>("sleeping", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> riptide = new KeyframeChannel<>("riptide", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> grounded = new KeyframeChannel<>("grounded", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> fall = new KeyframeChannel<>("fall", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> damage = new KeyframeChannel<>("damage", KeyframeFactories.DOUBLE);
@@ -74,8 +84,7 @@ public class ReplayKeyframes extends ValueGroup
     public final KeyframeChannel<Double> extra1Y = new KeyframeChannel<>("extra1_y", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> extra2X = new KeyframeChannel<>("extra2_x", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> extra2Y = new KeyframeChannel<>("extra2_y", KeyframeFactories.DOUBLE);
-    public final KeyframeChannel<Double> shadowSize = new KeyframeChannel<>("shadow_size", KeyframeFactories.DOUBLE);
-    public final KeyframeChannel<Double> shadowOpacity = new KeyframeChannel<>("shadow_opacity", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<ShadowSettings> shadow = new KeyframeChannel<>("shadow", KeyframeFactories.SHADOW_SETTINGS);
 
     public final KeyframeChannel<ItemStack> mainHand = new KeyframeChannel<>("item_main_hand", KeyframeFactories.ITEM_STACK);
     public final KeyframeChannel<ItemStack> offHand = new KeyframeChannel<>("item_off_hand", KeyframeFactories.ITEM_STACK);
@@ -103,6 +112,14 @@ public class ReplayKeyframes extends ValueGroup
         this.add(this.bodyYaw);
         this.add(this.sneaking);
         this.add(this.sprinting);
+        this.add(this.swimming);
+        this.add(this.flying);
+        this.add(this.fallFlying);
+        this.add(this.crawling);
+        this.add(this.climbing);
+        this.add(this.blocking);
+        this.add(this.sleeping);
+        this.add(this.riptide);
         this.add(this.grounded);
         this.add(this.fall);
         this.add(this.damage);
@@ -122,8 +139,7 @@ public class ReplayKeyframes extends ValueGroup
         this.add(this.extra1Y);
         this.add(this.extra2X);
         this.add(this.extra2Y);
-        this.add(this.shadowSize);
-        this.add(this.shadowOpacity);
+        this.add(this.shadow);
 
         this.add(this.mainHand);
         this.add(this.offHand);
@@ -144,6 +160,78 @@ public class ReplayKeyframes extends ValueGroup
         this.migrateLegacyFireTicks(data);
         this.migrateParticlesChannel();
         migrateLegacyRidingChannel(this.riding);
+        this.migrateLegacyShadowChannels(data);
+    }
+
+    /**
+     * Merges pre-compound {@code shadow_size} / {@code shadow_size_z} / {@code shadow_opacity}
+     * double channels into the unified {@code shadow} channel.
+     */
+    private void migrateLegacyShadowChannels(BaseType data)
+    {
+        if (!(data instanceof MapType map) || !this.shadow.isEmpty())
+        {
+            return;
+        }
+
+        boolean hasLegacy = map.has("shadow_size") || map.has("shadow_size_z") || map.has("shadow_opacity");
+
+        if (!hasLegacy)
+        {
+            return;
+        }
+
+        KeyframeChannel<Double> sizeX = new KeyframeChannel<>("shadow_size", KeyframeFactories.DOUBLE);
+        KeyframeChannel<Double> sizeZ = new KeyframeChannel<>("shadow_size_z", KeyframeFactories.DOUBLE);
+        KeyframeChannel<Double> opacity = new KeyframeChannel<>("shadow_opacity", KeyframeFactories.DOUBLE);
+
+        if (map.has("shadow_size"))
+        {
+            sizeX.fromData(map.get("shadow_size"));
+        }
+
+        if (map.has("shadow_size_z"))
+        {
+            sizeZ.fromData(map.get("shadow_size_z"));
+        }
+
+        if (map.has("shadow_opacity"))
+        {
+            opacity.fromData(map.get("shadow_opacity"));
+        }
+
+        TreeSet<Float> ticks = new TreeSet<>();
+
+        for (Keyframe<Double> keyframe : sizeX.getKeyframes())
+        {
+            ticks.add(keyframe.getTick());
+        }
+
+        for (Keyframe<Double> keyframe : sizeZ.getKeyframes())
+        {
+            ticks.add(keyframe.getTick());
+        }
+
+        for (Keyframe<Double> keyframe : opacity.getKeyframes())
+        {
+            ticks.add(keyframe.getTick());
+        }
+
+        if (ticks.isEmpty())
+        {
+            return;
+        }
+
+        for (Float tick : ticks)
+        {
+            ShadowSettings settings = new ShadowSettings();
+
+            settings.widthX = sizeX.isEmpty() ? 0.5F : Math.max(0F, sizeX.interpolate(tick).floatValue());
+            settings.widthZ = sizeZ.isEmpty() ? settings.widthX : Math.max(0F, sizeZ.interpolate(tick).floatValue());
+            settings.opacity = opacity.isEmpty() ? 1F : Math.max(0F, Math.min(1F, opacity.interpolate(tick).floatValue()));
+
+            this.shadow.insert(tick, settings.copy());
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -309,7 +397,7 @@ public class ReplayKeyframes extends ValueGroup
         }
     }
 
-    public void record(int tick, IEntity entity, List<String> groups)
+    public void record(float tick, IEntity entity, List<String> groups)
     {
         boolean empty = groups == null || groups.isEmpty();
         boolean position = empty || groups.contains(GROUP_POSITION);
@@ -336,6 +424,14 @@ public class ReplayKeyframes extends ValueGroup
 
         this.sneaking.insert(tick, entity.isSneaking() ? 1D : 0D);
         this.sprinting.insert(tick, entity.isSprinting() ? 1D : 0D);
+        this.swimming.insert(tick, entity.isSwimming() ? 1D : 0D);
+        this.flying.insert(tick, entity.isFlying() ? 1D : 0D);
+        this.fallFlying.insert(tick, entity.isFallFlying() ? 1D : 0D);
+        this.crawling.insert(tick, entity.isCrawling() ? 1D : 0D);
+        this.climbing.insert(tick, entity.isClimbing() ? 1D : 0D);
+        this.blocking.insert(tick, entity.isBlocking() ? 1D : 0D);
+        this.sleeping.insert(tick, entity.isSleeping() ? 1D : 0D);
+        this.riptide.insert(tick, entity.isUsingRiptide() ? 1D : 0D);
         this.grounded.insert(tick, entity.isOnGround() ? 1D : 0D);
         this.damage.insert(tick, (double) entity.getHurtTimer());
         this.deathTime.insert(tick, (double) entity.getDeathTime());
@@ -401,7 +497,7 @@ public class ReplayKeyframes extends ValueGroup
      * Insert keyframes at {@code tick} using values interpolated from the
      * existing animation at that tick (for cursor placement).
      */
-    public void insertInterpolated(int tick, List<String> groups)
+    public void insertInterpolated(float tick, List<String> groups)
     {
         boolean empty = groups == null || groups.isEmpty();
         boolean position = empty || groups.contains(GROUP_POSITION);
@@ -425,6 +521,14 @@ public class ReplayKeyframes extends ValueGroup
 
         this.sneaking.insertInterpolated(tick);
         this.sprinting.insertInterpolated(tick);
+        this.swimming.insertInterpolated(tick);
+        this.flying.insertInterpolated(tick);
+        this.fallFlying.insertInterpolated(tick);
+        this.crawling.insertInterpolated(tick);
+        this.climbing.insertInterpolated(tick);
+        this.blocking.insertInterpolated(tick);
+        this.sleeping.insertInterpolated(tick);
+        this.riptide.insertInterpolated(tick);
         this.grounded.insertInterpolated(tick);
         this.damage.insertInterpolated(tick);
 
@@ -548,6 +652,14 @@ public class ReplayKeyframes extends ValueGroup
         /* Motion and fall distance */
         entity.setSneaking(mounted || sitting ? false : this.sneaking.interpolate(tick) != 0D);
         entity.setSprinting(mounted || sitting ? false : this.sprinting.interpolate(tick) != 0D);
+        entity.setSwimming(mounted || sitting ? false : this.swimming.interpolate(tick) != 0D);
+        entity.setFlying(mounted || sitting ? false : this.flying.interpolate(tick) != 0D);
+        entity.setFallFlying(mounted || sitting ? false : this.fallFlying.interpolate(tick) != 0D);
+        entity.setCrawling(mounted || sitting ? false : this.crawling.interpolate(tick) != 0D);
+        entity.setClimbing(mounted || sitting ? false : this.climbing.interpolate(tick) != 0D);
+        entity.setBlocking(mounted || sitting ? false : this.blocking.interpolate(tick) != 0D);
+        entity.setSleeping(mounted || sitting ? false : this.sleeping.interpolate(tick) != 0D);
+        entity.setRiptide(mounted || sitting ? false : this.riptide.interpolate(tick) != 0D);
         entity.setOnGround(this.grounded.interpolate(tick) != 0D);
         entity.setHurtTimer(this.damage.interpolate(tick).intValue());
         entity.setDeathTime(this.deathTime.interpolate(tick).intValue());

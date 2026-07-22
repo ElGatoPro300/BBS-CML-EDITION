@@ -4,8 +4,10 @@ import mchorse.bbs_mod.film.replays.ReplayKeyframes;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -28,13 +30,21 @@ public class UIRecordOverlayPanel extends UIMessageOverlayPanel
 
     public UIElement bar;
 
-    private Consumer<List<String>> callback;
+    private final Consumer<List<String>> callback;
+    private final boolean mobToMorphOption;
+    private UIToggle mobToMorph;
 
     public UIRecordOverlayPanel(IKey title, IKey message, Consumer<List<String>> callback)
+    {
+        this(title, message, callback, false);
+    }
+
+    public UIRecordOverlayPanel(IKey title, IKey message, Consumer<List<String>> callback, boolean mobToMorphOption)
     {
         super(title, message);
 
         this.callback = callback;
+        this.mobToMorphOption = mobToMorphOption;
 
         this.all = new UIIcon(Icons.SPHERE, (b) -> this.submit(null));
         this.left = new UIIcon(Icons.LEFT_STICK, (b) -> this.submit(Arrays.asList(ReplayKeyframes.GROUP_LEFT_STICK)));
@@ -59,6 +69,16 @@ public class UIRecordOverlayPanel extends UIMessageOverlayPanel
         this.bar = UI.row(this.all, this.left, this.right, this.triggers, this.extra1, this.extra2, this.position, this.rotation, this.posRot);
 
         this.bar.relative(this.content).x(0.5F).y(1F, -6).w(1F, -12).anchor(0.5F, 1F).row().resize();
+
+        if (this.mobToMorphOption)
+        {
+            this.mobToMorph = new UIToggle(UIKeys.FILM_RECORD_MOB_TO_MORPH, false, (b) -> {});
+
+            this.mobToMorph.tooltip(UIKeys.FILM_RECORD_MOB_TO_MORPH_TOOLTIP);
+            this.mobToMorph.relative(this.content).x(12).y(1F, -34).w(1F, -24);
+            this.content.add(this.mobToMorph);
+        }
+
         this.content.add(this.bar);
 
         this.keys().register(Keys.RECORDING_GROUP_ALL, this.all::clickItself);
@@ -74,6 +94,24 @@ public class UIRecordOverlayPanel extends UIMessageOverlayPanel
 
     public void submit(List<String> groups)
     {
+        if (this.mobToMorphOption && this.mobToMorph != null && this.mobToMorph.getValue())
+        {
+            UIContext context = this.getContext();
+            Consumer<List<String>> callback = this.callback;
+
+            this.close();
+
+            UIMobCaptureRecordOverlayPanel.openOnContext(context, (setup) ->
+            {
+                if (callback != null)
+                {
+                    callback.accept(groups);
+                }
+            });
+
+            return;
+        }
+
         this.close();
 
         if (this.callback != null)

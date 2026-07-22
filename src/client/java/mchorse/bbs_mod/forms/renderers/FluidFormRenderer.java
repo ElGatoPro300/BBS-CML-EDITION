@@ -13,6 +13,7 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.simulation.FluidController;
 import mchorse.bbs_mod.simulation.FluidSimulation;
+import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -71,9 +72,7 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
         stack.scale(scale, scale, scale);
 
         /* Shading fix for UI */
-        Vector3f normalScale = new Vector3f();
-        stack.peek().getNormalMatrix().getScale(normalScale);
-        stack.peek().getNormalMatrix().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
+        MatrixStackUtils.invertUiNormalY(stack);
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
@@ -737,7 +736,9 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
 
         List<BaseFilmController> controllers = new ArrayList<>(BBSModClient.getFilms().getControllers());
 
-        if (BBSModClient.getDashboard().getPanels() != null && BBSModClient.getDashboard().getPanels().panel instanceof UIFilmPanel panel)
+        UIDashboard dashboard = BBSModClient.peekDashboard();
+
+        if (dashboard != null && dashboard.getPanels() != null && dashboard.getPanels().panel instanceof UIFilmPanel panel)
         {
             controllers.add(panel.getController().editorController);
         }

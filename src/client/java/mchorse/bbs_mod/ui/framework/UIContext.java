@@ -622,7 +622,8 @@ public class UIContext implements IViewportStack
 
         if (this.contextMenu != null)
         {
-            this.contextMenu.removeFromParent();
+            /* Instant detach so a closing World dropdown cannot block the new menu. */
+            this.contextMenu.forceClose();
         }
 
         menu.setMouse(this);
@@ -637,7 +638,12 @@ public class UIContext implements IViewportStack
         if (this.contextMenu != null)
         {
             this.contextMenu.removeFromParent();
-            this.contextMenu = null;
+
+            /* Animated menus (World) stay parented until their close tween finishes. */
+            if (this.contextMenu != null && !this.contextMenu.hasParent())
+            {
+                this.contextMenu = null;
+            }
         }
     }
 

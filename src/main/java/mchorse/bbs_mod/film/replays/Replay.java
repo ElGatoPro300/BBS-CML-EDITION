@@ -13,6 +13,7 @@ import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.MobForm;
+import mchorse.bbs_mod.forms.forms.utils.ShadowSettings;
 import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueForm;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
@@ -44,7 +45,11 @@ public class Replay extends ValueGroup
     public final ValueString group = new ValueString("group", "");
     public final ValueBoolean shadow = new ValueBoolean("shadow", true);
     public final ValueFloat shadowSize = new ValueFloat("shadow_size", 0.5F);
+    public final ValueFloat shadowSizeZ = new ValueFloat("shadow_size_z", 0.5F);
     public final ValueFloat shadowOpacity = new ValueFloat("shadow_opacity", 1F, 0F, 1F);
+    public final ValueFloat shadowOffsetX = new ValueFloat("shadow_offset_x", 0F);
+    public final ValueFloat shadowOffsetY = new ValueFloat("shadow_offset_y", 0F);
+    public final ValueFloat shadowOffsetZ = new ValueFloat("shadow_offset_z", 0F);
     public final ValueInt looping = new ValueInt("looping", 0);
 
     public final ValueBoolean actor = new ValueBoolean("actor", false);
@@ -87,7 +92,11 @@ public class Replay extends ValueGroup
         this.add(this.group);
         this.add(this.shadow);
         this.add(this.shadowSize);
+        this.add(this.shadowSizeZ);
         this.add(this.shadowOpacity);
+        this.add(this.shadowOffsetX);
+        this.add(this.shadowOffsetY);
+        this.add(this.shadowOffsetZ);
         this.add(this.looping);
 
         this.add(this.actor);
@@ -293,23 +302,36 @@ public class Replay extends ValueGroup
             }
         }
 
-        this.ensureShadowKeyframes();
+        /* Pre-XZ-shadow films only had shadow_size — mirror into Z so shape stays circular. */
+        boolean migratedShadowZ = false;
+
+        if (data instanceof MapType map && !map.has("shadow_size_z") && map.has("shadow_size"))
+        {
+            this.shadowSizeZ.set(this.shadowSize.get());
+            migratedShadowZ = true;
+        }
+
+        this.ensureShadowKeyframes(migratedShadowZ);
         this.applyVanillaPlaybackDefaults();
     }
 
     private void applyVanillaPlaybackDefaults()
     {}
 
-    private void ensureShadowKeyframes()
+    private void ensureShadowKeyframes(boolean migratedShadowZ)
     {
-        if (this.keyframes.shadowSize.isEmpty())
+        if (!this.keyframes.shadow.isEmpty())
         {
-            this.keyframes.shadowSize.insert(0, 0.5D);
+            return;
         }
 
-        if (this.keyframes.shadowOpacity.isEmpty())
-        {
-            this.keyframes.shadowOpacity.insert(0, 1D);
-        }
+        float widthZ = migratedShadowZ ? this.shadowSize.get() : this.shadowSizeZ.get();
+        ShadowSettings settings = new ShadowSettings(this.shadowOpacity.get(), this.shadowSize.get(), widthZ);
+
+        settings.offsetX = this.shadowOffsetX.get();
+        settings.offsetY = this.shadowOffsetY.get();
+        settings.offsetZ = this.shadowOffsetZ.get();
+
+        this.keyframes.shadow.insert(0, settings);
     }
 }
