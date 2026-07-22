@@ -120,4 +120,24 @@ public class BBSShaders
     {
         return pickerModels;
     }
+
+    public static ShaderProgram getBlockPaintOverlayProgram()
+    {
+        return blockPaintOverlay;
+    }
+
+    public static ShaderProgram getBlockColorTintOverlayProgram()
+    {
+        return blockColorTintOverlay;
+    }
+
+    public static ShaderProgram getFlatPaintOverlayProgram()
+    {
+        return flatPaintOverlay;
+    }
+
+    public static ShaderProgram getFlatColorTintOverlayProgram()
+    {
+        return flatColorTintOverlay;
+    }
 }

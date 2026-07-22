@@ -2310,7 +2310,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         }
 
         RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 

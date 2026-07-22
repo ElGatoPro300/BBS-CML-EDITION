@@ -383,7 +383,7 @@ public class BOBJModelVAO
     private void rebindShaderSamplers(ShaderProgram shader, MatrixStack stack, float r, float g, float b, float a, int light, int overlay)
     {
         ModelVAORenderer.setupUniforms(stack, shader);
-        RenderSystem.setShader(() -> shader);
+        RenderSystem.setShader(shader);
         shader.bind();
         GL30.glBindVertexArray(this.vao);
 

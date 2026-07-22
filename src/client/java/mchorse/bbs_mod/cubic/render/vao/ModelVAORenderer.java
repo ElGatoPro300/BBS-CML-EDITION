@@ -120,6 +120,7 @@ public class ModelVAORenderer
     private static final EffectTransform baseGradeHueTransform = new EffectTransform();
     private static final EffectTransform baseGradeSaturationTransform = new EffectTransform();
     private static boolean suppressShapeKeyMainPassGlow;
+    private static boolean cpuPretransformed;
 
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
     private static NativeImageBackedTexture whiteTexture;
@@ -378,7 +379,7 @@ public class ModelVAORenderer
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
-        RenderSystem.setShader(BBSShaders::getModel);
+        RenderSystem.setShader(BBSShaders.getModel());
 
         Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
         Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
@@ -387,7 +388,7 @@ public class ModelVAORenderer
         {
             paintOverlaySynced = entry.synced;
 
-            RenderSystem.setProjectionMatrix(entry.projection, VertexSorter.BY_Z);
+            RenderSystem.setProjectionMatrix(entry.projection, ProjectionType.ORTHOGRAPHIC);
 
             MatrixStackUtils.pushIdentityModelView();
 
@@ -444,15 +445,13 @@ public class ModelVAORenderer
         }
         finally
         {
-            RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
+            RenderSystem.setProjectionMatrix(savedProjection, ProjectionType.ORTHOGRAPHIC);
 
             Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
 
             modelViewStack.pushMatrix();
             modelViewStack.set(savedModelView);
-            RenderSystem.applyModelViewMatrix();
             modelViewStack.popMatrix();
-            RenderSystem.applyModelViewMatrix();
 
             gameRenderer.getLightmapTextureManager().disable();
             gameRenderer.getOverlayTexture().teardownOverlayColor();
@@ -1195,6 +1194,7 @@ public class ModelVAORenderer
 
     public static void beginCpuGeometry(ShaderProgram shader)
     {
+        cpuPretransformed = true;
         GlUniform glowingUniform = shader.getUniform("GlowingColor");
 
         glowingUniformActive = glowingUniform != null;
@@ -1627,7 +1627,13 @@ public class ModelVAORenderer
 
         if (paintMaskHalfUniform != null)
         {
-            shader.fogShape.set(fog.shape().getId());
+            paintMaskHalfUniform.set(paintMaskHalf.x, paintMaskHalf.y, paintMaskHalf.z);
+        }
+
+        GlUniform paintMaskBottomAnchoredUniform = shader.getUniform("PaintMaskBottomAnchored");
+
+        if (paintMaskBottomAnchoredUniform != null)
+        {
             paintMaskBottomAnchoredUniform.set(paintMaskBottomAnchored ? 1F : 0F);
         }
 
@@ -1743,22 +1749,22 @@ public class ModelVAORenderer
         {
             if (shader.fogStart != null)
             {
-                shader.fogStart.set(RenderSystem.getShaderFogStart());
+                shader.fogStart.set(fog.start());
             }
 
             if (shader.fogEnd != null)
             {
-                shader.fogEnd.set(RenderSystem.getShaderFogEnd());
+                shader.fogEnd.set(fog.end());
             }
 
             if (shader.fogColor != null)
             {
-                shader.fogColor.set(RenderSystem.getShaderFogColor());
+                shader.fogColor.set(fog.red(), fog.green(), fog.blue(), fog.alpha());
             }
 
             if (shader.fogShape != null)
             {
-                shader.fogShape.set(RenderSystem.getShaderFogShape().getId());
+                shader.fogShape.set(fog.shape().getId());
             }
         }
 

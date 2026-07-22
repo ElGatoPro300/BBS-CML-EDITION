@@ -72,7 +72,7 @@ public class FlatPaintOverlayPass
 
         if (program != null)
         {
-            RenderSystem.setShader(() -> program);
+            RenderSystem.setShader(program);
         }
 
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);

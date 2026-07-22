@@ -269,6 +269,8 @@ public class BBSMod implements ModInitializer
     public static final BlockItem TRIGGER_BLOCK_ITEM = new BlockItem(TRIGGER_BLOCK, new Item.Settings().registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "trigger"))));
     public static final GunItem GUN_ITEM = new GunItem(new Item.Settings().maxCount(1).registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "gun"))));
     public static final MobKillerItem MOB_KILLER_ITEM = new MobKillerItem(new Item.Settings().maxCount(1).registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "mob_killer"))));
+    public static final BlockPickerItem BLOCK_PICKER_ITEM = new BlockPickerItem(new Item.Settings().maxCount(1).registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "block_picker"))));
+    public static final StructurePickerItem STRUCTURE_PICKER_ITEM = new StructurePickerItem(new Item.Settings().maxCount(1).registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "structure_picker"))));
     public static final BlockItem CHROMA_RED_BLOCK_ITEM = new BlockItem(CHROMA_RED_BLOCK, new Item.Settings().registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "chroma_red"))));
     public static final BlockItem CHROMA_GREEN_BLOCK_ITEM = new BlockItem(CHROMA_GREEN_BLOCK, new Item.Settings().registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "chroma_green"))));
     public static final BlockItem CHROMA_BLUE_BLOCK_ITEM = new BlockItem(CHROMA_BLUE_BLOCK, new Item.Settings().registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(MOD_ID, "chroma_blue"))));

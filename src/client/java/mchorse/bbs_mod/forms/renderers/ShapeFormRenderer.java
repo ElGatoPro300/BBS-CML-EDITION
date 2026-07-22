@@ -113,6 +113,11 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
     private void renderShape(MatrixStack stack, ShaderProgramKey shader, int overlay, int light)
     {
+        this.renderShape(stack, shader, overlay, light, null);
+    }
+
+    private void renderShape(MatrixStack stack, ShaderProgramKey shader, int overlay, int light, FormRenderingContext renderContext)
+    {
         this.evaluator = new ShapeGraphEvaluator(this.form.graph.get());
         
         this.time = (System.currentTimeMillis() % 200000) / 1000F;
@@ -310,7 +315,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             /* No-shader / opaque Iris path: depthMask true like vanilla. */
             if (BBSRendering.needsBbsModelForLowOpacity(c.a))
             {
-                RenderSystem.setShader(BBSShaders::getModel);
+                RenderSystem.setShader(BBSShaders.getModel());
             }
 
             RenderSystem.enableDepthTest();
@@ -327,9 +332,9 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             {
                 Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, c.a, glowIntensity);
                 float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
-                Supplier<ShaderProgram> unshadedShader = GameRenderer::getPositionTexColorProgram;
+                Supplier<ShaderProgram> unshadedShader = () -> { RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR); return RenderSystem.getShader(); };
 
-                RenderSystem.setShader(unshadedShader);
+                RenderSystem.setShader(unshadedShader.get());
                 RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
                 RenderSystem.depthMask(false);
                 RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);
@@ -395,7 +400,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             BBSModClient.getTextures().bindTexture(ParticleScheme.DEFAULT_TEXTURE);
         }
 
-        RenderSystem.setShader(shader);
+        RenderSystem.setShader(shader.get());
         RenderSystem.enableBlend();
 
         if (lighting)
@@ -424,7 +429,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, color.a, glowIntensity);
             float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
 
-            RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
             RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
             RenderSystem.depthMask(false);
             RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);

@@ -603,7 +603,7 @@ public class ParticleEmitter
         {
             BufferBuilder glowBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
 
-            RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
 
             if (ui)
             {

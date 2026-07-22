@@ -20,8 +20,10 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
@@ -171,7 +173,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
                 CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
                 {
                     this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                    RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
+                    RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
                 });
 
                 light = 0;
@@ -472,14 +474,14 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         if (cachedModel != null)
         {
-            client.getItemRenderer().renderItem(itemStack, mode, leftHand, stack, consumers, light, overlay, cachedModel);
+            client.getItemRenderer().renderItem(null, itemStack, mode, false, stack, consumers, client.world, light, overlay, 0);
 
             return;
         }
 
         if (context == null || context.entity == null)
         {
-            client.getItemRenderer().renderItem(itemStack, mode, light, overlay, stack, consumers, client.world, 0);
+            client.getItemRenderer().renderItem(null, itemStack, mode, false, stack, consumers, client.world, light, overlay, 0);
         }
         else
         {

@@ -1025,7 +1025,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
 
         return useEntityLayers
-            ? RenderLayers.getEntityBlockLayer(state, false)
+            ? RenderLayers.getEntityBlockLayer(state)
             : RenderLayers.getBlockLayer(state);
     }
 
@@ -1300,7 +1300,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+        RenderSystem.setShaderTexture(0, SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
         this.syncFancyGraphicsFromOptions();
         RenderSystem.depthMask(false);
 
@@ -1325,16 +1325,14 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                 shadersEnabled = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
                 layer = shadersEnabled
-                    ? RenderLayers.getEntityBlockLayer(entry.state, false)
+                    ? RenderLayers.getEntityBlockLayer(entry.state)
                     : RenderLayers.getBlockLayer(entry.state);
 
                 globalAlpha = this.form.getFormOpacity();
 
                 if (globalAlpha < 0.999F)
                 {
-                    layer = shadersEnabled
-                        ? TexturedRenderLayers.getEntityTranslucentCull()
-                        : RenderLayer.getTranslucent();
+                    layer = RenderLayer.getTranslucent();
                 }
 
                 vc = consumers.getBuffer(layer);
@@ -1481,7 +1479,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             /* Vanilla post-composite defaults to depthMask(false) for BE tint overlays;
              * leaves need depth write so overlapping Fancy faces sort correctly. */
             RenderSystem.depthMask(true);
-            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+            RenderSystem.setShaderTexture(0, SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
             RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
 
@@ -1514,7 +1512,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         catch (Throwable ignored)
         {}
 
-        RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+        RenderSystem.setShaderTexture(0, SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
 
         for (BlockEntry entry : this.biomeTintedBlocks)
         {
@@ -1901,8 +1899,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             GL11.glPolygonOffset(-1F, -2F);
             ModelVAORenderer.setPaint(paintOverlay.r, paintOverlay.g, paintOverlay.b, paintOverlay.a);
             ModelVAORenderer.setPaintEffectTransform(formRootInverse, transform, paintMaskHalf, true);
-            RenderSystem.setShader(BBSShaders::getModel);
-            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+            RenderSystem.setShader(BBSShaders.getModel());
+            RenderSystem.setShaderTexture(0, SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
             RenderSystem.enableBlend();
             RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             RenderSystem.depthMask(false);
@@ -2140,8 +2138,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 ModelVAORenderer.setFormColorGrade(gradeSource.brightness, gradeSource.contrast, gradeSource.hue, gradeSource.saturation);
             }
 
-            RenderSystem.setShader(BBSShaders::getModel);
-            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+            RenderSystem.setShader(BBSShaders.getModel());
+            RenderSystem.setShaderTexture(0, SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
             ModelVAORenderer.render(BBSShaders.getModel(), vao, stack, tint.r, tint.g, tint.b, tint.a, light, overlay);
         }
         finally

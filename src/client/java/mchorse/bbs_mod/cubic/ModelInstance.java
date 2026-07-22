@@ -40,6 +40,7 @@ import mchorse.bbs_mod.utils.resources.LinkUtils;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.BufferRenderer;
@@ -780,11 +781,14 @@ public class ModelInstance implements IModelInstance
                     BBSModClient.getTextures().bindTexture(texture);
                 }
 
+                boolean disableCull = true;
+
                 if (disableCull)
                 {
                     RenderSystem.disableCull();
                 }
 
+                ShaderProgram shader = program.get();
                 CubicCpuGroupDrawRenderer renderProcessor = new CubicCpuGroupDrawRenderer(light, overlay, stencilMap, keys, shader, texture);
 
                 renderProcessor.setColor(cr, cg, cb, ca);
@@ -844,11 +848,13 @@ public class ModelInstance implements IModelInstance
             return;
         }
 
-        ShaderProgram shader = GameRenderer.getRenderTypeEntityTranslucentCullProgram();
+        ShaderProgram shader;
+        RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+        shader = RenderSystem.getShader();
         Link texture = defaultTexture != null ? defaultTexture : this.texture;
         boolean disableCull = true;
 
-        RenderSystem.setShader(() -> shader);
+        RenderSystem.setShader(shader);
 
         if (texture != null)
         {

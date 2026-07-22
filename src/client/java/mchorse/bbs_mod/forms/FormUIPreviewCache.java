@@ -21,7 +21,7 @@ import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
+import com.mojang.blaze3d.systems.ProjectionType;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -275,11 +275,10 @@ public final class FormUIPreviewCache
          * target so getUIMatrix scale fills the thumbnail instead of a screen speck. */
         RenderSystem.setProjectionMatrix(
             new Matrix4f().ortho(0F, renderW, renderH, 0F, -1000F, 3000F),
-            VertexSorter.BY_Z
+            ProjectionType.ORTHOGRAPHIC
         );
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().identity();
-        RenderSystem.applyModelViewMatrix();
         matrices.push();
         matrices.peek().getPositionMatrix().identity();
         matrices.peek().getNormalMatrix().identity();
@@ -311,8 +310,7 @@ public final class FormUIPreviewCache
 
         matrices.pop();
         RenderSystem.getModelViewStack().popMatrix();
-        RenderSystem.applyModelViewMatrix();
-        RenderSystem.setProjectionMatrix(previousProjection, VertexSorter.BY_Z);
+        RenderSystem.setProjectionMatrix(previousProjection, ProjectionType.ORTHOGRAPHIC);
 
         if (client != null && client.getFramebuffer() != null)
         {

@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.clips.misc.ImageOverlay;
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;

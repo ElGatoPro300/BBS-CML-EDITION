@@ -134,7 +134,7 @@ public class Draw
 
         RenderSystem.disableBlend();
         RenderSystem.disableDepthTest();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         MatrixStackUtils.pushIdentityModelView();
 
         try
@@ -202,7 +202,7 @@ public class Draw
         boolean savedBlend = GL11.glIsEnabled(GL11.GL_BLEND);
 
         RenderSystem.disableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         RenderSystem.lineWidth(2F);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
