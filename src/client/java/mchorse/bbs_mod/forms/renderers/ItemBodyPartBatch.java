@@ -147,42 +147,47 @@ public final class ItemBodyPartBatch
                     context.world.push();
                 }
 
-                MatrixStackUtils.applyTransform(context.stack, part.transform.get());
-
-                if (context.world != null)
+                try
                 {
-                    MatrixStackUtils.applyTransform(context.world, part.transform.get());
+                    MatrixStackUtils.applyTransform(context.stack, part.transform.get());
+
+                    if (context.world != null)
+                    {
+                        MatrixStackUtils.applyTransform(context.world, part.transform.get());
+                    }
+
+                    applyFormTransform(item, context);
+                    applyLighting(item, context);
+
+                    if (useDroppedMode)
+                    {
+                        itemRenderer.applyDroppedAnimation(context, useDroppedMode);
+                    }
+
+                    BlockFormRenderer.color.set(1F, 1F, 1F, 1F);
+                    BlockFormRenderer.color.mul(context.color);
+                    BlockFormRenderer.color.mul(item.color.get());
+
+                    consumers.setSubstitute(itemRenderer.getMainConsumer(BlockFormRenderer.color, resolvedPaint));
+                    client.getItemRenderer().renderItem(itemStack, mode, leftHand, context.stack, consumers, context.light, context.overlay, bakedModel);
+
+                    if (context.isPicking())
+                    {
+                        context.stencilMap.addPicking(item);
+                    }
                 }
-
-                applyFormTransform(item, context);
-                applyLighting(item, context);
-
-                if (useDroppedMode)
+                finally
                 {
-                    itemRenderer.applyDroppedAnimation(context, useDroppedMode);
+                    context.stack.pop();
+
+                    if (context.world != null)
+                    {
+                        context.world.pop();
+                    }
+
+                    context.light = savedLight;
+                    item.unapplyStates();
                 }
-
-                BlockFormRenderer.color.set(1F, 1F, 1F, 1F);
-                BlockFormRenderer.color.mul(context.color);
-                BlockFormRenderer.color.mul(item.color.get());
-
-                consumers.setSubstitute(itemRenderer.getMainConsumer(BlockFormRenderer.color, resolvedPaint));
-                client.getItemRenderer().renderItem(itemStack, mode, leftHand, context.stack, consumers, context.light, context.overlay, bakedModel);
-
-                if (context.isPicking())
-                {
-                    context.stencilMap.addPicking(item);
-                }
-
-                context.stack.pop();
-
-                if (context.world != null)
-                {
-                    context.world.pop();
-                }
-
-                context.light = savedLight;
-                item.unapplyStates();
             }
         }
         finally

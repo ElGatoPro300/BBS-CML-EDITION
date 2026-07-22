@@ -11,20 +11,47 @@ public class FormColorBlend
     public static final float OVERLAY_GLOW_BOOST = EMISSION_STRENGTH;
 
     /**
-     * After multiplying form color, restore a faint alpha on the Iris shadow pass when the
-     * form opacity is zero so a silhouette still casts.
+     * Shadow-pass alpha follows form opacity (0 = no ground shadow). Kept for call-site
+     * compatibility; no longer boosts zero opacity to a faint silhouette.
      */
     public static void finishShadowOpacity(Color color, boolean shadowPass)
     {
-        if (color == null || !shadowPass)
-        {
-            return;
-        }
+        /* no-op: Opacity track / applyFormOpacity already own caster alpha */
+    }
 
-        if (color.a <= 0.001F)
-        {
-            color.a = PaintSettings.SHADER_SHADOW_ZERO_OPACITY;
-        }
+    /**
+     * Shadow-map alpha scale for Paint / Blend Color / Color Grade.
+     * <p>
+     * Previously returned {@code 0.001} whenever any Color-track intensity was non-zero so
+     * Complementary would drop a cursor-side fringe. Iris shadow programs still alpha-test
+     * around ~0.1, so that crush also deleted the actor's ground shadow. Casting now stays
+     * at full shadow-pass alpha; opacity 0 still skips via callers / {@code applyFormOpacity}.
+     */
+    public static float resolveEffectShaderShadow(Color storedFormColor, PaintSettings paintSettings, Color legacyPaint)
+    {
+        return resolveEffectShaderShadow(storedFormColor, paintSettings, legacyPaint, false);
+    }
+
+    /**
+     * @param anyPaintActive true when form-level or per-bone paint is on (Model forms).
+     */
+    public static float resolveEffectShaderShadow(Color storedFormColor, PaintSettings paintSettings, Color legacyPaint, boolean anyPaintActive)
+    {
+        return PaintSettings.SHADER_SHADOW_DEFAULT;
+    }
+
+    /**
+     * Kept for call-site compatibility. No longer multiplies shadow-pass alpha for Color-track
+     * effects (see {@link #resolveEffectShaderShadow}).
+     */
+    public static void applyShadowPassColorFix(Color color, Color storedFormColor, PaintSettings paintSettings, Color legacyPaint, boolean shadowPass)
+    {
+        applyShadowPassColorFix(color, storedFormColor, paintSettings, legacyPaint, shadowPass, false);
+    }
+
+    public static void applyShadowPassColorFix(Color color, Color storedFormColor, PaintSettings paintSettings, Color legacyPaint, boolean shadowPass, boolean anyPaintActive)
+    {
+        /* no-op: crushing alpha for the Complementary fringe removed ground shadows under Iris */
     }
 
     public enum BlendMode
@@ -99,6 +126,82 @@ public class FormColorBlend
     public static boolean hasPositivePaint(PaintSettings paintSettings, Color legacyPaint)
     {
         return paintSettings.resolveIntensity(legacyPaint) > 0F;
+    }
+
+    /**
+     * True when Blend Color should use a spatial mask / FormColorTint path instead of baking
+     * into vertex color — same rules as ModelFormRenderer.canApplyColorTransformMask, without
+     * requiring a ModelInstance.
+     * <p>
+     * Pass the <b>stored</b> form color (before {@link Color#copyWithBlendIntensity()}).
+     * Color adjustments alone do not force this path; they bake or use FormColorGrade in-shader.
+     */
+    public static boolean wantsColorTransformMask(Color color)
+    {
+        if (color == null)
+        {
+            return false;
+        }
+
+        if (color.hasActiveTransform())
+        {
+            return true;
+        }
+
+        float intensity = MathUtils.clamp(color.a, 0F, 1F);
+
+        if (intensity <= 0.001F)
+        {
+            return false;
+        }
+
+        return color.r < 0.999F || color.g < 0.999F || color.b < 0.999F;
+    }
+
+    /**
+     * Whether Iris / BBS FormColorTint overlay should run for brightness-only grading when the
+     * live Iris pass cannot run FormColorGrade (no BBS model.fsh).
+     */
+    public static boolean wantsColorTintForAdjustments(Color color, boolean shaderGradeActive)
+    {
+        return color != null && color.hasColorAdjustments() && !shaderGradeActive;
+    }
+
+    /**
+     * Block / item / structure / billboard / shape: use FormColorTint overlay for Blend Color
+     * spatial masks <b>or</b> Color Grade. Vertex bake alone is ignored by many block/item
+     * pipelines (lighting / Sodium / Iris), while Paint and Blend already go through this overlay.
+     */
+    public static boolean wantsColorTintOverlay(Color color)
+    {
+        return wantsColorTransformMask(color) || wantsColorTintForAdjustments(color, false);
+    }
+
+    /**
+     * Bake form color into vertex tint only when no FormColorTint overlay will run.
+     */
+    public static boolean shouldBakeFormColor(Color color)
+    {
+        return !wantsColorTintOverlay(color);
+    }
+
+    /**
+     * Block-entity renderers (beds, chests, …) are incompatible with
+     * {@code block_color_tint_overlay} / {@code block_paint_overlay}: those force the block
+     * atlas and (for Color Grade) regrade framebuffer pixels that often sample the UI.
+     * Bake blend color, Color Grade, and uniform paint into the tint instead (Iris reapplies
+     * this tint after composite via a deferred BE redraw).
+     */
+    public static Color resolveBlockEntityTint(Color storedFormColor, PaintSettings paintSettings, Color legacyPaint)
+    {
+        Color tint = storedFormColor == null ? Color.white() : storedFormColor.copyWithBlendIntensity();
+
+        if (paintSettings != null && paintSettings.resolveIntensity(legacyPaint) != 0F)
+        {
+            applyPaintBlend(tint, paintSettings, legacyPaint);
+        }
+
+        return tint;
     }
 
     public static Color resolvePaintColor(PaintSettings paintSettings, Color legacyPaint)

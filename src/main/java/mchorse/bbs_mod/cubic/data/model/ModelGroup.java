@@ -5,6 +5,7 @@ import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -59,6 +60,15 @@ public class ModelGroup implements IMapSerializable
     {
         this.lighting = 0F;
         this.color.set(1F, 1F, 1F);
+        this.color.brightness = 0F;
+        this.color.contrast = 0F;
+        this.color.hue = 0F;
+        this.color.saturation = 0F;
+        this.color.transform = new EffectTransform();
+        this.color.brightnessTransform = new EffectTransform();
+        this.color.contrastTransform = new EffectTransform();
+        this.color.hueTransform = new EffectTransform();
+        this.color.saturationTransform = new EffectTransform();
         this.paintColor.set(1F, 1F, 1F, 0F);
         this.glowingColor.set(1F, 1F, 1F, 1F);
         this.glowIntensity = 0F;

@@ -106,6 +106,9 @@ public class ScreenEffectRenderer
 
         /* Vignette, color grade and film grain via shader pass */
         ColorGradeRenderer.apply(effects, grainEffects);
+        /* Must run even when letterbox follows — letterbox is PositionColor only and
+         * does not repair the texture-unit desync that breaks Subtitle text baking. */
+        ColorGradeRenderer.resyncMinecraftState(batcher);
 
         /* Letterbox bars */
         for (LetterboxEffect effect : letterboxEffects)

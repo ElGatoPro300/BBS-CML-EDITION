@@ -457,6 +457,7 @@ public class BBSMod implements ModInitializer
 
         assetsFolder.mkdirs();
         new File(assetsFolder, "video").mkdirs();
+        new File(assetsFolder, "structures").mkdirs();
 
         FabricLoader.getInstance()
             .getEntrypointContainers("bbs-addon", BBSAddonMod.class)
@@ -720,6 +721,8 @@ public class BBSMod implements ModInitializer
 
         if (id.equals("bbs"))
         {
+            BBSSettings.migrateShaderOpacityPatchesAfterLoad();
+
             File cmlFile = new File(destination.getParentFile(), "cml.json");
             
             if (cmlFile.exists())
@@ -763,6 +766,8 @@ public class BBSMod implements ModInitializer
                     e.printStackTrace();
                 }
             }
+
+            BBSSettings.migrateIrisOpacityFix();
         }
 
         return settings;

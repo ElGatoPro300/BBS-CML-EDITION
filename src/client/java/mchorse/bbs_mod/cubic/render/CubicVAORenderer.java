@@ -83,6 +83,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
                     effectiveGlowG,
                     effectiveGlowB,
                     effectiveGlowStrength);
+                ModelVAORenderer.setGroupFormColorGrade(group.color);
 
                 this.bindGroupTexture(group);
 
@@ -102,6 +103,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
 
                 ModelVAORenderer.setGroupPaint(effectivePaintR, effectivePaintG, effectivePaintB, effectivePaintStrength);
                 ModelVAORenderer.setGroupGlowing(effectiveGlowR, effectiveGlowG, effectiveGlowB, effectiveGlowStrength);
+                ModelVAORenderer.setGroupFormColorGrade(group.color);
             }
 
             if (!ModelVAORenderer.isGlowingUniformActive())

@@ -72,6 +72,9 @@ public class BBSSettings
     public static ValueBoolean gizmoConstantSize;
     public static ValueFloat gizmoConstantSizeMin;
     public static ValueInt gizmoDefaultMode;
+    /* 0 = Style 1, 1 = Style 2 (cubes outside view ring), 2 = Style 3 (cubes on ring, no cones). */
+    public static ValueInt gizmoStyle;
+    public static ValueBoolean gizmoFullRotationRings;
     public static ValueFloat gizmoGuideLength;
     public static ValueFloat gizmoGuideThickness;
     public static ValueFloat gizmoGuideOpacity;
@@ -132,6 +135,7 @@ public class BBSSettings
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
     public static ValueBoolean editorFilmOverlayVisible;
+    public static ValueBoolean editorFisheyeWidenFov;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
     public static ValueBoolean editorFlightFreeLook;
@@ -170,6 +174,7 @@ public class BBSSettings
     public static ValueInt replayContextOptions;
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
+    public static ValueBoolean editorEmbeddedKeyframeSidePanel;
     public static ValueBoolean editorMinutesBackup;
     public static ValueBoolean editorTimelineToolbar;
     public static ValueBoolean modelPbrPanelControls;
@@ -206,8 +211,14 @@ public class BBSSettings
     public static ValueBoolean damageControl;
 
     public static ValueBoolean shaderCurvesEnabled;
+    public static ValueBoolean irisOpacityFix;
+    /** Kept invisible for migrating saved Complementary/BSL toggles. */
+    @Deprecated
     public static ValueBoolean complementaryOpacityFix;
+    /** Kept invisible for migrating saved Complementary/BSL toggles. */
+    @Deprecated
     public static ValueBoolean bslOpacityFix;
+    public static ValueBoolean shaderOpacityPatchesDefaultOnMigrated;
     public static ValueFloat shaderShadowOpacity;
 
     public static ValueBoolean audioWaveformVisible;
@@ -228,16 +239,39 @@ public class BBSSettings
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
 
+    public static ValueBoolean saveAsCompatible;
+
     public static ValueLink textureDefaultPath;
     public static ValueInt texturePickerItemSize;
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
     public static ValueBoolean morphingAutoMorph;
+    public static ValueBoolean autoSpectatorInEditors;
 
     public static ValueBoolean usingInMemoryClipboard;
     public static ValueBoolean discordPresence;
     public static ValueString discordApplicationId;
+
+    /**
+     * When enabled (default), films dual-write legacy-friendly data for fields
+     * that newer builds store differently (subtitle lineHeight/maxWidth, and
+     * Opacity mirrored into Color alpha for older builds).
+     */
+    public static boolean isSaveAsCompatible()
+    {
+        return saveAsCompatible == null || saveAsCompatible.get();
+    }
+
+    /**
+     * When enabled (default), embedded clip keyframe editors show properties
+     * in an overlay side/bottom panel. When disabled, properties go to the
+     * general Properties layout tab (same host as replay keyframes).
+     */
+    public static boolean isEmbeddedKeyframeSidePanelEnabled()
+    {
+        return editorEmbeddedKeyframeSidePanel == null || editorEmbeddedKeyframeSidePanel.get();
+    }
 
     public static int primaryColor()
     {
@@ -258,6 +292,30 @@ public class BBSSettings
 
     public static void syncAppliedAppearance()
     {}
+
+    /**
+     * Opacity shader patches originally shipped default-off; defaults are now on.
+     * Existing bbs.json still has false — flip them on once after load.
+     */
+    public static void migrateShaderOpacityPatchesAfterLoad()
+    {
+        if (shaderOpacityPatchesDefaultOnMigrated == null || shaderOpacityPatchesDefaultOnMigrated.get())
+        {
+            return;
+        }
+
+        if (complementaryOpacityFix != null)
+        {
+            complementaryOpacityFix.set(true);
+        }
+
+        if (bslOpacityFix != null)
+        {
+            bslOpacityFix.set(true);
+        }
+
+        shaderOpacityPatchesDefaultOnMigrated.set(true);
+    }
 
     public static int modelEditorHoverHighlight()
     {
@@ -530,6 +588,7 @@ public class BBSSettings
         clickSound = builder.getBoolean("click_sound", false);
         pickLimbTexture = builder.getBoolean("pick_limb_texture", true);
         morphingAutoMorph = builder.getBoolean("auto_morph", false);
+        autoSpectatorInEditors = builder.getBoolean("auto_spectator_in_editors", true);
         editorSimplifyAnimations = builder.getBoolean("simplify_animations", false);
         favoriteColors = new ValueColors("favorite_colors");
         favoriteModelForms = new ValueStringKeys("favorite_model_forms");
@@ -564,10 +623,14 @@ public class BBSSettings
         gizmoTrackballScale = builder.getInt("gizmo_trackball_scale", 1, 1, 5);
         /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined, 4 = Trackball only; see Gizmo.Mode (ordinal order matches). */
         gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 4);
+        /* Combined / rotate visual style: 0 = Style 1, 1 = Style 2, 2 = Style 3 (cubes on ring, no cones). */
+        gizmoStyle = builder.getInt("gizmo_style", 0, 0, 2);
+        /* When true, XYZ rotation rings are full circles; when false, camera-facing half-rings. */
+        gizmoFullRotationRings = builder.getBoolean("gizmo_full_rotation_rings", false);
         /* Faint guide line(s) shown along the dragged axis/plane: length (multiplier),
          * thickness (multiplier) and opacity (0..1). */
         gizmoGuideLength = builder.getFloat("gizmo_guide_length", 2F, 0.1F, 10F);
-        gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 1F, 0.1F, 10F);
+        gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 2F, 0.1F, 10F);
         gizmoGuideOpacity = builder.getFloat("gizmo_guide_opacity", 0.35F, 0.05F, 1F);
         gizmoTranslateSpeed = builder.getInt("gizmo_translate_speed", 5, 1, 20);
         builder.register(editorGizmoToolbar = new ValueGizmoToolbar("gizmo_toolbar"));
@@ -619,6 +682,7 @@ public class BBSSettings
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
         editorFilmOverlayVisible = builder.getBoolean("film_overlay_visible", true);
+        editorFisheyeWidenFov = builder.getBoolean("fisheye_widen_fov", true);
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
@@ -630,6 +694,7 @@ public class BBSSettings
         editorClipPreview = builder.getBoolean("clip_preview", true);
         editorRewind = builder.getBoolean("rewind", true);
         editorHorizontalClipEditor = builder.getBoolean("horizontal_clip_editor", true);
+        editorEmbeddedKeyframeSidePanel = builder.getBoolean("embedded_keyframe_side_panel", true);
         editorMinutesBackup = builder.getBoolean("minutes_backup", true);
         editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
         editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
@@ -715,12 +780,20 @@ public class BBSSettings
 
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
-        complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", false);
-        bslOpacityFix = builder.getBoolean("bsl_opacity_fix", false);
+        irisOpacityFix = builder.getBoolean("iris_opacity_fix", true);
+        complementaryOpacityFix = builder.getBoolean("complementary_opacity_fix", true);
+        complementaryOpacityFix.invisible();
+        bslOpacityFix = builder.getBoolean("bsl_opacity_fix", true);
+        bslOpacityFix.invisible();
+        shaderOpacityPatchesDefaultOnMigrated = builder.getBoolean("opacity_patches_default_on_migrated", false);
+        shaderOpacityPatchesDefaultOnMigrated.invisible();
         shaderShadowOpacity = builder.getFloat("shader_shadow_opacity", 1F, 0F, 1F);
 
         builder.category("fluid_simulation");
         fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
+
+        builder.category("compatibility");
+        saveAsCompatible = builder.getBoolean("save_as_compatible", true);
 
         builder.category("audio");
         audioWaveformVisible = builder.getBoolean("waveform_visible", true);
@@ -736,5 +809,35 @@ public class BBSSettings
 
         BBSMod.events.post(new RegisterBBSSettingsEvent(builder));
         syncAppliedAppearance();
+    }
+
+    /**
+     * Fold legacy Complementary/BSL opacity toggles into {@link #irisOpacityFix}.
+     * Call after settings are loaded from disk.
+     */
+    public static void migrateIrisOpacityFix()
+    {
+        if (irisOpacityFix == null)
+        {
+            return;
+        }
+
+        boolean legacyOn = (complementaryOpacityFix != null && complementaryOpacityFix.get())
+            || (bslOpacityFix != null && bslOpacityFix.get());
+
+        if (legacyOn && !irisOpacityFix.get())
+        {
+            irisOpacityFix.set(true);
+        }
+
+        if (complementaryOpacityFix != null && complementaryOpacityFix.get())
+        {
+            complementaryOpacityFix.set(false);
+        }
+
+        if (bslOpacityFix != null && bslOpacityFix.get())
+        {
+            bslOpacityFix.set(false);
+        }
     }
 }

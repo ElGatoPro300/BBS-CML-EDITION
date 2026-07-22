@@ -231,6 +231,7 @@ public abstract class UIModelRenderer extends UIElement
     private void renderModel(UIContext context)
     {
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(true);
 
         this.setupPosition();
         this.setupViewport(context);

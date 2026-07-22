@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.actions.ActionState;
 import mchorse.bbs_mod.audio.AudioRenderer;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
@@ -108,6 +109,7 @@ public class UIFilmPreview extends UIElement
     public UIIcon recordReplay;
     public UIIcon recordVideo;
     public UIIcon renderQueue;
+    public UIIcon restoreBlocks;
     public UIButton joinWorld;
 
     public UIFilmPreview(UIFilmPanel filmPanel)
@@ -211,6 +213,24 @@ public class UIFilmPreview extends UIElement
                     {
                         Films.playFilm(this.panel.getData().getId(), true);
                     }
+                }
+            });
+
+            menu.action(Icons.FULLSCREEN, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAY_FULLSCREEN, () ->
+            {
+                if (!this.panel.canToggleVisibility())
+                {
+                    return;
+                }
+
+                if (!this.panel.isRunning())
+                {
+                    this.panel.togglePlayback();
+                }
+
+                if (this.panel.dashboard.main.isVisible())
+                {
+                    this.panel.dashboard.main.toggleVisible();
                 }
             });
 
@@ -339,6 +359,13 @@ public class UIFilmPreview extends UIElement
         this.renderQueue = new UIIcon(Icons.FILM, (b) -> this.panel.openRenderQueueOverlay());
         this.renderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE);
 
+        this.restoreBlocks = new UIIcon(Icons.BLOCK, (b) ->
+        {
+            this.panel.notifyServer(ActionState.RESTORE);
+            UIUtils.playClick();
+        });
+        this.restoreBlocks.tooltip(UIKeys.FILM_PREVIEW_RESTORE_BLOCKS);
+
         this.viewportButtonMap.put(ValueViewportToolbar.HIDE_OVERLAYS, this.hideOverlays);
         this.viewportButtonMap.put(ValueViewportToolbar.ONION_SKIN, this.onionSkin);
         this.viewportButtonMap.put(ValueViewportToolbar.TOGGLE_SHADERS, this.toggleShaders);
@@ -350,6 +377,7 @@ public class UIFilmPreview extends UIElement
         this.viewportButtonMap.put(ValueViewportToolbar.RECORD_REPLAY, this.recordReplay);
         this.viewportButtonMap.put(ValueViewportToolbar.RECORD_VIDEO, this.recordVideo);
         this.viewportButtonMap.put(ValueViewportToolbar.RENDER_QUEUE, this.renderQueue);
+        this.viewportButtonMap.put(ValueViewportToolbar.RESTORE_BLOCKS, this.restoreBlocks);
 
         this.rebuildViewportToolbar();
         BBSSettings.editorViewportToolbar.postCallback((v, f) -> this.rebuildViewportToolbar());

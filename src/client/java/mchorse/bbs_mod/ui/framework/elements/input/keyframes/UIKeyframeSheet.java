@@ -27,6 +27,10 @@ public class UIKeyframeSheet
     public final BaseValueBasic property;
     public Object defaultInsertValue;
 
+    /** Optional numeric bounds for double/float/int keyframe values (inclusive). */
+    public Double minValue;
+    public Double maxValue;
+
     public boolean groupHeader;
     public boolean groupExpanded = true;
     public boolean expanded = false;
@@ -79,9 +83,54 @@ public class UIKeyframeSheet
         return this;
     }
 
+    public UIKeyframeSheet limit(Double min, Double max)
+    {
+        this.minValue = min;
+        this.maxValue = max;
+
+        return this;
+    }
+
     public Icon getIcon()
     {
         return this.icon;
+    }
+
+    public Object clampValue(Object value)
+    {
+        if (!(value instanceof Number) || (this.minValue == null && this.maxValue == null))
+        {
+            return value;
+        }
+
+        double v = ((Number) value).doubleValue();
+
+        if (this.minValue != null)
+        {
+            v = Math.max(this.minValue, v);
+        }
+
+        if (this.maxValue != null)
+        {
+            v = Math.min(this.maxValue, v);
+        }
+
+        if (value instanceof Double)
+        {
+            return v;
+        }
+
+        if (value instanceof Float)
+        {
+            return (float) v;
+        }
+
+        if (value instanceof Integer)
+        {
+            return (int) Math.round(v);
+        }
+
+        return v;
     }
 
     public List<Integer> sort()
@@ -126,19 +175,19 @@ public class UIKeyframeSheet
         {
             if (selectedValue instanceof Double)
             {
-                keyframe.setValue((double) keyframe.getValue() + valueNumber.doubleValue() - (double) selectedValue, dirty);
+                keyframe.setValue(this.clampValue((double) keyframe.getValue() + valueNumber.doubleValue() - (double) selectedValue), dirty);
             }
             else if (selectedValue instanceof Float)
             {
-                keyframe.setValue((float) keyframe.getValue() + valueNumber.floatValue() - (float) selectedValue, dirty);
+                keyframe.setValue(this.clampValue((float) keyframe.getValue() + valueNumber.floatValue() - (float) selectedValue), dirty);
             }
             else if (selectedValue instanceof Integer)
             {
-                keyframe.setValue((int) keyframe.getValue() + valueNumber.intValue() - (int) selectedValue, dirty);
+                keyframe.setValue(this.clampValue((int) keyframe.getValue() + valueNumber.intValue() - (int) selectedValue), dirty);
             }
             else
             {
-                keyframe.setValue(this.channel.getFactory().copy(value), dirty);
+                keyframe.setValue(this.channel.getFactory().copy(this.clampValue(value)), dirty);
             }
         }
     }

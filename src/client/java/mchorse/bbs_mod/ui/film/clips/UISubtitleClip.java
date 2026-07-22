@@ -7,12 +7,12 @@ import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
-import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -51,6 +51,8 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
     public UIButton edit;
     public UIKeyframeEditor keyframes;
 
+    private int lastSyncedCursor = Integer.MIN_VALUE;
+
     public UISubtitleClip(SubtitleClip clip, IUIClipsDelegate editor)
     {
         super(clip, editor);
@@ -68,8 +70,8 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
             this.fillData();
         };
 
-        this.x = this.createDoubleTrackpad(this.clip.x, this.clip.uniform.x, UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_X, true, null, null);
-        this.y = this.createDoubleTrackpad(this.clip.y, this.clip.uniform.y, UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_Y, true, null, null);
+        this.x = this.createDoubleTrackpad(this.clip.x, this.clip.uniform.x, UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_X, false, null, null);
+        this.y = this.createDoubleTrackpad(this.clip.y, this.clip.uniform.y, UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_Y, false, null, null);
 
         this.size = this.createDoubleTrackpad(this.clip.size, this.clip.uniform.size, UIKeys.CAMERA_PANELS_SUBTITLE_SIZE, false, null, null);
 
@@ -91,10 +93,10 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
         this.shadow = this.createDoubleTrackpad(this.clip.shadow, this.clip.uniform.shadow, UIKeys.CAMERA_PANELS_SUBTITLE_SHADOW, false, 0F, null);
         this.shadowOpaque = this.createBooleanField(this.clip.shadowOpaque, this.clip.uniform.shadowOpaque, UIKeys.CAMERA_PANELS_SUBTITLE_OPAQUE);
 
-        this.lineHeight = this.createIntegerTrackpad(this.clip.lineHeight, this.clip.uniform.lineHeight, UIKeys.CAMERA_PANELS_SUBTITLE_LINE_HEIGHT, true, 0F, null);
+        this.lineHeight = this.createDoubleTrackpad(this.clip.lineHeight, this.clip.uniform.lineHeight, UIKeys.CAMERA_PANELS_SUBTITLE_LINE_HEIGHT, false, 0F, null);
         this.lineHeight.tooltip(UIKeys.CAMERA_PANELS_SUBTITLE_LINE_HEIGHT, Direction.BOTTOM);
 
-        this.maxWidth = this.createIntegerTrackpad(this.clip.maxWidth, this.clip.uniform.maxWidth, UIKeys.CAMERA_PANELS_SUBTITLE_MAX_WIDTH, true, 0F, null);
+        this.maxWidth = this.createDoubleTrackpad(this.clip.maxWidth, this.clip.uniform.maxWidth, UIKeys.CAMERA_PANELS_SUBTITLE_MAX_WIDTH, false, 0F, null);
         this.maxWidth.tooltip(UIKeys.CAMERA_PANELS_SUBTITLE_MAX_WIDTH, Direction.BOTTOM);
 
         this.useKeyframes = new UIToggle(UIKeys.SCREEN_PANELS_USE_KEYFRAMES, (b) ->
@@ -173,39 +175,6 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
         return trackpad;
     }
 
-    private UITrackpad createIntegerTrackpad(KeyframeChannel<Integer> channel, ValueInt uniform, IKey tooltip, boolean integer, Float min, Float max)
-    {
-        UITrackpad trackpad = new UITrackpad((v) ->
-        {
-            this.writeInteger(channel, uniform, v.intValue());
-            this.fillData();
-        });
-
-        if (integer)
-        {
-            trackpad.integer();
-        }
-
-        if (min != null)
-        {
-            if (max != null)
-            {
-                trackpad.limit(min, max);
-            }
-            else
-            {
-                trackpad.limit(min);
-            }
-        }
-
-        if (tooltip != null)
-        {
-            trackpad.tooltip(tooltip);
-        }
-
-        return trackpad;
-    }
-
     private UIColor createColorField(KeyframeChannel<Color> channel, ValueColor uniform)
     {
         return new UIColor((c) ->
@@ -239,19 +208,11 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
 
     private void writeDouble(KeyframeChannel<Double> channel, ValueDouble uniform, double value)
     {
-        if (this.clip.useKeyframes.get())
+        if (channel == this.clip.lineHeight || channel == this.clip.maxWidth)
         {
-            channel.insert(this.getClipTick(), value);
+            value = Math.max(SubtitleClip.CONSTRAINT_MIN, value);
         }
-        else
-        {
-            this.clip.uniformSeeded.set(true);
-            uniform.set(value);
-        }
-    }
 
-    private void writeInteger(KeyframeChannel<Integer> channel, ValueInt uniform, int value)
-    {
         if (this.clip.useKeyframes.get())
         {
             channel.insert(this.getClipTick(), value);
@@ -303,6 +264,7 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
             UIReplaysEditor.renderBackground(context, editor.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
         });
         editor.view.duration(() -> this.clip.duration.get());
+        editor.view.changed(() -> this.fillData());
         editor.setUndoId(undoId);
 
         return editor;
@@ -352,8 +314,8 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
         this.backgroundOffset.setValue(this.getDoubleValue(this.clip.backgroundOffset, this.clip.uniform.backgroundOffset, 2D));
         this.shadow.setValue(this.getDoubleValue(this.clip.shadow, this.clip.uniform.shadow, 0D));
         this.shadowOpaque.setValue(this.getBooleanValue(this.clip.shadowOpaque, this.clip.uniform.shadowOpaque, false));
-        this.lineHeight.setValue(this.getIntegerValue(this.clip.lineHeight, this.clip.uniform.lineHeight, 12));
-        this.maxWidth.setValue(this.getIntegerValue(this.clip.maxWidth, this.clip.uniform.maxWidth, 0));
+        this.lineHeight.setValue(this.getDoubleValue(this.clip.lineHeight, this.clip.uniform.lineHeight, 12D));
+        this.maxWidth.setValue(this.getDoubleValue(this.clip.maxWidth, this.clip.uniform.maxWidth, 0D));
         this.useKeyframes.setValue(this.clip.useKeyframes.get());
         this.updateKeyframesControls();
 
@@ -363,7 +325,37 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
             this.keyframes.setChannels(this.clip.channels);
         }
 
+        this.applySheetLimits();
         this.updateTrackTitles();
+        this.lastSyncedCursor = this.editor.getCursor();
+    }
+
+    /**
+     * Keep property inputs in sync if the film cursor moves without going through
+     * the normal scrub refresh path (e.g. after a prior fillData failure).
+     */
+    @Override
+    public void render(UIContext context)
+    {
+        int cursor = this.editor.getCursor();
+
+        if (cursor != this.lastSyncedCursor)
+        {
+            this.fillData();
+        }
+
+        super.render(context);
+    }
+
+    private void applySheetLimits()
+    {
+        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
+        {
+            if ("lineHeight".equals(sheet.id) || "maxWidth".equals(sheet.id) || "shadow".equals(sheet.id))
+            {
+                sheet.limit(0D, null);
+            }
+        }
     }
 
     private String getStringValue(KeyframeChannel<String> channel, ValueString uniform, String fallback)
@@ -397,22 +389,20 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
             return this.clip.uniformSeeded.get() ? uniform.get() : fallback;
         }
 
-        return channel.interpolate(this.getClipTick());
+        return this.readDouble(channel, this.getClipTick(), fallback);
     }
 
-    private int getIntegerValue(KeyframeChannel<Integer> channel, ValueInt uniform, int fallback)
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private double readDouble(KeyframeChannel<Double> channel, float tick, double fallback)
     {
-        if (!this.clip.useKeyframes.get())
+        Object value = ((KeyframeChannel) channel).interpolate(tick);
+
+        if (value instanceof Number)
         {
-            return uniform.get();
+            return ((Number) value).doubleValue();
         }
 
-        if (channel.isEmpty())
-        {
-            return this.clip.uniformSeeded.get() ? uniform.get() : fallback;
-        }
-
-        return channel.interpolate(this.getClipTick(), fallback);
+        return fallback;
     }
 
     private boolean getBooleanValue(KeyframeChannel<Boolean> channel, ValueBoolean uniform, boolean fallback)

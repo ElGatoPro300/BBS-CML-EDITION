@@ -7,8 +7,6 @@ import mchorse.bbs_mod.forms.forms.BillboardForm;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ShapeForm;
-import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.util.math.Vec3d;
@@ -270,20 +268,21 @@ public class FormRenderDepth
         return dx * dx + dy * dy + dz * dz;
     }
 
+    /**
+     * Forms that can wipe lower render-depth neighbors when closer to the camera.
+     * Only Shape/Billboard panels — low-opacity character meshes must not become occluders
+     * (camera orbit flipped distanceSq and made actors vanish at some angles).
+     * Fully invisible (opacity 0) panels also do not occlude.
+     */
     public static boolean isSemiTransparent(Form form)
     {
-        if (form == null)
+        if (form == null || !(form instanceof ShapeForm || form instanceof BillboardForm))
         {
             return false;
         }
 
-        BaseValue colorValue = form.get("color");
+        float opacity = form.getFormOpacity();
 
-        if (colorValue instanceof ValueColor valueColor)
-        {
-            return valueColor.get().a < 0.999F;
-        }
-
-        return false;
+        return opacity > 0.001F && opacity < 0.999F;
     }
 }

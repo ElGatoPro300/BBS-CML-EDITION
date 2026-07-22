@@ -75,7 +75,6 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             this.fix = new UITrackpad((v) ->
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.fix = MathUtils.clamp(v.floatValue(), 0F, 1F));
-                this.transform.setTransform(this.keyframe.getValue());
             });
             this.fix.limit(0D, 1D).increment(1D).values(0.1, 0.05D, 0.2D);
             this.fix.tooltip(UIKeys.POSE_CONTEXT_FIX_TOOLTIP);

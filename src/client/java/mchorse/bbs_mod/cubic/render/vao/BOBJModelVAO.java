@@ -323,23 +323,19 @@ public class BOBJModelVAO
             return;
         }
 
-        RenderSystem.disableDepthTest();
+        /* Keep depth on so nearer limbs (head in front of torso) stay pickable. Priority
+         * bones only win z-ties / coplanar overlaps against parents drawn earlier. */
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
 
-        try
+        for (String boneId : CubicRenderer.STENCIL_PICK_PRIORITY_BONES)
         {
-            for (String boneId : CubicRenderer.STENCIL_PICK_PRIORITY_BONES)
+            BOBJBone bone = this.getBoneByName(boneId);
+
+            if (bone != null)
             {
-                BOBJBone bone = this.getBoneByName(boneId);
-
-                if (bone != null)
-                {
-                    this.drawTriangles((boneIndex) -> boneIndex == bone.index);
-                }
+                this.drawTriangles((boneIndex) -> boneIndex == bone.index);
             }
-        }
-        finally
-        {
-            RenderSystem.enableDepthTest();
         }
     }
 
@@ -413,6 +409,7 @@ public class BOBJModelVAO
 
         RenderSystem.setShader(() -> shader);
         shader.bind();
+        mchorse.bbs_mod.utils.iris.FormColorGradePatch.uploadToCurrentProgram();
 
         GL30.glBindVertexArray(this.vao);
 

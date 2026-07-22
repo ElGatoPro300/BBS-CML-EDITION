@@ -20,7 +20,6 @@ import mchorse.bbs_mod.client.renderer.entity.GunProjectileEntityRenderer;
 import mchorse.bbs_mod.client.renderer.item.GunItemRenderer;
 import mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer;
 import mchorse.bbs_mod.cubic.model.ModelManager;
-import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.register.RegisterClientSettingsEvent;
@@ -99,6 +98,7 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
@@ -544,10 +544,16 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
 
-        BBSSettings.complementaryOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
-        BBSSettings.bslOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
-        BBSSettings.shaderShadowOpacity.postCallback((v, f) ->
-            mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.syncShadowOpacityDefault());
+        if (BBSSettings.irisOpacityFix != null)
+        {
+            BBSSettings.irisOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
+        }
+
+        if (BBSSettings.shaderShadowOpacity != null)
+        {
+            BBSSettings.shaderShadowOpacity.postCallback((v, f) ->
+                mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.syncShadowOpacityDefault());
+        }
 
         if (BBSSettings.worldGammaPercent != null)
         {
@@ -578,6 +584,13 @@ public class BBSModClient implements ClientModInitializer
                 panel.applySeparateReplayPropertiesPanelSetting();
             }
         });
+        BBSSettings.editorEmbeddedKeyframeSidePanel.postCallback((v, f) ->
+        {
+            if (dashboard != null && dashboard.getPanels().panel instanceof UIFilmPanel panel)
+            {
+                panel.applyEmbeddedKeyframeSidePanelSetting();
+            }
+        });
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK
@@ -587,6 +600,12 @@ public class BBSModClient implements ClientModInitializer
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
+        );
+
+        BBSSettings.gizmoStyle.modes(
+            UIKeys.CONFIG_AXES_GIZMO_STYLE_1,
+            UIKeys.CONFIG_AXES_GIZMO_STYLE_2,
+            UIKeys.CONFIG_AXES_GIZMO_STYLE_3
         );
 
         BBSSettings.editorTimeMode.modes(
@@ -674,8 +693,17 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
+        /* Soft-opacity forms wait until water/lava/portals are drawn; flush here (not inside
+         * renderLayer) so WorldRenderer's pose stack stays balanced. */
+        WorldRenderEvents.AFTER_TRANSLUCENT.register((context) ->
+        {
+            ShaderOpacityPatch.onAfterTranslucentTerrain();
+        });
+
         WorldRenderEvents.LAST.register((context) ->
         {
+            mchorse.bbs_mod.graphics.Draw.flushIrisBoxes();
+
             if (Gizmo.INSTANCE.hasDeferred())
             {
                 RenderSystem.enableDepthTest();
@@ -710,7 +738,11 @@ public class BBSModClient implements ClientModInitializer
         ClientTickEvents.START_CLIENT_TICK.register((client) ->
         {
             BBSRendering.startTick();
-            TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
+
+            if (!client.isPaused())
+            {
+                TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
+            }
         });
 
         ClientTickEvents.END_WORLD_TICK.register((client) ->
@@ -779,8 +811,10 @@ public class BBSModClient implements ClientModInitializer
             {
                 UIDashboard dashboard = getDashboard();
 
-                UIScreen.open(dashboard);
+                /* Select Morphing before open so onOpen does not briefly apply
+                 * Spectator from a leftover Film / Model Block panel. */
                 dashboard.setPanel(dashboard.getPanel(UIMorphingPanel.class));
+                UIScreen.open(dashboard);
             }
             while (keyDemorph.wasPressed()) ClientNetwork.sendPlayerForm(null);
             while (keyTeleport.wasPressed()) this.keyTeleport();

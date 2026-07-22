@@ -57,6 +57,10 @@ public final class ViewportToolbarButtons
         {
             return Icons.FILM;
         }
+        else if (ValueViewportToolbar.RESTORE_BLOCKS.equals(id))
+        {
+            return Icons.BLOCK;
+        }
 
         return Icons.GEAR;
     }
@@ -106,6 +110,10 @@ public final class ViewportToolbarButtons
         else if (ValueViewportToolbar.RENDER_QUEUE.equals(id))
         {
             return UIKeys.FILM_OPEN_RENDER_QUEUE;
+        }
+        else if (ValueViewportToolbar.RESTORE_BLOCKS.equals(id))
+        {
+            return UIKeys.FILM_PREVIEW_RESTORE_BLOCKS;
         }
 
         return IKey.raw(id);

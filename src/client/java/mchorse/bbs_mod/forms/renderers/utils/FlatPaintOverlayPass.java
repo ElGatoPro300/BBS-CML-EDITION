@@ -15,6 +15,25 @@ import org.lwjgl.opengl.GL11;
  */
 public class FlatPaintOverlayPass
 {
+
+    /**
+     * Camera-facing quads have ~0 depth slope, so only {@code units} separates the overlay.
+     * Far away, float depth precision needs a larger units bias than near-camera draws.
+     */
+    public static final float POLYGON_OFFSET_FACTOR = -1F;
+    public static final float POLYGON_OFFSET_UNITS = -32F;
+
+    /** Default bias — clears the camera-facing base face when close / angled. */
+    public static final float DEFAULT_FACTOR = -2F;
+    public static final float DEFAULT_UNITS = -4F;
+    /**
+     * Stronger than deferred billboard base ({@code -1.5/-1.5}). Paint flushes after the Iris
+     * base redraw; the factor term dominates at distance and must clearly beat the base offset.
+     */
+    public static final float DEFERRED_BILLBOARD_FACTOR = -4F;
+    public static final float DEFERRED_BILLBOARD_UNITS = -8F;
+
+
     private FlatPaintOverlayPass()
     {
     }
@@ -25,6 +44,11 @@ public class FlatPaintOverlayPass
     }
 
     public static void render(Runnable draw)
+    {
+        render(DEFAULT_FACTOR, DEFAULT_UNITS, draw);
+    }
+
+    public static void render(float factor, float units, Runnable draw)
     {
         if (draw == null)
         {
@@ -41,8 +65,8 @@ public class FlatPaintOverlayPass
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        /* Stronger units bias keeps coplanar paint overlays stable when the camera is very close. */
-        GL11.glPolygonOffset(-1F, -2F);
+        GL11.glPolygonOffset(POLYGON_OFFSET_FACTOR, POLYGON_OFFSET_UNITS);
+        GL11.glPolygonOffset(factor, units);
 
         ShaderProgram program = BBSShaders.getFlatPaintOverlayProgram();
 

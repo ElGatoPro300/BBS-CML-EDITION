@@ -32,6 +32,7 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -82,6 +83,99 @@ public class UIReplaysEditorUtils
                 consumer.accept((Keyframe<T>) selected);
             }
         }
+    }
+
+    /**
+     * Collect ticks of selected Color keyframes (paint companions live on a hidden channel).
+     */
+    public static List<Float> collectSelectedColorTicks(UIKeyframes editor)
+    {
+        List<Float> ticks = new ArrayList<>();
+
+        if (editor == null || editor.getGraph() == null)
+        {
+            return ticks;
+        }
+
+        for (UIKeyframeSheet sheet : editor.getGraph().getSheets())
+        {
+            if (!"color".equals(sheet.id))
+            {
+                continue;
+            }
+
+            for (Keyframe selected : sheet.selection.getSelected())
+            {
+                ticks.add(selected.getTick());
+            }
+        }
+
+        return ticks;
+    }
+
+    public static void removeCompanionPaintForColorTicks(UIKeyframes editor, Collection<Float> ticks)
+    {
+        if (editor == null || ticks == null || ticks.isEmpty())
+        {
+            return;
+        }
+
+        UIReplaysEditor replays = editor.getParent(UIReplaysEditor.class);
+
+        if (replays == null || replays.getReplay() == null)
+        {
+            return;
+        }
+
+        Form form = replays.getReplay().form.get();
+
+        replays.getReplay().properties.removeCompanionPaintAtTicks(form, ticks);
+    }
+
+    public static void removeCompanionPaintForSelectedColor(UIKeyframes editor)
+    {
+        removeCompanionPaintForColorTicks(editor, collectSelectedColorTicks(editor));
+    }
+
+    public static void removeCompanionPaintForColorKeyframe(UIKeyframes editor, Keyframe keyframe)
+    {
+        if (editor == null || keyframe == null)
+        {
+            return;
+        }
+
+        UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
+
+        if (sheet == null || !"color".equals(sheet.id))
+        {
+            return;
+        }
+
+        removeCompanionPaintForColorTicks(editor, Collections.singletonList(keyframe.getTick()));
+    }
+
+    public static void moveCompanionPaintForSelectedColor(UIKeyframes editor, float diff)
+    {
+        if (editor == null || Math.abs(diff) < 0.0001F)
+        {
+            return;
+        }
+
+        List<Float> ticks = collectSelectedColorTicks(editor);
+
+        if (ticks.isEmpty())
+        {
+            return;
+        }
+
+        UIReplaysEditor replays = editor.getParent(UIReplaysEditor.class);
+
+        if (replays == null || replays.getReplay() == null)
+        {
+            return;
+        }
+
+        replays.getReplay().properties.moveCompanionPaintBy(diff, ticks);
     }
 
     /* Picking form and form properties */

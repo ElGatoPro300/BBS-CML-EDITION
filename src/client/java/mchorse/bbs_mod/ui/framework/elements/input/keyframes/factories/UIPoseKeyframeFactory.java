@@ -13,8 +13,10 @@ import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.UI;
@@ -23,6 +25,7 @@ import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
@@ -37,6 +40,13 @@ import java.util.function.Consumer;
 public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 {
     public UIPoseFactoryEditor poseEditor;
+
+    /**
+     * -1 = not built yet; 0 = narrow stack; 1 = wide two-column.
+     * Rebuild only when this flips — every resize used to wipe the tree and
+     * orphan open Color/Glow shells so footer buttons vanished.
+     */
+    private int layoutMode = -1;
 
     public UIPoseKeyframeFactory(Keyframe<Pose> keyframe, UIKeyframes editor)
     {
@@ -99,22 +109,82 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
     @Override
     public void resize()
     {
+        int mode = this.resolveLayoutMode();
+
+        if (mode != this.layoutMode || this.poseEditor.getChildren().isEmpty())
+        {
+            this.rebuildPoseLayout(mode == 1);
+            this.layoutMode = mode;
+        }
+
+        super.resize();
+
+        /* Width is often still 0 on the first pass; rebuild once area is known. */
+        int after = this.resolveLayoutMode();
+
+        if (after != this.layoutMode)
+        {
+            this.rebuildPoseLayout(after == 1);
+            this.layoutMode = after;
+            super.resize();
+        }
+    }
+
+    private int resolveLayoutMode()
+    {
+        int w = this.getFlex().getW();
+
+        if (w <= 0)
+        {
+            w = this.area.w;
+        }
+
+        return w > 240 ? 1 : 0;
+    }
+
+    private void rebuildPoseLayout(boolean wide)
+    {
+        /* Closing shells before wipe avoids orphan ACTIVE shells after removeAll. */
+        if (this.poseEditor.colorSection != null)
+        {
+            this.poseEditor.colorSection.setExpanded(false);
+        }
+
+        if (this.poseEditor.glowSection != null)
+        {
+            this.poseEditor.glowSection.setExpanded(false);
+        }
+
         this.poseEditor.removeAll();
 
-        boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
-        boolean pickLimbTexture = BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get();
-        UIElement textureRow = pickLimbTexture ? this.poseEditor.pickTexture : null;
+        /* Rebuilding the pose editor tree while a child trackpad is focused
+         * leaves a stale textbox focus that freezes further edits. */
+        UIContext context = this.getContext();
 
-        if (this.getFlex().getW() > 240)
+        if (context != null && context.activeElement instanceof UIElement focused
+            && focused.getParent(UIPoseFactoryEditor.class) == this.poseEditor)
         {
+            context.unfocus();
+        }
+
+        boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
+        /* Wide Film Properties: Pick beside Opacity. Narrow + Model Editor stay stacked. */
+        UIElement footer = this.poseEditor.createPoseFooter(wide);
+
+        if (wide)
+        {
+            /* 5 transform rows at 20px + 4×5px column margins; Fix trackpad sits above. */
+            int transformHeight = 20 * 5 + 5 * 4;
+            int boneListHeight = 20 + 5 + transformHeight;
+
+            this.poseEditor.transform.h(transformHeight);
+            this.poseEditor.groups.h(boneListHeight);
+            this.poseEditor.categories.h(Math.max(UIStringList.DEFAULT_HEIGHT, boneListHeight - 20));
+
             UIElement left = UI.column(
                 UI.label(UIKeys.POSE_CONTEXT_FIX),
                 this.poseEditor.fix,
-                this.poseEditor.transform,
-                UI.row(this.poseEditor.color, this.poseEditor.paintColor, this.poseEditor.glowingColor),
-                this.poseEditor.paintIntensity,
-                this.poseEditor.glowIntensity,
-                this.poseEditor.lighting
+                this.poseEditor.transform
             );
 
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
@@ -123,34 +193,19 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
                 groupsRow
             );
 
-            if (textureRow != null)
-            {
-                right.add(textureRow);
-            }
-
             this.poseEditor.add(UI.row(left, right));
+            this.poseEditor.add(footer);
         }
         else
         {
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
             this.poseEditor.add(
                 UI.label(UIKeys.FORMS_EDITOR_BONE),
-                groupsRow
-            );
-
-            if (textureRow != null)
-            {
-                this.poseEditor.add(textureRow);
-            }
-
-            this.poseEditor.add(
+                groupsRow,
                 UI.label(UIKeys.POSE_CONTEXT_FIX),
                 this.poseEditor.fix,
                 this.poseEditor.transform,
-                UI.row(this.poseEditor.color, this.poseEditor.paintColor, this.poseEditor.glowingColor),
-                this.poseEditor.paintIntensity,
-                this.poseEditor.glowIntensity,
-                this.poseEditor.lighting
+                footer
             );
         }
 
@@ -159,8 +214,6 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         {
             child.noCulling();
         }
-
-        super.resize();
     }
 
     public static class UIPoseFactoryEditor extends UIPoseEditor
@@ -337,7 +390,56 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected void setColor(PoseTransform transform, int value)
         {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.color.set(value));
+            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) ->
+            {
+                float intensity = poseT.color.a;
+
+                poseT.color.set(value, false);
+                poseT.color.a = intensity;
+            });
+        }
+
+        @Override
+        protected void setBlendIntensity(PoseTransform transform, float value)
+        {
+            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) ->
+                poseT.color.a = MathUtils.clamp(value, 0F, 1F));
+        }
+
+        @Override
+        protected void editPoseColor(Consumer<Color> editor)
+        {
+            String group = this.getCurrentBone();
+
+            if (group == null || group.isEmpty())
+            {
+                group = this.groups.list.getCurrentFirst();
+            }
+
+            if (group == null || group.isEmpty())
+            {
+                return;
+            }
+
+            apply(this.editor, this.keyframe, group, (poseT) -> editor.accept(poseT.color));
+        }
+
+        @Override
+        protected void editPosePaintColor(Consumer<Color> editor)
+        {
+            String group = this.getCurrentBone();
+
+            if (group == null || group.isEmpty())
+            {
+                group = this.groups.list.getCurrentFirst();
+            }
+
+            if (group == null || group.isEmpty())
+            {
+                return;
+            }
+
+            apply(this.editor, this.keyframe, group, (poseT) -> editor.accept(poseT.paintColor));
         }
 
         @Override

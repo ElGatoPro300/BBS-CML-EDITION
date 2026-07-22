@@ -143,6 +143,11 @@ public class BBSRendering
 
     private static int width;
     private static int height;
+    /**
+     * Scale used for this frame's fisheye FOV widen (1 = off). Color grade reads this
+     * so the UV warp matches the projection even if effect lists were rebuilt.
+     */
+    private static float lensOverscanScale = 1F;
 
     private static final UIBaseMenu replayHudMenu = new UIBaseMenu() {};
 
@@ -191,6 +196,16 @@ public class BBSRendering
     public static int getVideoHeight()
     {
         return height == 0 ? BBSSettings.videoSettings.height.get() : height;
+    }
+
+    public static float getLensOverscanScale()
+    {
+        return lensOverscanScale;
+    }
+
+    public static void setLensOverscanScale(float scale)
+    {
+        lensOverscanScale = scale > 1.0001F ? scale : 1F;
     }
 
     public static int getVideoFrameRate()
@@ -251,6 +266,19 @@ public class BBSRendering
         }
     }
 
+    /**
+     * Framebuffer whose color is sampled by ColorGradeOverlay (Iris-lit scene before regrade).
+     */
+    public static Framebuffer getPaintOverlaySourceFramebuffer()
+    {
+        if (toggleFramebuffer && framebuffer != null)
+        {
+            return framebuffer;
+        }
+
+        return MinecraftClient.getInstance().getFramebuffer();
+    }
+
     public static boolean isCustomSize()
     {
         return customSize;
@@ -304,6 +332,16 @@ public class BBSRendering
 
     public static void startTick()
     {
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        /* Client ticks still run while the pause menu is open, but world/block-entity ticks do
+         * not — clearing here would empty the set with nothing to refill it, killing model-block
+         * Iris shadows (and UI lists that reuse this cache) until unpause. */
+        if (mc != null && mc.isPaused())
+        {
+            return;
+        }
+
         capturedModelBlocks.clear();
         TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
     }
@@ -378,8 +416,8 @@ public class BBSRendering
         }
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        int w = mc.getWindow().getFramebufferWidth();
-        int h = mc.getWindow().getFramebufferHeight();
+        int w = Math.max(2, mc.getWindow().getFramebufferWidth());
+        int h = Math.max(2, mc.getWindow().getFramebufferHeight());
 
         if (framebuffer.textureWidth == w && framebuffer.textureHeight == h)
         {
@@ -403,8 +441,8 @@ public class BBSRendering
 
         if (toggleFramebuffer)
         {
-            int w = mc.getWindow().getFramebufferWidth();
-            int h = mc.getWindow().getFramebufferHeight();
+            int w = Math.max(2, mc.getWindow().getFramebufferWidth());
+            int h = Math.max(2, mc.getWindow().getFramebufferHeight());
 
             resizeExtraFramebuffers();
 
@@ -487,6 +525,8 @@ public class BBSRendering
             return;
         }
 
+        /* Paint overlays first (and noshading soft forms in the same queue, after paint via
+         * sort). Iris soft forms (noshading off) already flushed at beginTranslucents. */
         ModelVAORenderer.flushPaintOverlayQueue();
         ShaderOpacityPatch.onWorldRenderEnd();
 
@@ -797,7 +837,7 @@ public class BBSRendering
     }
 
     /**
-     * With the Complementary/BSL opacity patch, translucent opacities are redrawn after
+     * With the Iris opacity fix, translucent opacities are redrawn after
      * VL clouds (post-deferred) so soft fades never punch the sky or get clouds composited
      * over the mesh. Near-opaque keeps the live Iris path with depth writes.
      */
@@ -806,8 +846,9 @@ public class BBSRendering
     /**
      * True when Iris would discard/mis-composite very low form opacity; queue a BBS redraw
      * after compositing. Slight opacity (e.g. {@code #e7}/{@code #fc}) stays on Iris.
-     * When the Complementary opacity patch is active, only near-zero alpha is deferred so
-     * pack lighting stays on the Iris path.
+     * When the Complementary/BSL opacity patch is active, never take this BBS handoff —
+     * translucency stays on Iris and is flushed post-deferred after VL clouds (smooth
+     * fade through {@code #1c}/28 with lighting and render depth intact).
      */
     public static boolean needsIrisTranslucentModelDeferral(float alpha)
     {
@@ -816,20 +857,28 @@ public class BBSRendering
             return false;
         }
 
-        float ref = ShaderOpacityPatch.isActive()
-            ? ShaderOpacityPatch.LOW_ALPHA_TEST_REF
-            : TRANSLUCENT_ALPHA_DISCARD_REF;
+        if (ShaderOpacityPatch.isActive())
+        {
+            return false;
+        }
 
-        return alpha < ref;
+        return alpha < TRANSLUCENT_ALPHA_DISCARD_REF;
     }
 
     /**
-     * Opt-in paint flag: use the clean deferred opacity path at any translucent alpha
-     * (same compositing as post-{@code #1b}) without forcing neighbors off Iris lighting.
+     * Opt-in Opacity-track "No shading": redraw this soft form on the BBS deferred queue
+     * after paint overlays (paint visible through soft; pack body sun shadows lost).
+     * When off, soft forms stay on Iris post-deferred (body shadows kept; paint clipped).
+     * Still applies when the Complementary/BSL opacity patch is active.
      */
     public static boolean needsIrisNoshadingOpacityDeferral(float alpha, boolean noshadingOpacity)
     {
-        return noshadingOpacity && isIrisWorldModelPass() && !isIrisShadowPass() && alpha > 0.001F && alpha < 0.999F;
+        if (!noshadingOpacity || !isIrisWorldModelPass() || isIrisShadowPass())
+        {
+            return false;
+        }
+
+        return alpha > 0.001F && alpha < 0.999F;
     }
 
     /**
@@ -1334,6 +1383,14 @@ public class BBSRendering
         return (b) -> new BlockPaintOverlayVertexConsumer(b, paintColor);
     }
 
+    /**
+     * Neutral white vertex colors for block color-tint multiply overlays (tint lives in uniforms).
+     */
+    public static Function<VertexConsumer, VertexConsumer> getBlockColorTintOverlayConsumer()
+    {
+        return getColorConsumer(Color.white());
+    }
+
     private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)
     {
         List<Subtitle> subtitles = SubtitleClip.getSubtitles(context);
@@ -1346,6 +1403,10 @@ public class BBSRendering
             return;
         }
 
+        /* Safety net: Subtitle's text FBO can shrink glViewport; restore after the pass. */
+        int[] prevViewport = new int[4];
+
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         RenderSystem.disableDepthTest();
 
         MatrixStack matrices = batcher.getContext().getMatrices();
@@ -1386,6 +1447,7 @@ public class BBSRendering
         }
 
         bossBars.clear();
+        GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
         RenderSystem.enableDepthTest();
     }
 }

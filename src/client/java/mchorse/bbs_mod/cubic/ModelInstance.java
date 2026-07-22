@@ -614,12 +614,13 @@ public class ModelInstance implements IModelInstance
     }
 
     /**
-     * Reuse GPU buffers already baked on another instance that shares this {@link IModel}.
-     * The source instance keeps ownership; this instance must not delete borrowed VAOs.
+     * Reuse GPU buffers already baked on another instance. Prefer the same {@link IModel}
+     * graph; after {@link #copy()} (independent ModelGroups) remaps VAOs by bone id so
+     * pose/anim state stays private while GPU meshes stay shared.
      */
     public void borrowVaosFrom(ModelInstance source)
     {
-        if (source == null || source.model != this.model || source.vaos.isEmpty())
+        if (source == null || source.vaos.isEmpty())
         {
             return;
         }
@@ -634,8 +635,41 @@ public class ModelInstance implements IModelInstance
             this.vaos.clear();
         }
 
-        this.vaos = source.vaos;
-        this.ownsVaos = false;
+        if (source.model == this.model)
+        {
+            this.vaos = source.vaos;
+            this.ownsVaos = false;
+
+            return;
+        }
+
+        if (this.model instanceof Model localModel && source.model instanceof Model sourceModel)
+        {
+            Map<ModelGroup, ModelVAO> remapped = new HashMap<>();
+
+            for (ModelGroup localGroup : localModel.getAllGroups())
+            {
+                ModelGroup sourceGroup = sourceModel.getGroup(localGroup.id);
+
+                if (sourceGroup == null)
+                {
+                    continue;
+                }
+
+                ModelVAO vao = source.vaos.get(sourceGroup);
+
+                if (vao != null)
+                {
+                    remapped.put(localGroup, vao);
+                }
+            }
+
+            if (!remapped.isEmpty())
+            {
+                this.vaos = remapped;
+                this.ownsVaos = false;
+            }
+        }
     }
 
     /* Rendering */

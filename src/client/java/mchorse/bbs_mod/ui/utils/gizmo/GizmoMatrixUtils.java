@@ -26,26 +26,39 @@ public final class GizmoMatrixUtils
      */
     public static Matrix4f resolveFilmPoseBoneMatrix(MatrixCacheEntry entry, boolean local)
     {
-        return resolveFilmPoseBoneMatrix(entry, local, false);
+        return resolveFilmPoseBoneMatrix(entry, local ? TransformOrientation.LOCAL : TransformOrientation.PARENT, false);
     }
 
     public static Matrix4f resolveFilmPoseBoneMatrix(MatrixCacheEntry entry, boolean local, boolean bobj)
+    {
+        return resolveFilmPoseBoneMatrix(entry, local ? TransformOrientation.LOCAL : TransformOrientation.PARENT, bobj);
+    }
+
+    public static Matrix4f resolveFilmPoseBoneMatrix(MatrixCacheEntry entry, TransformOrientation orientation, boolean bobj)
     {
         if (entry == null)
         {
             return null;
         }
 
+        if (orientation == null)
+        {
+            orientation = TransformOrientation.PARENT;
+        }
+
+        Matrix4f matrix;
+        boolean local = orientation.usesLocalBoneBasis();
+
         if (!local)
         {
-            Matrix4f matrix = entry.origin();
+            matrix = entry.origin();
 
             if (matrix == null)
             {
                 matrix = entry.matrix();
             }
 
-            return matrix == null ? null : new Matrix4f(matrix);
+            return applyOrientationSpace(matrix == null ? null : new Matrix4f(matrix), orientation);
         }
 
         Matrix4f localMatrix = entry.matrix();
@@ -58,32 +71,63 @@ public final class GizmoMatrixUtils
         {
             if (originMatrix != null)
             {
-                return new Matrix4f(originMatrix);
+                return applyOrientationSpace(new Matrix4f(originMatrix), orientation);
             }
 
-            return localMatrix == null ? null : new Matrix4f(localMatrix);
+            return applyOrientationSpace(localMatrix == null ? null : new Matrix4f(localMatrix), orientation);
         }
 
         if (localMatrix != null && originMatrix != null)
         {
-            Matrix4f matrix = new Matrix4f(localMatrix);
+            matrix = new Matrix4f(localMatrix);
 
             matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
 
-            return matrix;
+            return applyOrientationSpace(matrix, orientation);
         }
 
         if (localMatrix != null)
         {
-            return new Matrix4f(localMatrix);
+            return applyOrientationSpace(new Matrix4f(localMatrix), orientation);
         }
 
         if (originMatrix != null)
         {
-            return new Matrix4f(originMatrix);
+            return applyOrientationSpace(new Matrix4f(originMatrix), orientation);
         }
 
         return null;
+    }
+
+    public static Matrix4f applyOrientationSpace(Matrix4f matrix, TransformOrientation orientation)
+    {
+        if (matrix == null)
+        {
+            return null;
+        }
+
+        if (orientation == TransformOrientation.GLOBAL || orientation == TransformOrientation.VIEW)
+        {
+            Vector3f translation = matrix.getTranslation(new Vector3f());
+
+            matrix.identity();
+            matrix.translate(translation);
+        }
+
+        return matrix;
+    }
+
+    public static Matrix4f applyViewCaptureAlignment(Matrix4f captureMatrix, TransformOrientation orientation)
+    {
+        if (captureMatrix != null && orientation == TransformOrientation.VIEW)
+        {
+            Vector3f translation = captureMatrix.getTranslation(new Vector3f());
+
+            captureMatrix.identity();
+            captureMatrix.translate(translation);
+        }
+
+        return captureMatrix;
     }
 
     /**
@@ -92,7 +136,12 @@ public final class GizmoMatrixUtils
      */
     public static Matrix4f withLocalRotation(Matrix4f matrix, Transform transform, boolean local)
     {
-        if (matrix == null || !local || transform == null)
+        return withLocalRotation(matrix, transform, local ? TransformOrientation.LOCAL : TransformOrientation.PARENT);
+    }
+
+    public static Matrix4f withLocalRotation(Matrix4f matrix, Transform transform, TransformOrientation orientation)
+    {
+        if (matrix == null || orientation == null || !orientation.isLocal() || transform == null)
         {
             return matrix;
         }

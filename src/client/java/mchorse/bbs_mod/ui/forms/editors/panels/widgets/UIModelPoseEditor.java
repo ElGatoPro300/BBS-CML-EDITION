@@ -37,16 +37,19 @@ public class UIModelPoseEditor extends UIPoseEditor
         UIPropTransform editor = super.createTransformEditor()
             .callbacks(() -> this.valuePose);
 
+        /* Same signs as FilmPoseGizmoDrag / UIPickableFormRenderer pose-bone prepare. */
         if (ModelFormRenderer.isBobjModel(this.model))
         {
             editor.bobjPoseGizmoTuning();
         }
         else
         {
-            editor.poseModelGizmoTuning()
-                .invertModelPoseTrackballXZ()
-                .invertModelPoseTrackballDragY();
+            editor.configurePoseRingTuning(false);
+            editor.setAxisProjectedTranslation(false);
         }
+
+        editor.setInvertTrackballDragY(false);
+        editor.clearTrackballEulerInverts();
 
         return editor;
     }
@@ -69,6 +72,7 @@ public class UIModelPoseEditor extends UIPoseEditor
                 this.transform.translationScale(16F);
                 this.transform.configurePoseRingTuning(false);
                 this.transform.setAxisProjectedTranslation(false);
+                this.transform.clearTrackballEulerInverts();
             }
         }
     }
@@ -118,6 +122,14 @@ public class UIModelPoseEditor extends UIPoseEditor
     {
         this.valuePose.preNotify(IValueListener.FLAG_UNMERGEABLE);
         super.setLighting(transform, value);
+        this.valuePose.postNotify(IValueListener.FLAG_UNMERGEABLE);
+    }
+
+    @Override
+    protected void setOpacity(PoseTransform transform, float value)
+    {
+        this.valuePose.preNotify(IValueListener.FLAG_UNMERGEABLE);
+        super.setOpacity(transform, value);
         this.valuePose.postNotify(IValueListener.FLAG_UNMERGEABLE);
     }
 

@@ -759,6 +759,34 @@ public final class SkeletonPoseWriter
             return null;
         }
 
+        /* BOBJ rest directions are bone-local (relBoneMat translate); cubic ones are already
+         * in model space. Match writeOrientationsBobj: lift BOBJ dirs into the root-parent
+         * frame before the cross so the hinge is not mirrored. */
+        if (model instanceof BOBJModel bobj)
+        {
+            Map<String, BOBJBone> bones = bobj.getArmature().bones;
+            BOBJBone bone0 = bones.get(chainIds.get(0));
+            BOBJBone bone1 = bones.get(chainIds.get(1));
+
+            if (bone0 == null || bone1 == null)
+            {
+                return null;
+            }
+
+            Quaternionf frame0 = new Quaternionf(rootParentRotation);
+            Quaternionf frame1 = new Quaternionf(frame0).mul(bone1.relBoneMat.getNormalizedRotation(new Quaternionf()));
+            Vector3f aWorld = frame0.transform(new Vector3f(a));
+            Vector3f bWorld = frame1.transform(new Vector3f(b));
+            Vector3f normal = new Vector3f(aWorld).cross(bWorld);
+
+            if (normal.lengthSquared() < EPS * EPS)
+            {
+                return null;
+            }
+
+            return normal.normalize();
+        }
+
         Vector3f normal = new Vector3f(a).cross(b);
 
         if (normal.lengthSquared() < EPS * EPS)

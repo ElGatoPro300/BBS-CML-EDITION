@@ -7,8 +7,6 @@ import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
-import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
@@ -107,20 +105,11 @@ public abstract class FormRenderer <T extends Form>
 
     public final void render(FormRenderingContext context)
     {
+        /* Transparent forms skip casting via opacity / vertex alpha in the shadow path.
+         * Color-track paint/blend/grade must not disable Form.shaderShadow. */
         if (!this.form.shaderShadow.get() && BBSRendering.isIrisShadowPass())
         {
             return;
-        }
-
-        if (context.isShadowPass || BBSRendering.isIrisShadowPass())
-        {
-            BaseValue colorValue = this.form.get("color");
-
-            if (colorValue instanceof ValueColor valueColor && valueColor.get().a <= 0.001F)
-            {
-                /* Keep shadow casting when the mesh itself is fully transparent. */
-                this.form.shaderShadow.setRuntimeValue(true);
-            }
         }
 
         if (!this.form.render.get())
@@ -167,38 +156,44 @@ public abstract class FormRenderer <T extends Form>
         {
             context.world.push();
         }
-        this.applyTransforms(context.stack, false, context.getTransition());
-        if (context.world != null)
+
+        try
         {
-            this.applyTransforms(context.world, false, context.getTransition());
+            this.applyTransforms(context.stack, false, context.getTransition());
+            if (context.world != null)
+            {
+                this.applyTransforms(context.world, false, context.getTransition());
+            }
+
+            float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
+            int u = context.light & '\uffff';
+            int v = context.light >> 16 & '\uffff';
+
+            u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
+            context.light = u | v << 16;
+
+            this.render3D(context);
+
+            if (isPicking)
+            {
+                this.updateStencilMap(context);
+            }
+
+            this.renderBodyParts(context);
         }
-
-        float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
-        int u = context.light & '\uffff';
-        int v = context.light >> 16 & '\uffff';
-
-        u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
-        context.light = u | v << 16;
-
-        this.render3D(context);
-
-        if (isPicking)
+        finally
         {
-            this.updateStencilMap(context);
+            context.stack.pop();
+            if (context.world != null)
+            {
+                context.world.pop();
+            }
+
+            context.light = light;
+            context.color = savedColor;
+
+            this.form.unapplyStates();
         }
-
-        this.renderBodyParts(context);
-
-        context.stack.pop();
-        if (context.world != null)
-        {
-            context.world.pop();
-        }
-
-        context.light = light;
-        context.color = savedColor;
-
-        this.form.unapplyStates();
     }
 
     protected void applyTransforms(MatrixStack stack, boolean origin, float transition)
@@ -207,7 +202,14 @@ public abstract class FormRenderer <T extends Form>
 
         if (origin)
         {
+            /* Gizmo preview must sit at the rotation/scale center (translate + pivot),
+             * not only at translate — otherwise editing pivot XYZ leaves the gizmo behind. */
             stack.translate(transform.translate.x, transform.translate.y, transform.translate.z);
+
+            if (transform.pivot.x != 0F || transform.pivot.y != 0F || transform.pivot.z != 0F)
+            {
+                stack.translate(transform.pivot.x, transform.pivot.y, transform.pivot.z);
+            }
         }
         else
         {
@@ -333,22 +335,31 @@ public abstract class FormRenderer <T extends Form>
         if (part.getForm() != null)
         {
             context.stack.push();
+
             if (context.world != null)
             {
                 context.world.push();
             }
-            MatrixStackUtils.applyTransform(context.stack, part.transform.get());
-            if (context.world != null)
+
+            try
             {
-                MatrixStackUtils.applyTransform(context.world, part.transform.get());
+                MatrixStackUtils.applyTransform(context.stack, part.transform.get());
+
+                if (context.world != null)
+                {
+                    MatrixStackUtils.applyTransform(context.world, part.transform.get());
+                }
+
+                FormUtilsClient.render(part.getForm(), context);
             }
-
-            FormUtilsClient.render(part.getForm(), context);
-
-            context.stack.pop();
-            if (context.world != null)
+            finally
             {
-                context.world.pop();
+                context.stack.pop();
+
+                if (context.world != null)
+                {
+                    context.world.pop();
+                }
             }
         }
 
