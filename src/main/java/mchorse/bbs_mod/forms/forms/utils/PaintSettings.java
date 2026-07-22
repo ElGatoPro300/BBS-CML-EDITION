@@ -15,10 +15,19 @@ public class PaintSettings
     public static final float MIN_INTENSITY = -1F;
     public static final float MAX_INTENSITY = 1F;
     public static final float SHADER_SHADOW_DEFAULT = 1F;
-    public static final float SHADER_SHADOW_FIX_BUG = 0.005F;
+    /**
+     * Legacy Complementary fringe flag. Must stay high enough to pass Iris/Complementary
+     * shadow-map alpha tests (~0.1); crushing to ~0.001 removed ground shadows entirely.
+     */
+    public static final float SHADER_SHADOW_FIX_BUG = SHADER_SHADOW_DEFAULT;
     public static final float SHADER_SHADOW_FIX_BUG_THRESHOLD = 0.01F;
-    /* When form color opacity is 0, still cast a faint Iris shadow. */
-    public static final float SHADER_SHADOW_ZERO_OPACITY = 0.05F;
+    /* Legacy constant; Opacity 0 no longer forces a faint caster silhouette. */
+    public static final float SHADER_SHADOW_ZERO_OPACITY = 0F;
+    /**
+     * Structure forms that are only block entities (chests, beds, …): soft enough to clear the
+     * Complementary cursor speck, but strong enough that a silhouette still casts.
+     */
+    public static final float SHADER_SHADOW_BLOCK_ENTITY = 0.05F;
 
     public float r = 1F;
     public float g = 1F;
@@ -85,23 +94,26 @@ public class PaintSettings
         return 0F;
     }
 
+    /**
+     * Paint / pose paint no longer softens shadow-map alpha (that killed ground shadows under
+     * Iris). Casting is controlled by {@code Form.shaderShadow} and form opacity only.
+     */
     public static float resolveAutoShaderShadow(float intensity)
     {
-        return intensity != 0F ? SHADER_SHADOW_FIX_BUG : SHADER_SHADOW_DEFAULT;
+        return SHADER_SHADOW_DEFAULT;
     }
 
     public static float resolveAutoShaderShadowForPoseAlpha(float paintAlpha)
     {
-        return paintAlpha != 0F ? SHADER_SHADOW_FIX_BUG : SHADER_SHADOW_DEFAULT;
+        return SHADER_SHADOW_DEFAULT;
     }
 
     /**
-     * Shadow-pass alpha when the form's display opacity is zero so Iris still receives a
-     * faint castersilhouette without showing the mesh in the main pass.
+     * Shadow-pass alpha follows form display opacity (0 = no ground shadow).
      */
     public static float resolveZeroOpacityShaderShadowAlpha(float formAlpha)
     {
-        return formAlpha <= 0.001F ? SHADER_SHADOW_ZERO_OPACITY : formAlpha;
+        return formAlpha;
     }
 
     public float effectiveShaderShadow(Color legacy)

@@ -36,7 +36,6 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.FilmPoseGizmoDrag;
-import mchorse.bbs_mod.ui.film.replays.UIMobCaptureRecordOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.UIRecordOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
@@ -52,6 +51,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyAction;
@@ -834,7 +834,9 @@ public class UIFilmController extends UIElement
             this::startRecording,
             true
         );
-        UIIcon icon = new UIIcon(Icons.UPLOAD, (b) -> UIMobCaptureRecordOverlayPanel.openOnContext(this.getContext(), (setup) -> this.startRecording(Arrays.asList("outside"))));
+        /* Outside uses the same submit path as other groups: mob-capture panel only
+         * when "Mob to morph" is toggled on. */
+        UIIcon icon = new UIIcon(Icons.UPLOAD, (b) -> panel.submit(Arrays.asList("outside")));
 
         icon.tooltip(UIKeys.FILM_GROUPS_OUTSIDE);
         panel.bar.add(icon);
@@ -1208,9 +1210,8 @@ public class UIFilmController extends UIElement
         {
             if (this.panel.hasLastGizmoMatrix)
             {
-                /* Whether the world pass bakes BBSRendering.camera into the captured
-                 * matrix depends on the render path (Iris pack vs. vanilla), so let
-                 * the gizmo pick the composition that lands inside the frustum. */
+                /* Resolve camera-baked vs camera-free capture so the colored gizmo stays
+                 * on the bone instead of sticking to the screen when orbiting. */
                 Gizmo.composeVisualMatrix(this.panel.lastGizmoMatrix, BBSRendering.camera, this.panel.lastProjection, this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
                 Gizmo.INSTANCE.hasGizmoMatrix = true;
@@ -1523,7 +1524,7 @@ public class UIFilmController extends UIElement
         RenderSystem.enableDepthTest();
     }
 
-    public Pair<String, Boolean> getBone()
+    public Pair<String, TransformOrientation> getBone()
     {
         UIKeyframeEditor keyframeEditor = this.panel.replayEditor.keyframeEditor;
 
@@ -1576,6 +1577,11 @@ public class UIFilmController extends UIElement
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         this.stencil.apply();
 
+        /* Closest bone along the cursor ray must win; glow/gizmo passes can leave depthMask off. */
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(true);
+
         if (altPressed)
         {
             for (Map.Entry<Integer, IEntity> entry : this.getEntities().entrySet())
@@ -1600,45 +1606,52 @@ public class UIFilmController extends UIElement
         }
         else
         {
-            Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), this.panel.replayEditor.replays.replays.getIndex());
-            Pair<String, Boolean> bone = this.getBone();
+            /* Bone pick only the selected replay. Without Alt, limbs on other actors
+             * must not be clickable (Alt is the way to target/switch other replays). */
+            Pair<String, TransformOrientation> bone = this.getBone();
+            int currentIndex = this.panel.replayEditor.replays.replays.getIndex();
+            Replay currentReplay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), currentIndex);
+            boolean markedBonesOnly = BBSSettings.replayMarkedBonesOnly.get() && !Window.isShiftPressed();
 
-            if (replay != null && this.editorController != null && !this.editorController.isReplayVisible(replay, replay.getTick(cursorTick)))
+            if (currentReplay != null && this.editorController != null
+                && this.editorController.isReplayVisible(currentReplay, currentReplay.getTick(cursorTick)))
             {
-                replay = null;
-            }
+                IEntity currentEntity = this.getEntities().get(currentIndex);
 
-            if (replay != null)
-            {
-                if (BBSSettings.replayMarkedBonesOnly.get() && !Window.isShiftPressed())
+                if (currentEntity != null)
                 {
-                    Form form = replay.form.get();
+                    this.stencilMap.allowedBones = null;
 
-                    if (form instanceof ModelForm modelForm)
+                    if (markedBonesOnly)
                     {
-                        ModelInstance model = ModelFormRenderer.getModel(modelForm);
-                        String poseGroup = model == null ? modelForm.model.get() : model.poseGroup;
+                        Form form = currentReplay.form.get();
 
-                        if (poseGroup == null || poseGroup.isEmpty())
+                        if (form instanceof ModelForm modelForm)
                         {
-                            poseGroup = model == null ? modelForm.model.get() : model.id;
-                        }
+                            ModelInstance model = ModelFormRenderer.getModel(modelForm);
+                            String poseGroup = model == null ? modelForm.model.get() : model.poseGroup;
 
-                        if (UIPoseEditor.hasMarkedBones(poseGroup))
-                        {
-                            this.stencilMap.allowedBones = UIPoseEditor.getMarkedBones(poseGroup);
+                            if (poseGroup == null || poseGroup.isEmpty())
+                            {
+                                poseGroup = model == null ? modelForm.model.get() : model.id;
+                            }
+
+                            if (UIPoseEditor.hasMarkedBones(poseGroup))
+                            {
+                                this.stencilMap.allowedBones = UIPoseEditor.getMarkedBones(poseGroup);
+                            }
                         }
                     }
-                }
 
-                BaseFilmController.renderEntity(FilmControllerContext.instance
-                    .setup(this.getEntities(), entity, replay, renderContext)
-                    .film(this.panel.getData())
-                    .filmTick(cursorTick)
-                    .transition(isPlaying ? renderContext.tickDelta() : 0)
-                    .stencil(this.stencilMap)
-                    .relative(replay.relative.get())
-                    .bone(bone == null ? null : bone.a, bone != null && bone.b));
+                    BaseFilmController.renderEntity(FilmControllerContext.instance
+                        .setup(this.getEntities(), currentEntity, currentReplay, renderContext)
+                        .film(this.panel.getData())
+                        .filmTick(cursorTick)
+                        .transition(isPlaying ? renderContext.tickDelta() : 0)
+                        .stencil(this.stencilMap)
+                        .relative(currentReplay.relative.get())
+                        .bone(bone != null ? bone.a : null, bone != null ? bone.b : TransformOrientation.PARENT));
+                }
             }
         }
 

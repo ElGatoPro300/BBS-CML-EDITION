@@ -3,18 +3,22 @@ package mchorse.bbs_mod.camera.clips.misc;
 import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
-import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.keyframes.CompatibleDoubleKeyframeChannel;
+import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
+
+import net.minecraft.util.math.MathHelper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +27,8 @@ import java.util.Map;
 
 public class SubtitleClip extends CameraClip
 {
+    public static final double CONSTRAINT_MIN = 0D;
+
     public final KeyframeChannel<String> text = new KeyframeChannel<>("text", KeyframeFactories.STRING);
     public final KeyframeChannel<Double> x = new KeyframeChannel<>("x", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> y = new KeyframeChannel<>("y", KeyframeFactories.DOUBLE);
@@ -37,8 +43,8 @@ public class SubtitleClip extends CameraClip
     public final KeyframeChannel<Double> backgroundOffset = new KeyframeChannel<>("backgroundOffset", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> shadow = new KeyframeChannel<>("shadow", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Boolean> shadowOpaque = new KeyframeChannel<>("shadowOpaque", KeyframeFactories.BOOLEAN);
-    public final KeyframeChannel<Integer> lineHeight = new KeyframeChannel<>("lineHeight", KeyframeFactories.INTEGER);
-    public final KeyframeChannel<Integer> maxWidth = new KeyframeChannel<>("maxWidth", KeyframeFactories.INTEGER);
+    public final KeyframeChannel<Double> lineHeight = new CompatibleDoubleKeyframeChannel("lineHeight");
+    public final KeyframeChannel<Double> maxWidth = new CompatibleDoubleKeyframeChannel("maxWidth");
     public final ValueBoolean useKeyframes = new ValueBoolean("use_keyframes", false);
     public final ValueBoolean uniformSeeded = new ValueBoolean("uniform_seeded", false);
     public final SubtitleUniform uniform = new SubtitleUniform("uniform");
@@ -100,6 +106,12 @@ public class SubtitleClip extends CameraClip
 
         super.fromData(data);
 
+        /* Older films saved lineHeight/maxWidth as integer channels. Loading them
+         * overwrites the factory to INTEGER; without migration, later Double
+         * access throws ClassCastException and Clips.fromData drops the whole clip. */
+        this.migrateToDoubleChannel(this.lineHeight);
+        this.migrateToDoubleChannel(this.maxWidth);
+
         /* Older films did not store this flag — keep keyframe mode enabled for compatibility. */
         if (!hasUseKeyframes)
         {
@@ -114,6 +126,74 @@ public class SubtitleClip extends CameraClip
         if (this.text.isEmpty() && !this.title.get().isEmpty())
         {
             this.text.insert(0, this.title.get());
+        }
+
+        this.clampLimitedValues();
+    }
+
+    /**
+     * Convert a channel that was deserialized with a non-double numeric factory
+     * (typically integer from older films) into a proper double channel.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void migrateToDoubleChannel(KeyframeChannel<Double> channel)
+    {
+        if (channel.getFactory() == KeyframeFactories.DOUBLE)
+        {
+            return;
+        }
+
+        ListType keyframesData = new ListType();
+        List keyframes = channel.getKeyframes();
+
+        for (Object object : keyframes)
+        {
+            Keyframe keyframe = (Keyframe) object;
+            BaseType raw = keyframe.toData();
+
+            if (raw == null || !raw.isMap())
+            {
+                continue;
+            }
+
+            MapType data = raw.asMap();
+            Object value = keyframe.getValue();
+            double number = value instanceof Number ? ((Number) value).doubleValue() : 0D;
+
+            data.putDouble("value", number);
+            keyframesData.add(data);
+        }
+
+        MapType map = new MapType();
+
+        map.putString("type", "double");
+        map.put("keyframes", keyframesData);
+        channel.fromData(map);
+    }
+
+    /**
+     * Clamp lineHeight/maxWidth keyframes and uniforms to valid ranges. Out-of-range
+     * values from older films snap to the nearest bound.
+     */
+    public void clampLimitedValues()
+    {
+        this.clampChannel(this.lineHeight, CONSTRAINT_MIN, Double.POSITIVE_INFINITY);
+        this.clampChannel(this.maxWidth, CONSTRAINT_MIN, Double.POSITIVE_INFINITY);
+        this.uniform.lineHeight.set(Math.max(CONSTRAINT_MIN, this.uniform.lineHeight.get()));
+        this.uniform.maxWidth.set(Math.max(CONSTRAINT_MIN, this.uniform.maxWidth.get()));
+    }
+
+    private void clampChannel(KeyframeChannel<Double> channel, double min, double max)
+    {
+        for (Keyframe<Double> keyframe : channel.getKeyframes())
+        {
+            double value = keyframe.getValue();
+            double clamped = MathHelper.clamp(value, min, max);
+
+            if (clamped != value)
+            {
+                keyframe.setValue(clamped);
+            }
         }
     }
 
@@ -150,8 +230,8 @@ public class SubtitleClip extends CameraClip
         this.migrateDouble(legacy, "backgroundOffset", this.backgroundOffset, 2D);
         this.migrateDouble(legacy, "shadow", this.shadow, 0D);
         this.migrateBoolean(legacy, "shadowOpaque", this.shadowOpaque, false);
-        this.migrateInteger(legacy, "lineHeight", this.lineHeight, 12);
-        this.migrateInteger(legacy, "maxWidth", this.maxWidth, 0);
+        this.migrateDouble(legacy, "lineHeight", this.lineHeight, 12D);
+        this.migrateDouble(legacy, "maxWidth", this.maxWidth, 0D);
     }
 
     private void migrateString(Map<String, BaseType> legacy, String key, KeyframeChannel<String> channel, String fallback)
@@ -183,21 +263,6 @@ public class SubtitleClip extends CameraClip
         if (data != null && data.isNumeric())
         {
             channel.insert(0, data.asNumeric().doubleValue());
-        }
-    }
-
-    private void migrateInteger(Map<String, BaseType> legacy, String key, KeyframeChannel<Integer> channel, int fallback)
-    {
-        if (!channel.isEmpty())
-        {
-            return;
-        }
-
-        BaseType data = legacy.get(key);
-
-        if (data != null && data.isNumeric())
-        {
-            channel.insert(0, data.asNumeric().intValue());
         }
     }
 
@@ -261,8 +326,8 @@ public class SubtitleClip extends CameraClip
             this.valueBoolean(this.shadowOpaque, this.uniform.shadowOpaque, t, false)
         );
         this.subtitle.updateConstraints(
-            this.valueInteger(this.lineHeight, this.uniform.lineHeight, t, 12),
-            this.valueInteger(this.maxWidth, this.uniform.maxWidth, t, 0)
+            (float) Math.max(CONSTRAINT_MIN, this.valueDouble(this.lineHeight, this.uniform.lineHeight, t, 12D)),
+            (float) Math.max(CONSTRAINT_MIN, this.valueDouble(this.maxWidth, this.uniform.maxWidth, t, 0D))
         );
         this.subtitle.renderOrder = context.applied;
         subtitles.add(this.subtitle);
@@ -293,8 +358,8 @@ public class SubtitleClip extends CameraClip
         this.uniform.backgroundOffset.set(this.interpDouble(this.backgroundOffset, tick, 2D));
         this.uniform.shadow.set(this.interpDouble(this.shadow, tick, 0D));
         this.uniform.shadowOpaque.set(this.interpBoolean(this.shadowOpaque, tick, false));
-        this.uniform.lineHeight.set(this.interpInteger(this.lineHeight, tick, 12));
-        this.uniform.maxWidth.set(this.interpInteger(this.maxWidth, tick, 0));
+        this.uniform.lineHeight.set(Math.max(CONSTRAINT_MIN, this.interpDouble(this.lineHeight, tick, 12D)));
+        this.uniform.maxWidth.set(Math.max(CONSTRAINT_MIN, this.interpDouble(this.maxWidth, tick, 0D)));
         this.uniformSeeded.set(true);
     }
 
@@ -320,8 +385,8 @@ public class SubtitleClip extends CameraClip
         this.seedDouble(this.backgroundOffset, this.uniform.backgroundOffset.get());
         this.seedDouble(this.shadow, this.uniform.shadow.get());
         this.seedBoolean(this.shadowOpaque, this.uniform.shadowOpaque.get());
-        this.seedInteger(this.lineHeight, this.uniform.lineHeight.get());
-        this.seedInteger(this.maxWidth, this.uniform.maxWidth.get());
+        this.seedDouble(this.lineHeight, Math.max(CONSTRAINT_MIN, this.uniform.lineHeight.get()));
+        this.seedDouble(this.maxWidth, Math.max(CONSTRAINT_MIN, this.uniform.maxWidth.get()));
     }
 
     private void seedString(KeyframeChannel<String> channel, String value, String fallback)
@@ -337,14 +402,6 @@ public class SubtitleClip extends CameraClip
     }
 
     private void seedDouble(KeyframeChannel<Double> channel, double value)
-    {
-        if (channel.isEmpty())
-        {
-            channel.insert(0, value);
-        }
-    }
-
-    private void seedInteger(KeyframeChannel<Integer> channel, int value)
     {
         if (channel.isEmpty())
         {
@@ -402,21 +459,6 @@ public class SubtitleClip extends CameraClip
         return this.interpDouble(channel, t, fallback);
     }
 
-    private int valueInteger(KeyframeChannel<Integer> channel, ValueInt uniform, float t, int fallback)
-    {
-        if (!this.useKeyframes.get())
-        {
-            return uniform.get();
-        }
-
-        if (channel.isEmpty())
-        {
-            return this.uniformSeeded.get() ? uniform.get() : fallback;
-        }
-
-        return this.interpInteger(channel, t, fallback);
-    }
-
     private boolean valueBoolean(KeyframeChannel<Boolean> channel, ValueBoolean uniform, float t, boolean fallback)
     {
         if (!this.useKeyframes.get())
@@ -465,16 +507,6 @@ public class SubtitleClip extends CameraClip
         }
 
         return channel.interpolate(t);
-    }
-
-    private int interpInteger(KeyframeChannel<Integer> channel, float t, int fallback)
-    {
-        if (channel.isEmpty())
-        {
-            return fallback;
-        }
-
-        return channel.interpolate(t, fallback);
     }
 
     private boolean interpBoolean(KeyframeChannel<Boolean> channel, float t, boolean fallback)

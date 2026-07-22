@@ -43,6 +43,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
@@ -91,6 +92,7 @@ public class ServerNetwork
     public static final Identifier SERVER_PAUSE_FILM = new Identifier(BBSMod.MOD_ID, "s13");
     public static final Identifier SERVER_TRIGGER_BLOCK_UPDATE = new Identifier(BBSMod.MOD_ID, "s14");
     public static final Identifier SERVER_TRIGGER_BLOCK_CLICK = new Identifier(BBSMod.MOD_ID, "s15");
+    public static final Identifier SERVER_SET_GAME_MODE = new Identifier(BBSMod.MOD_ID, "s16");
 
     private static ServerPacketCrusher crusher = new ServerPacketCrusher();
 
@@ -116,6 +118,7 @@ public class ServerNetwork
         ServerPlayNetworking.registerGlobalReceiver(SERVER_PAUSE_FILM, (server, player, handler, buf, responder) -> handlePauseFilmPacket(server, player, buf));
         ServerPlayNetworking.registerGlobalReceiver(SERVER_TRIGGER_BLOCK_UPDATE, (server, player, handler, buf, responder) -> handleTriggerBlockUpdatePacket(server, player, buf));
         ServerPlayNetworking.registerGlobalReceiver(SERVER_TRIGGER_BLOCK_CLICK, (server, player, handler, buf, responder) -> handleTriggerBlockClickPacket(server, player, buf));
+        ServerPlayNetworking.registerGlobalReceiver(SERVER_SET_GAME_MODE, (server, player, handler, buf, responder) -> handleSetGameModePacket(server, player, buf));
     }
 
     /* Handlers */
@@ -210,6 +213,34 @@ public class ServerNetwork
             if (be instanceof TriggerBlockEntity trigger)
             {
                 trigger.trigger(player, false);
+            }
+        });
+    }
+
+    /**
+     * Silent gamemode change for Film / Model Block editors (no chat feedback).
+     */
+    private static void handleSetGameModePacket(MinecraftServer server, ServerPlayerEntity player, PacketByteBuf buf)
+    {
+        int modeId = buf.readVarInt();
+
+        if (!PermissionUtils.arePanelsAllowed(server, player))
+        {
+            return;
+        }
+
+        GameMode mode = GameMode.byId(modeId);
+
+        if (mode == null)
+        {
+            return;
+        }
+
+        server.execute(() ->
+        {
+            if (player.interactionManager.getGameMode() != mode)
+            {
+                player.changeGameMode(mode);
             }
         });
     }
@@ -473,6 +504,13 @@ public class ServerNetwork
                 }
 
                 sendStopFilm(player, filmId);
+            }
+            else if (state == ActionState.RESTORE)
+            {
+                ActionPlayer actionPlayer = actions.getPlayer(filmId);
+                ServerWorld world = actionPlayer != null ? actionPlayer.getWorld() : player.getServerWorld();
+
+                actions.restoreDamage(world);
             }
             else if (state == ActionState.STOP)
             {

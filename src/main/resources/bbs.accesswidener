@@ -14,3 +14,4 @@ accessible method net/minecraft/block/entity/BlockEntity readNbt (Lnet/minecraft
 accessible field net/minecraft/client/gui/widget/ClickableWidget height I
 
 accessible method net/minecraft/entity/LivingEntity setLivingFlag (IZ)V
+accessible method net/minecraft/entity/Entity setFlag (IZ)V

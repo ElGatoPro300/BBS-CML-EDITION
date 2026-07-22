@@ -18,6 +18,7 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
+import mchorse.bbs_mod.ui.film.clips.UIClip;
 import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
 import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
 import mchorse.bbs_mod.ui.film.toolbar.ClipPlacementInteractionState;
@@ -141,6 +142,8 @@ public class UIClips extends UIElement
     private List<Clip> otherClips = Collections.emptyList();
     private Set<Integer> snappingPoints = new HashSet<>();
     private List<Vector3i> grabbedData = new ArrayList<>();
+    /** Grab-start tick/layer/duration for {@link #otherClips} (ripple resize). */
+    private List<Vector3i> otherClipData = new ArrayList<>();
 
     private UICopyPasteController copyPasteController;
 
@@ -1411,11 +1414,25 @@ public class UIClips extends UIElement
 
     public void embedView(UIElement element)
     {
+        /* Selecting clips / setClips always call embedView(null). Re-notifying when
+         * already closed made UIClipsPanel re-focus Camera Properties and rebuild the
+         * whole film layout — that letterboxed the workspace (black strip on the right). */
+        if (this.embedded == element)
+        {
+            return;
+        }
+
         this.embeddedClose.removeFromParent();
         this.embeddedLayout.removeFromParent();
 
         if (this.embedded != null)
         {
+            if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+            {
+                keyframeEditor.pickListener(null);
+                keyframeEditor.target(null);
+            }
+
             this.embedded.removeFromParent();
         }
 
@@ -1430,20 +1447,85 @@ public class UIClips extends UIElement
 
             if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
             {
-                keyframeEditor.overlayPanel(true);
-                keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
-                this.embeddedLayout.active(this.embeddedStackedLayout);
-                this.add(this.embeddedLayout);
-                this.embeddedLayout.resize();
+                this.configureEmbeddedKeyframeEditor(keyframeEditor);
             }
 
             this.embedded.resize();
             this.embeddedClose.resize();
         }
+        else
+        {
+            this.syncEmbeddedClipPanelVisibility(true);
+        }
 
         if (this.embedViewListener != null)
         {
             this.embedViewListener.accept(this.embedded);
+        }
+    }
+
+    /**
+     * Re-apply side-panel vs properties-tab mode for an open embedded keyframe editor
+     * (settings toggle or workspace layout change).
+     */
+    public void applyEmbeddedKeyframePropertiesMode()
+    {
+        if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+        {
+            this.embeddedLayout.removeFromParent();
+            /* Retarget only — do not steal the active tab (avoids nested
+             * setupEditorFlex while switching Properties tabs). */
+            this.configureEmbeddedKeyframeEditor(keyframeEditor);
+            this.embedded.resize();
+            this.embeddedClose.resize();
+        }
+    }
+
+    private void configureEmbeddedKeyframeEditor(UIKeyframeEditor keyframeEditor)
+    {
+        UIFilmPanel filmPanel = this.getFilmPanel();
+        boolean sidePanel = BBSSettings.isEmbeddedKeyframeSidePanelEnabled() || filmPanel == null;
+
+        if (sidePanel)
+        {
+            keyframeEditor.pickListener(null);
+            keyframeEditor.target(null);
+            keyframeEditor.overlayPanel(true);
+            keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
+            this.embeddedLayout.active(this.embeddedStackedLayout);
+            this.add(this.embeddedLayout);
+            this.embeddedLayout.resize();
+            this.syncEmbeddedClipPanelVisibility(true);
+        }
+        else
+        {
+            /* Same host as replay keyframes: the general Properties tab (editArea),
+             * not Camera/Action properties — those keep the clip form. */
+            UIElement propertiesTarget = filmPanel.shouldRedirectProperties()
+                ? filmPanel.unifiedEditArea
+                : filmPanel.editArea;
+
+            keyframeEditor.overlayPanel(false);
+            keyframeEditor.target(propertiesTarget);
+            /* Pick a keyframe → show Properties tab. Opening the embed alone does not
+             * focus that tab (keeps Camera/Action Properties if already selected). */
+            keyframeEditor.pickListener(filmPanel::focusEmbeddedKeyframePropertiesTab);
+            this.syncEmbeddedClipPanelVisibility(true);
+        }
+    }
+
+    private void syncEmbeddedClipPanelVisibility(boolean visible)
+    {
+        if (!(this.delegate instanceof UIClipsPanel panel))
+        {
+            return;
+        }
+
+        UIClip clipPanel = panel.getClipPanel();
+
+        if (clipPanel != null)
+        {
+            clipPanel.setVisible(visible && panel.isVisible());
         }
     }
 
@@ -1577,6 +1659,7 @@ public class UIClips extends UIElement
                 this.grabbedClips = this.getClipsFromSelection();
                 this.otherClips = new ArrayList<>(this.clips.get());
                 this.otherClips.removeIf(this.grabbedClips::contains);
+                this.otherClipData.clear();
                 this.snappingPoints.clear();
                 this.snappingPoints.add(this.delegate.getCursor());
 
@@ -1605,6 +1688,7 @@ public class UIClips extends UIElement
 
                 for (Clip otherClip : this.otherClips)
                 {
+                    this.otherClipData.add(new Vector3i(otherClip.tick.get(), otherClip.layer.get(), otherClip.duration.get()));
                     this.snappingPoints.add(otherClip.tick.get());
                     this.snappingPoints.add(otherClip.tick.get() + otherClip.duration.get());
                 }
@@ -1743,7 +1827,8 @@ public class UIClips extends UIElement
         this.otherClips = Collections.emptyList();
         this.snappingPoints.clear();
         this.grabbedData.clear();
-        
+        this.otherClipData.clear();
+
         this.vertical.dragging = false;
     }
 
@@ -1918,28 +2003,44 @@ public class UIClips extends UIElement
 
     private void dragRightEdge(List<Clip> others, int dx, int dy)
     {
-        Vector3i data = grabbedData.get(grabbedData.size() - 1);
-        Clip clip = grabbedClips.get(grabbedClips.size() - 1);
+        Vector3i data = this.grabbedData.get(this.grabbedData.size() - 1);
+        Clip clip = this.grabbedClips.get(this.grabbedClips.size() - 1);
         int tick = data.x();
         int duration = data.z();
-        int newDuration = duration + dx;
-        int snapped = this.snap(tick + newDuration);
-        int maxRight = others.stream()
-            .filter((o) -> this.sameLayer(o, clip) && o.tick.get() >= tick + duration)
-            .mapToInt((o) -> o.tick.get())
-            .min()
-            .orElse(Integer.MAX_VALUE);
+        int originalEnd = tick + duration;
+        int snapped = this.snap(tick + duration + dx);
+        int newDuration = Math.max(1, snapped - tick);
+        int desiredEnd = tick + newDuration;
 
-        newDuration = snapped - tick;
-
-        if (tick + newDuration >= maxRight)
+        /* Push same-layer clips ahead instead of clamping/overlapping.
+         * Alt keeps others empty so free overlap still works. */
+        if (!others.isEmpty() && this.otherClipData.size() == this.otherClips.size())
         {
-            newDuration = maxRight - tick;
-        }
+            int nextStart = Integer.MAX_VALUE;
 
-        if (newDuration < 1)
-        {
-            newDuration = 1;
+            for (int i = 0; i < this.otherClips.size(); i++)
+            {
+                Clip other = this.otherClips.get(i);
+                Vector3i od = this.otherClipData.get(i);
+
+                if (this.sameLayer(other, clip) && od.x() >= originalEnd)
+                {
+                    nextStart = Math.min(nextStart, od.x());
+                }
+            }
+
+            int overflow = desiredEnd > nextStart ? desiredEnd - nextStart : 0;
+
+            for (int i = 0; i < this.otherClips.size(); i++)
+            {
+                Clip other = this.otherClips.get(i);
+                Vector3i od = this.otherClipData.get(i);
+
+                if (this.sameLayer(other, clip) && od.x() >= originalEnd)
+                {
+                    this.setClipData(other, od.x() + overflow, od.y(), od.z());
+                }
+            }
         }
 
         this.setClipData(clip, tick, data.y(), newDuration);
@@ -2169,7 +2270,7 @@ public class UIClips extends UIElement
         batcher.unclip(context);
         batcher.clip(this.vertical.area, context);
 
-        this.vertical.renderScrollbar(batcher);
+        this.vertical.renderScrollbar(context);
 
         batcher.unclip(context);
     }

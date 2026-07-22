@@ -26,11 +26,10 @@ import java.util.regex.Pattern;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 
 /**
- * Runtime opacity fix for Complementary / BSL. Translucent BBS forms are delayed until
- * after Iris {@code beginTranslucents} (VL clouds/fog already composited) so soft fades
- * never punch sky holes or let clouds draw over the mesh. Near-opaque ({@code #f2+}) stays
- * on the live Iris path with depth writes so Complementary shading is not flattened.
- * Fully opaque film {@code renderDepth} actors also use the post-deferred queue.
+ * Runtime opacity / film render-depth queue (Complementary / BSL patch optional).
+ * Soft opacity and film {@code renderDepth} draw after translucent terrain with depth
+ * writes — fluids stay, limbs do not X-ray — whether or not the pack patch is active.
+ * Near-opaque without render depth stays on the live path for pack lighting.
  */
 public class ShaderOpacityPatch
 {
@@ -68,16 +67,18 @@ public class ShaderOpacityPatch
         private final double renderDepth;
         private final double distanceSq;
         private final boolean depthWrite;
+        private final boolean afterFluids;
         private final boolean irisCamera;
         private final Matrix4f projection;
         private final Matrix4f modelView;
         private final Runnable draw;
 
-        private PostDeferredEntry(double renderDepth, double distanceSq, boolean depthWrite, boolean irisCamera, Matrix4f projection, Matrix4f modelView, Runnable draw)
+        private PostDeferredEntry(double renderDepth, double distanceSq, boolean depthWrite, boolean afterFluids, boolean irisCamera, Matrix4f projection, Matrix4f modelView, Runnable draw)
         {
             this.renderDepth = renderDepth;
             this.distanceSq = distanceSq;
             this.depthWrite = depthWrite;
+            this.afterFluids = afterFluids;
             this.irisCamera = irisCamera;
             this.projection = projection;
             this.modelView = modelView;
@@ -88,6 +89,11 @@ public class ShaderOpacityPatch
     public static void setLoadingPackName(String name)
     {
         loadingPackName = name == null ? "" : name;
+    }
+
+    public static String getLoadingPackName()
+    {
+        return loadingPackName == null ? "" : loadingPackName;
     }
 
     public static void clearLoadingPackName()
@@ -105,22 +111,41 @@ public class ShaderOpacityPatch
         return name != null && name.toLowerCase(Locale.ROOT).contains("bsl");
     }
 
+    /**
+     * Global Iris translucency pipeline (post-deferred queue + generic Iris property patches).
+     */
     public static boolean isActive()
     {
-        String pack = resolvePackName();
-
-        if (pack.isEmpty())
-        {
-            return false;
-        }
-
-        if (BBSSettings.complementaryOpacityFix != null && BBSSettings.complementaryOpacityFix.get()
-            && isComplementaryPack(pack))
+        if (BBSSettings.irisOpacityFix != null && BBSSettings.irisOpacityFix.get())
         {
             return true;
         }
 
-        return BBSSettings.bslOpacityFix != null && BBSSettings.bslOpacityFix.get() && isBslPack(pack);
+        /* Legacy: old Complementary/BSL toggles before migration. */
+        if (BBSSettings.complementaryOpacityFix != null && BBSSettings.complementaryOpacityFix.get()
+            && isComplementaryPack(resolvePackName()))
+        {
+            return true;
+        }
+
+        return BBSSettings.bslOpacityFix != null && BBSSettings.bslOpacityFix.get()
+            && isBslPack(resolvePackName());
+    }
+
+    /**
+     * Pack-specific GLSL string rewrites (shadow caster dither, shadow opacity scaling).
+     * Only Complementary / BSL source layouts are known; other packs skip these.
+     */
+    public static boolean shouldApplyPackGlslPatches()
+    {
+        if (!isActive())
+        {
+            return false;
+        }
+
+        String pack = resolvePackName();
+
+        return isComplementaryPack(pack) || isBslPack(pack);
     }
 
     private static String resolvePackName()
@@ -201,16 +226,17 @@ public class ShaderOpacityPatch
     }
 
     /**
-     * Near-opaque floor. Below this, forms join the post-deferred queue (after VL clouds).
-     * At/above it they stay live with depth writes. {@code #f2} (≈0.949) sits just under
-     * this gate so slight translucency still waits for clouds; fully solid keeps live shading.
+     * Fully opaque floor. Softer alpha joins the post-deferred queue (after VL clouds /
+     * translucent terrain) with depth write so limbs do not X-ray and fluids stay intact.
+     * Fully solid keeps the live path unless film {@code renderDepth} needs the sorted queue.
      */
-    public static final float LIVE_DEPTH_WRITE_ALPHA = 0.95F;
+    public static final float LIVE_DEPTH_WRITE_ALPHA = 0.999F;
 
     /**
-     * Queue translucent forms until after deferred/VL clouds so soft opacity never punches
-     * sky holes or lets clouds composite over the mesh. Near-opaque stays live for pack
-     * lighting. Opaque film {@code renderDepth} still joins. Never delay the shadow pass.
+     * Queue soft-opacity and film {@code renderDepth} forms until after translucent terrain.
+     * Works with or without Iris and with or without the Complementary/BSL opacity patch —
+     * patched packs get the best lighting; unpatched / no-shader still get correct depth
+     * occlusion and no self X-ray. Never delay the shadow pass.
      */
     public static boolean shouldDelayUntilPostDeferred(float alpha)
     {
@@ -219,18 +245,13 @@ public class ShaderOpacityPatch
 
     public static boolean shouldDelayUntilPostDeferred(float alpha, boolean filmRenderDepth)
     {
-        if (!isActive() || postDeferredPhase || flushingPostDeferred || alpha <= 0.001F)
+        if (postDeferredPhase || flushingPostDeferred || alpha <= 0.001F)
         {
             return false;
         }
 
         try
         {
-            if (!mchorse.bbs_mod.client.BBSRendering.isIrisShadersEnabled())
-            {
-                return false;
-            }
-
             /* Casters must hit the shadow map live — post-deferred never writes shadows. */
             if (mchorse.bbs_mod.client.BBSRendering.isIrisShadowPass())
             {
@@ -242,14 +263,14 @@ public class ShaderOpacityPatch
             return false;
         }
 
-        /* Any visible translucency — including #e9 — must wait for clouds. */
+        /* Soft opacity: after fluids + depth write (water stays, no self X-ray). */
         if (alpha < LIVE_DEPTH_WRITE_ALPHA)
         {
             return true;
         }
 
-        /* Fully opaque film actors may still share the post-deferred depth queue. */
-        return filmRenderDepth && alpha >= 0.999F;
+        /* Opaque film actors share the sorted post-deferred depth queue (shaders or not). */
+        return filmRenderDepth;
     }
 
     public static boolean shouldJoinPostDeferredQueue(float alpha)
@@ -258,66 +279,71 @@ public class ShaderOpacityPatch
     }
 
     /**
-     * Fallback only: if a translucent form somehow stays on the live path, do not stamp
-     * depth before VL clouds ({@code z0 > 0.56} hole punch). Prefer
-     * {@link #shouldDelayUntilPostDeferred} instead — suppress lets clouds draw over the mesh.
+     * Live-path fallback only. Soft opacity should already be post-deferred; if a draw still
+     * lands live, keep depth writes so the mesh does not X-ray itself (screenshot at 254).
      */
     public static boolean shouldSuppressDepthWrite(float alpha)
     {
-        if (!isActive() || flushingPostDeferred || alpha <= 0.001F || alpha >= LIVE_DEPTH_WRITE_ALPHA)
-        {
-            return false;
-        }
+        return false;
+    }
 
-        try
-        {
-            return mchorse.bbs_mod.client.BBSRendering.isIrisShadersEnabled()
-                && !mchorse.bbs_mod.client.BBSRendering.isIrisShadowPass();
-        }
-        catch (Throwable t)
-        {
-            return false;
-        }
+    /**
+     * Soft opacity waits until after water/lava/portals. Near-opaque film depth stays early
+     * (beginTranslucents) so it can occlude with depth before translucent terrain.
+     */
+    public static boolean shouldFlushAfterFluids(float alpha)
+    {
+        return alpha > 0.001F && alpha < LIVE_DEPTH_WRITE_ALPHA;
+    }
+
+    /**
+     * Post-deferred meshes always write depth when visible so limbs do not X-ray themselves.
+     * Soft forms still keep fluids: they flush {@link #shouldFlushAfterFluids after fluids},
+     * so depth stamps cannot erase water/lava/portals already in the color buffer.
+     */
+    public static boolean shouldWriteDepthForOpacity(float alpha)
+    {
+        return alpha > 0.001F;
     }
 
     public static boolean shouldForceLiveDepthWrite(float alpha)
     {
-        /* Near-opaque live path only — translucents are post-deferred. */
-        return isActive() && alpha >= LIVE_DEPTH_WRITE_ALPHA;
+        /* Near-opaque live path — force depth even if a pack left depthMask false. */
+        return alpha >= LIVE_DEPTH_WRITE_ALPHA;
     }
 
     /**
      * Iris-lit mesh: restore camera ModelView; pass entity-local stack matrices in {@code draw}.
      */
-    public static void submitPostDeferredForm(double renderDepth, boolean depthWrite, Runnable draw)
+    public static void submitPostDeferredForm(double renderDepth, boolean depthWrite, boolean afterFluids, Runnable draw)
     {
-        submit(renderDepth, 0D, depthWrite, true, draw);
+        submit(renderDepth, 0D, depthWrite, afterFluids, true, draw);
     }
 
-    public static void submitPostDeferredForm(double renderDepth, double distanceSq, boolean depthWrite, Runnable draw)
+    public static void submitPostDeferredForm(double renderDepth, double distanceSq, boolean depthWrite, boolean afterFluids, Runnable draw)
     {
-        submit(renderDepth, distanceSq, depthWrite, true, draw);
+        submit(renderDepth, distanceSq, depthWrite, afterFluids, true, draw);
     }
 
     /**
      * BBS model-shader flat: identity ModelView; pass camera-baked stack matrices in {@code draw}.
      */
-    public static void submitPostDeferredBbsForm(double renderDepth, boolean depthWrite, Runnable draw)
+    public static void submitPostDeferredBbsForm(double renderDepth, boolean depthWrite, boolean afterFluids, Runnable draw)
     {
-        submit(renderDepth, 0D, depthWrite, false, draw);
+        submit(renderDepth, 0D, depthWrite, afterFluids, false, draw);
     }
 
-    public static void submitPostDeferredBbsForm(double renderDepth, double distanceSq, boolean depthWrite, Runnable draw)
+    public static void submitPostDeferredBbsForm(double renderDepth, double distanceSq, boolean depthWrite, boolean afterFluids, Runnable draw)
     {
-        submit(renderDepth, distanceSq, depthWrite, false, draw);
+        submit(renderDepth, distanceSq, depthWrite, afterFluids, false, draw);
     }
 
     public static void submitPostDeferredForm(Runnable draw)
     {
-        submitPostDeferredForm(0D, 0D, true, draw);
+        submitPostDeferredForm(0D, 0D, true, false, draw);
     }
 
-    private static void submit(double renderDepth, double distanceSq, boolean depthWrite, boolean irisCamera, Runnable draw)
+    private static void submit(double renderDepth, double distanceSq, boolean depthWrite, boolean afterFluids, boolean irisCamera, Runnable draw)
     {
         if (draw == null)
         {
@@ -328,6 +354,7 @@ public class ShaderOpacityPatch
             renderDepth,
             distanceSq,
             depthWrite,
+            afterFluids,
             irisCamera,
             new Matrix4f(RenderSystem.getProjectionMatrix()),
             new Matrix4f(RenderSystem.getModelViewMatrix()),
@@ -337,10 +364,24 @@ public class ShaderOpacityPatch
 
     public static void onBeginTranslucents()
     {
+        /* Soft-opacity (and other after-fluids) forms must not flush here: Iris beginTranslucents
+         * can run mid-frame while WorldRenderer still has an unbalanced pose stack; flushing
+         * then throws IllegalStateException on pop(). Only mark the phase — actual soft-opacity
+         * flush is WorldRenderEvents.AFTER_TRANSLUCENT / onAfterTranslucentTerrain().
+         * Paint/blend/grade overlays stay queued until onWorldRenderEnd — the BBS model shader
+         * only composites correctly on the final framebuffer after Iris finishes. */
         postDeferredPhase = true;
-        /* After Iris beginTranslucents — VL clouds/fog already run; translucent BBS forms
-         * draw here with depth so they sit in front of clouds without sky holes. */
-        flushPostDeferredForms();
+    }
+
+    /**
+     * After translucent terrain (water/lava/portals). Default soft forms (Opacity
+     * "No shading" off) flush here with depth so pack body shadows stay; end-of-frame
+     * paint stays clipped behind them. Noshading soft forms skip this queue and redraw
+     * after paint in {@link mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer}'s deferred queue.
+     */
+    public static void onAfterTranslucentTerrain()
+    {
+        flushPostDeferredForms(null);
     }
 
     public static void onWorldRenderBegin()
@@ -352,29 +393,53 @@ public class ShaderOpacityPatch
 
     public static void onWorldRenderEnd()
     {
-        flushPostDeferredForms();
+        flushPostDeferredForms(null);
         postDeferredPhase = false;
     }
 
     public static void flushPostDeferredForms()
+    {
+        flushPostDeferredForms(null);
+    }
+
+    /**
+     * @param afterFluidsOnly {@code true} = soft opacity (after water/lava/portals);
+     *                        {@code false} = early batch (beginTranslucents);
+     *                        {@code null} = everything remaining (frame-end safety net).
+     */
+    private static void flushPostDeferredForms(Boolean afterFluidsOnly)
     {
         if (postDeferredForms.isEmpty())
         {
             return;
         }
 
+        List<PostDeferredEntry> batch = new ArrayList<>();
+
+        for (PostDeferredEntry entry : postDeferredForms)
+        {
+            if (afterFluidsOnly == null || entry.afterFluids == afterFluidsOnly)
+            {
+                batch.add(entry);
+            }
+        }
+
+        if (batch.isEmpty())
+        {
+            return;
+        }
+
+        postDeferredForms.removeAll(batch);
         flushingPostDeferred = true;
 
         try
         {
             /* Same order as film entities: lower render depth first; within a depth, farther
              * first so closer forms depth-test against what is already in the buffer. */
-            postDeferredForms.sort(Comparator
+            batch.sort(Comparator
                 .comparingDouble((PostDeferredEntry entry) -> entry.renderDepth)
                 .thenComparing((PostDeferredEntry a, PostDeferredEntry b) -> Double.compare(b.distanceSq, a.distanceSq))
             );
-
-            preparePostDeferredFramebufferAndDepth();
 
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
@@ -389,16 +454,20 @@ public class ShaderOpacityPatch
                 mc.gameRenderer.getOverlayTexture().setupOverlayColor();
             }
 
-            for (PostDeferredEntry entry : postDeferredForms)
+            for (PostDeferredEntry entry : batch)
             {
                 runEntry(entry);
             }
         }
         finally
         {
-            postDeferredForms.clear();
             flushingPostDeferred = false;
             RenderSystem.depthMask(true);
+            RenderSystem.colorMask(true, true, true, true);
+            RenderSystem.enableDepthTest();
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
         }
     }
 
@@ -406,8 +475,11 @@ public class ShaderOpacityPatch
      * Complementary/BSL deferred can leave the live depth buffer unusable for occlusion. Iris
      * snapshots opaque depth into {@code depthtex1} at {@code beginTranslucents}; copy it back
      * so translucent BBS forms depth-test against models/terrain in front (render depth).
+     *
+     * @param bindIrisDefault when true, draw into Iris' translucent target (mid-pipeline only).
+     *                        At world-render end keep Minecraft/film FB so draws stay visible.
      */
-    private static void preparePostDeferredFramebufferAndDepth()
+    private static void preparePostDeferredFramebufferAndDepth(boolean bindIrisDefault)
     {
         try
         {
@@ -454,6 +526,7 @@ public class ShaderOpacityPatch
         Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
         MatrixStack modelViewStack = RenderSystem.getModelViewStack();
         boolean savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+        boolean beganDeferredPass = false;
 
         try
         {
@@ -461,6 +534,8 @@ public class ShaderOpacityPatch
             flushingDepthWrite = entry.depthWrite;
             RenderSystem.depthMask(entry.depthWrite);
 
+            /* Never push/pop ModelView during world render — unbalanced depth trips
+             * WorldRenderer's "Pose stack not empty" check with Iris/Sodium. */
             if (entry.irisCamera)
             {
                 modelViewStack.push();
@@ -469,10 +544,12 @@ public class ShaderOpacityPatch
             }
             else
             {
-                /* Same setup as ModelVAORenderer.submitDeferredTranslucentModel — identity MV
-                 * + deferred translucent pass so billboards/shapes stay visible and depth-test. */
-                MatrixStackUtils.pushIdentityModelView();
+                modelViewStack.push();
+                modelViewStack.peek().getPositionMatrix().identity();
+                modelViewStack.peek().getNormalMatrix().identity();
+                RenderSystem.applyModelViewMatrix();
                 mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer.beginDeferredTranslucentModelPass(entry.depthWrite, true);
+                beganDeferredPass = true;
             }
 
             try
@@ -496,6 +573,11 @@ public class ShaderOpacityPatch
         }
         finally
         {
+            if (beganDeferredPass)
+            {
+                mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer.endDeferredTranslucentModelPass();
+            }
+
             RenderSystem.depthMask(savedDepthMask);
             RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
             modelViewStack.push();
@@ -554,21 +636,39 @@ public class ShaderOpacityPatch
             return source;
         }
 
-        /* Only relax alpha discards. Do not rewrite translucentMult — forcing it to 1.0 made
-         * Complementary show full-brightness sky through forms (washed / background-tinted). */
-        String patched = ALPHA_TEST_REF_COMPARE.matcher(source).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
+        String patched = source;
 
+        /* Shadow casters: skip alpha-test rewrites (those hole foliage/terrain shadows), but
+         * keep vertex-alpha dither so per-actor Opacity / shadow_opacity can fade ground
+         * shadows on otherwise binary Iris shadow maps. */
+        if (isShadowCasterSource(source))
+        {
+            return processShadowOpacity(processShadowCasterAlpha(patched));
+        }
+
+        /* Only relax alpha discards on gbuffer/entity paths. Do not rewrite translucentMult. */
+        patched = ALPHA_TEST_REF_COMPARE.matcher(patched).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
         patched = LITERAL_POINT_ONE_COMPARE.matcher(patched).replaceAll("$1.a < " + LOW_ALPHA_TEST_REF);
-
-        patched = processShadowCasterAlpha(patched);
 
         return processShadowOpacity(patched);
     }
 
+    public static boolean isShadowCasterSourcePublic(String source)
+    {
+        return isShadowCasterSource(source);
+    }
+
+    private static boolean isShadowCasterSource(String source)
+    {
+        return source.contains("DoNaturalShadowCalculation")
+            || source.contains("float premult = float(mat > 0.98")
+            || source.contains("BBS_SHADOW_CASTER_DITHER");
+    }
+
     /**
-     * Complementary/BSL shadow map programs: multiply texture alpha by vertex color alpha
-     * and dither-discard so per-model replay {@code shadow_opacity} can lighten/darken
-     * individual casters (hard shadow maps are otherwise binary).
+     * Complementary/BSL shadow map programs: dither-discard by <b>vertex color alpha only</b>
+     * so form Opacity and replay shadow_opacity fade per-actor ground shadows linearly
+     * (coverage ≈ alpha). Does not multiply texture alpha (that made leaves/grass holey).
      */
     public static String processShadowCasterAlpha(String source)
     {
@@ -587,10 +687,12 @@ public class ShaderOpacityPatch
         {
             String dither =
                 "/* BBS_SHADOW_CASTER_DITHER */\n"
-                    + "    color1.a *= glColor.a;\n"
-                    + "    if (color1.a < 0.999){\n"
-                    + "        float bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
-                    + "        if (bbsShadowDither > color1.a) discard;\n"
+                    + "    {\n"
+                    + "        float bbsCasterAlpha = glColor.a;\n"
+                    + "        if (bbsCasterAlpha < 0.999){\n"
+                    + "            float bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
+                    + "            if (bbsShadowDither > bbsCasterAlpha) discard;\n"
+                    + "        }\n"
                     + "    }\n";
 
             return source.replace(
@@ -604,13 +706,15 @@ public class ShaderOpacityPatch
         {
             String dither =
                 "\t/* BBS_SHADOW_CASTER_DITHER */\n"
-                    + "\talbedo.a *= color.a;\n"
-                    + "\tif (albedo.a < 0.999){\n"
-                    + "\t\tfloat bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
-                    + "\t\tif (bbsShadowDither > albedo.a) discard;\n"
+                    + "\t{\n"
+                    + "\t\tfloat bbsCasterAlpha = color.a;\n"
+                    + "\t\tif (bbsCasterAlpha < 0.999){\n"
+                    + "\t\t\tfloat bbsShadowDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n"
+                    + "\t\t\tif (bbsShadowDither > bbsCasterAlpha) discard;\n"
+                    + "\t\t}\n"
                     + "\t}\n";
 
-            if (source.contains("gl_FragData[0] = albedo;"))
+            if (source.contains("\tgl_FragData[0] = albedo;"))
             {
                 return source.replace("\tgl_FragData[0] = albedo;", dither + "\tgl_FragData[0] = albedo;");
             }
@@ -625,7 +729,7 @@ public class ShaderOpacityPatch
      */
     public static String processShadowOpacity(String source)
     {
-        if (!isActive() || source == null || source.isEmpty())
+        if (!shouldApplyPackGlslPatches() || source == null || source.isEmpty())
         {
             return source;
         }
@@ -651,7 +755,7 @@ public class ShaderOpacityPatch
 
     public static void ensureShadowOpacityVariable()
     {
-        if (!isActive())
+        if (!shouldApplyPackGlslPatches())
         {
             return;
         }

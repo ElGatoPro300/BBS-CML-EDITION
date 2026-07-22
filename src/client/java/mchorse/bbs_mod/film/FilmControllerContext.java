@@ -6,6 +6,8 @@ import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.ShadowSettings;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -51,9 +53,11 @@ public class FilmControllerContext
 
     public String bone;
     public boolean local;
+    public TransformOrientation orientation = TransformOrientation.PARENT;
 
     public String bone2;
     public boolean local2;
+    public TransformOrientation orientation2 = TransformOrientation.PARENT;
 
     public String nameTag = "";
     public boolean relative;
@@ -83,6 +87,10 @@ public class FilmControllerContext
         this.color = Colors.WHITE;
         this.bone = null;
         this.local = false;
+        this.orientation = TransformOrientation.PARENT;
+        this.bone2 = null;
+        this.local2 = false;
+        this.orientation2 = TransformOrientation.PARENT;
         this.nameTag = "";
         this.relative = false;
         this.localGroupTransform = null;
@@ -222,16 +230,28 @@ public class FilmControllerContext
 
     public FilmControllerContext bone(String bone, boolean local)
     {
+        return this.bone(bone, local ? TransformOrientation.LOCAL : TransformOrientation.PARENT);
+    }
+
+    public FilmControllerContext bone(String bone, TransformOrientation orientation)
+    {
         this.bone = bone;
-        this.local = local;
+        this.orientation = orientation == null ? TransformOrientation.PARENT : orientation;
+        this.local = this.orientation.isLocal();
 
         return this;
     }
 
     public FilmControllerContext bone2(String bone, boolean local)
     {
+        return this.bone2(bone, local ? TransformOrientation.LOCAL : TransformOrientation.PARENT);
+    }
+
+    public FilmControllerContext bone2(String bone, TransformOrientation orientation)
+    {
         this.bone2 = bone;
-        this.local2 = local;
+        this.orientation2 = orientation == null ? TransformOrientation.PARENT : orientation;
+        this.local2 = this.orientation2.isLocal();
 
         return this;
     }

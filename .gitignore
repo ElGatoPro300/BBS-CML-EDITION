@@ -61,3 +61,9 @@ translation_workspace/
 .tmp_shadow_frames/
 .tmp_shadow_frames2/
 .tmp_*/
+.tmp-*/
+.cursor-tmp-*/
+.cursor-video-frames/
+.video_*/
+*.pyc
+__pycache__/

@@ -71,6 +71,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
@@ -443,22 +444,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             this.gizmoTop.active(gizmoMode == Gizmo.Mode.TOP);
         });
 
-        this.gizmoToolbar = new UIElement()
-        {
-            @Override
-            protected boolean subMouseClicked(UIContext context)
-            {
-                if (context.mouseButton == 1 && this.area.isInside(context))
-                {
-                    UIFormEditor.this.openGizmoToolbarCustomizer();
-                    UIUtils.playClick();
-
-                    return true;
-                }
-
-                return super.subMouseClicked(context);
-            }
-        };
+        this.gizmoToolbar = new UIElement();
         this.gizmoToolbar.row(0);
         this.gizmoToolbar.relative(this).x(0.5F).y(4).wh(160, 20).anchorX(0.5F);
         this.rebuildGizmoToolbar();
@@ -505,19 +491,27 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         {
             return true;
         }
-        else if (stencil.hasPicked() && context.mouseButton == 0)
+
+        UIPropTransform editableTransform = this.getGizmoDragTransform();
+
+        this.renderer.setPoseBoneGizmoDrag(this.isPoseBoneGizmo(editableTransform));
+
+        if (context.mouseButton == 0 && this.renderer.getGizmoController().tryStartHandleDrag(context, editableTransform))
+        {
+            /* Only jump to General when the transform gizmo itself is grabbed —
+             * not on orbit / empty viewport clicks (non-pose forms keep transform
+             * gizmo mode on by default, so every click used to force General). */
+            this.openGeneralPanelForTransformGizmoDrag(editableTransform);
+
+            return true;
+        }
+
+        if (stencil.hasPicked() && context.mouseButton == 0)
         {
             Pair<Form, String> pair = stencil.getPicked();
 
             if (pair != null)
             {
-                UIPropTransform editableTransform = this.getGizmoDragTransform();
-
-                if (this.renderer.getGizmoController().tryStartHandleDrag(context, editableTransform))
-                {
-                    return true;
-                }
-
                 this.pickFormFromRenderer(pair);
 
                 return true;
@@ -525,6 +519,21 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         }
 
         return false;
+    }
+
+    /** Completes a pending trackball press: click-through selects the bone/form under the
+     *  sphere; otherwise just stops any active gizmo drag. */
+    public void finishGizmoPendingClick()
+    {
+        Pair<Form, String> formPick = this.renderer.getGizmoController().consumePendingTrackballClick();
+
+        if (formPick != null)
+        {
+            this.pickFormFromRenderer(formPick);
+        }
+
+        this.renderer.getGizmoController().stop();
+        this.statesKeyframes.finishGizmoPendingClick();
     }
 
     /** Which transform the gizmo should drag: the selected body part's transform when the
@@ -538,9 +547,12 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             return this.bodyPartEditor.transform;
         }
 
-        if (this.gizmoTargetsTransform && this.editor != null)
+        if (this.gizmoTargetsTransform && this.editor != null && this.editor.generalPanel != null)
         {
-            return this.editor.getEditableTransform();
+            /* Do not call getEditableTransform() here — that switches the sidebar to
+             * General on every viewport click. Panel switch happens only when a gizmo
+             * handle is actually grabbed (see openGeneralPanelForTransformGizmoDrag). */
+            return this.editor.generalPanel.transform;
         }
 
         if (this.modelSettingsEditor != null && this.modelSettingsEditor.isVisible())
@@ -564,6 +576,46 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         }
 
         return this.editor.generalPanel.transform;
+    }
+
+    private void openGeneralPanelForTransformGizmoDrag(UIPropTransform editableTransform)
+    {
+        if (!this.gizmoTargetsTransform || this.editor == null || this.editor.generalPanel == null)
+        {
+            return;
+        }
+
+        if (editableTransform != this.editor.generalPanel.transform)
+        {
+            return;
+        }
+
+        if (this.editor.view != this.editor.generalPanel)
+        {
+            this.editor.setPanel(this.editor.generalPanel);
+        }
+    }
+
+    /** Pose bone handles (Model Block Edit / form palette Pose), not General or body-part. */
+    private boolean isPoseBoneGizmo(UIPropTransform transform)
+    {
+        if (transform == null || this.gizmoTargetsBodyPart || this.gizmoTargetsTransform)
+        {
+            return false;
+        }
+
+        if (this.modelSettingsEditor != null && this.modelSettingsEditor.isVisible())
+        {
+            UIPoseEditor poseEditor = this.modelSettingsEditor.getPoseEditor();
+
+            if (poseEditor != null && transform == poseEditor.transform)
+            {
+                return true;
+            }
+        }
+
+        return this.editor instanceof UIModelForm modelForm
+            && transform == modelForm.getPoseGizmoTransform();
     }
 
     public boolean isGizmoTargetingFormTransform()
@@ -639,16 +691,46 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             return null;
         }
 
-        int index = owner.parts.getAllTyped().indexOf(part);
+        String boneName = part.bone.get();
+        String basePath;
 
-        if (index < 0)
+        if (boneName != null && !boneName.isEmpty())
         {
-            return null;
+            basePath = StringUtils.combinePaths(FormUtils.getPath(owner), boneName);
+        }
+        else
+        {
+            basePath = FormUtils.getPath(owner) + "#origin";
         }
 
-        String path = StringUtils.combinePaths(FormUtils.getPath(owner), String.valueOf(index));
+        Matrix4f base = this.editor.getOrigin(transition, basePath, this.bodyPartEditor.transform.getOrientation());
 
-        return normalizeOriginBasis(this.editor.getOrigin(transition, path, this.bodyPartEditor.transform.isLocal()));
+        if (base == null || base == Matrices.EMPTY_4F)
+        {
+            int index = owner.parts.getAllTyped().indexOf(part);
+
+            if (index < 0)
+            {
+                return null;
+            }
+
+            String path = StringUtils.combinePaths(FormUtils.getPath(owner), String.valueOf(index));
+
+            return normalizeOriginBasis(this.editor.getOrigin(transition, path, this.bodyPartEditor.transform.getOrientation()));
+        }
+
+        /* Place the gizmo at translate + pivot (rotation center), not only translate. */
+        Matrix4f result = new Matrix4f(base);
+        Transform transform = part.transform.get();
+
+        result.translate(transform.translate.x, transform.translate.y, transform.translate.z);
+
+        if (transform.pivot.x != 0F || transform.pivot.y != 0F || transform.pivot.z != 0F)
+        {
+            result.translate(transform.pivot.x, transform.pivot.y, transform.pivot.z);
+        }
+
+        return normalizeOriginBasis(result);
     }
 
     /** Strips scale/skew/mirroring out of a gizmo origin matrix, leaving only position and a
@@ -717,16 +799,6 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
         this.gizmoToolbar.w(Math.max(20, count * 20));
         this.gizmoToolbar.resize();
-    }
-
-    private void openGizmoToolbarCustomizer()
-    {
-        if (this.getContext() == null)
-        {
-            return;
-        }
-
-        UIOverlay.addOverlay(this.getContext(), new UIFormEditorGizmoToolbarOverlayPanel(this::rebuildGizmoToolbar), 320, 180);
     }
 
     private UIIcon createGizmoModeButton(Icon icon, Gizmo.Mode mode, IKey tooltip)
@@ -1230,8 +1302,32 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.editor.full(this.formEditor).resize();
         this.updateModelEditorButton();
         this.refillState();
+        this.syncFormTransformGizmoForEditor();
 
         return true;
+    }
+
+    /**
+     * Forms without a pose editor (extruded, label, billboard, …) only expose a form-level
+     * transform. Enable that gizmo target as soon as their panel opens — otherwise the gizmo
+     * stays inert until the user visits the General tab once (which calls
+     * {@link #enableFormTransformGizmoFromGeneralPanel()}).
+     */
+    private void syncFormTransformGizmoForEditor()
+    {
+        if (this.editor instanceof UIModelForm)
+        {
+            /* Model forms default to pose bones; leave transform-gizmo mode off until the
+             * toolbar gear (or General tab) opts in. */
+            this.gizmoTargetsTransform = false;
+
+            return;
+        }
+
+        if (this.editor != null)
+        {
+            this.enableFormTransformGizmoFromGeneralPanel();
+        }
     }
 
     public Form finish()
@@ -1389,7 +1485,8 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             /* "#origin" makes UIForm.getOrigin() return the form's own pivot (entry.origin()),
              * i.e. the point its own transform rotates/scales around, ignoring any pose bone -
              * exactly the model's bottom/pivot the transform panel's numbers apply to. */
-            Matrix4f matrix = this.editor.getOrigin(transition, FormUtils.getPath(this.editor.form) + "#origin", false);
+            TransformOrientation orientation = this.editor.generalPanel != null ? this.editor.generalPanel.transform.getOrientation() : TransformOrientation.PARENT;
+            Matrix4f matrix = this.editor.getOrigin(transition, FormUtils.getPath(this.editor.form) + "#origin", orientation);
 
             if (matrix == null || matrix == Matrices.EMPTY_4F)
             {
@@ -1397,9 +1494,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             }
 
             Transform formTransform = this.editor.form.transform.get();
-            boolean local = this.editor.generalPanel != null && this.editor.generalPanel.transform.isLocal();
-
-            return GizmoMatrixUtils.withLocalRotation(matrix, formTransform, local);
+            return GizmoMatrixUtils.withLocalRotation(matrix, formTransform, orientation);
         }
 
         if (this.modelSettingsEditor != null && this.modelSettingsEditor.isVisible())

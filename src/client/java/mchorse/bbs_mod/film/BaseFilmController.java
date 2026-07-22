@@ -5,6 +5,7 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.MorphFireRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
+import net.minecraft.entity.EntityPose;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -33,12 +34,12 @@ import mchorse.bbs_mod.mixin.client.ClientPlayerEntityAccessor;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -217,115 +218,125 @@ public abstract class BaseFilmController
 
         stack.push();
 
-        if (relative)
+        try
         {
-            stack.peek().getPositionMatrix().identity();
-            stack.peek().getNormalMatrix().identity();
-        }
-
-        MatrixStackUtils.multiply(stack, target);
-
-        ModelFormRenderer lookAtRenderer = relative ? null : applyLookAtPose(context, form, position);
-
-        if (context.isShadowPass)
-        {
-            if (context.shadowOpacity <= 0.001F || (context.shadowRadiusX <= 0F && context.shadowRadiusZ <= 0F))
+            if (relative)
             {
-                stack.pop();
-
-                return;
-            }
-
-            PaintSettings paint = form.paintSettings.get();
-            Color legacyPaint = form.paintColor.get();
-            float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
-
-            /* Paint's effectiveShaderShadow() returns SHADER_SHADOW_FIX_BUG (0.005) when paint
-             * is active — that value is only a Complementary workaround flag, not caster alpha.
-             * Under ShaderOpacityPatch, shadow.glsl dither-discards by vertex alpha, so scaling
-             * by 0.005 would erase painted model shadows. Keep replay/form opacity only. */
-            if (paint.resolveIntensity(legacyPaint) != 0F
-                && !mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.isActive())
-            {
-                shadowAlpha *= paint.effectiveShaderShadow(legacyPaint);
-            }
-
-            formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
-
-            if (context.shadowOffsetX != 0F || context.shadowOffsetY != 0F || context.shadowOffsetZ != 0F)
-            {
-                stack.translate(context.shadowOffsetX, context.shadowOffsetY, context.shadowOffsetZ);
-            }
-
-            /* Independent X/Z scale from default radius 0.5 — stretch wide or long under Iris. */
-            float scaleX = Math.max(0.001F, context.shadowRadiusX / 0.5F);
-            float scaleZ = Math.max(0.001F, context.shadowRadiusZ / 0.5F);
-
-            if (Math.abs(scaleX - 1F) > 0.001F || Math.abs(scaleZ - 1F) > 0.001F)
-            {
-                stack.scale(scaleX, 1F, scaleZ);
-            }
-        }
-
-        FormUtilsClient.render(form, formContext);
-
-        if (!context.isShadowPass && context.map == null && entity.getFireTicks() > 0)
-        {
-            MorphFireRenderer.render(stack, context.consumers, entity, form, transition, camera, relative);
-        }
-
-        if (context.map == null)
-        {
-            renderIllusions(context, form, formContext, stack);
-        }
-
-        if (lookAtRenderer != null)
-        {
-            lookAtRenderer.setLookAtPose(null);
-        }
-
-        if (UIBaseMenu.renderAxes)
-        {
-            if (context.bone != null && !context.local)
-            {
-                Form root = FormUtils.getRoot(form);
-                MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
-                MatrixCacheEntry entry = map.get(context.bone);
-
-                Matrix4f matrix = entry.origin();
-
-                if (matrix == null)
+                if (!context.isShadowPass)
                 {
-                    matrix = entry.matrix();
+                    stack.peek().getPositionMatrix().identity();
+                    stack.peek().getNormalMatrix().identity();
                 }
 
-                if (matrix != null)
+                if (context.map == null)
                 {
-                    stack.push();
-                    MatrixStackUtils.multiply(stack, matrix);
-
-                    if (context.map == null)
-                    {
-                        BaseFilmController.renderGizmo(stack, null);
-                    }
-                    else
-                    {
-                        BaseFilmController.renderGizmo(stack, context.map);
-                    }
-
-                    RenderSystem.enableDepthTest();
-                    stack.pop();
+                    stack.multiply(camera.getRotation());
                 }
             }
-            if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
-            if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
+
+            MatrixStackUtils.multiply(stack, target);
+
+            ModelFormRenderer lookAtRenderer = relative ? null : applyLookAtPose(context, form, position);
+
+            if (context.isShadowPass)
+            {
+                if (context.shadowOpacity <= 0.001F || (context.shadowRadiusX <= 0F && context.shadowRadiusZ <= 0F))
+                {
+                    return;
+                }
+
+                if (form.getFormOpacity() <= 0.001F)
+                {
+                    return;
+                }
+
+                float shadowAlpha = Colors.getA(formContext.color) * context.shadowOpacity;
+
+                if (shadowAlpha <= 0.001F)
+                {
+                    return;
+                }
+
+                formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
+
+                if (context.shadowOffsetX != 0F || context.shadowOffsetY != 0F || context.shadowOffsetZ != 0F)
+                {
+                    stack.translate(context.shadowOffsetX, context.shadowOffsetY, context.shadowOffsetZ);
+                }
+
+                float scaleX = Math.max(0.001F, context.shadowRadiusX / 0.5F);
+                float scaleZ = Math.max(0.001F, context.shadowRadiusZ / 0.5F);
+
+                if (Math.abs(scaleX - 1F) > 0.001F || Math.abs(scaleZ - 1F) > 0.001F)
+                {
+                    stack.scale(scaleX, 1F, scaleZ);
+                }
+            }
+
+            FormUtilsClient.render(form, formContext);
+
+            if (!context.isShadowPass && context.map == null && entity.getFireTicks() > 0)
+            {
+                MorphFireRenderer.render(stack, context.consumers, entity, form, transition, camera, relative);
+            }
+
+            if (context.map == null)
+            {
+                renderIllusions(context, form, formContext, stack);
+            }
+
+            if (lookAtRenderer != null)
+            {
+                lookAtRenderer.setLookAtPose(null);
+            }
+
+            if (UIBaseMenu.renderAxes)
+            {
+                if (context.bone != null && context.orientation == TransformOrientation.PARENT)
+                {
+                    Form root = FormUtils.getRoot(form);
+                    MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
+                    MatrixCacheEntry entry = map.get(context.bone);
+
+                    Matrix4f matrix = entry.origin();
+
+                    if (matrix == null)
+                    {
+                        matrix = entry.matrix();
+                    }
+
+                    if (matrix != null)
+                    {
+                        stack.push();
+                        MatrixStackUtils.multiply(stack, matrix);
+
+                        if (context.map == null)
+                        {
+                            BaseFilmController.renderGizmo(stack, null);
+                        }
+                        else
+                        {
+                            BaseFilmController.renderGizmo(stack, context.map);
+                        }
+
+                        RenderSystem.enableDepthTest();
+                        stack.pop();
+                    }
+                }
+                if (context.bone != null) renderAxes(context.bone, context.orientation, context.map, form, entity, transition, stack);
+                if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.orientation2, context.map, form, entity, transition, stack);
+            }
+        }
+        finally
+        {
+            stack.pop();
         }
 
-        stack.pop();
-
-        /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map
-         * and per-replay opacity is applied in the Iris shadow pass above. */
-        if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.render.get()
+        /* Vanilla blob shadows only without Iris shaders — Comp/BSL use the shadow map.
+         * Blob opacity is the Shadow track only; form Opacity must not fade the ground circle.
+         * Size X/Z are independent (matrix scale); vanilla API only has one radius. */
+        if (!relative && context.map == null && opacity > 0F
+            && (context.shadowRadiusX > 0F || context.shadowRadiusZ > 0F) && form.render.get()
             && !context.isShadowPass && !mchorse.bbs_mod.utils.iris.IrisUtils.isShaderPackEnabled())
         {
             float shadowOpacity = MathUtils.clamp(opacity * context.shadowOpacity, 0F, 1F);
@@ -339,7 +350,7 @@ public abstract class BaseFilmController
                 stack.push();
                 stack.translate(sx - cx, sy - cy, sz - cz);
 
-                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, sx, sy, sz, 0F, 0F, 0F, context.shadowRadius, shadowOpacity);
+                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, sx, sy, sz, 0F, 0F, 0F, context.shadowRadiusX, context.shadowRadiusZ, shadowOpacity);
 
                 stack.pop();
             }
@@ -552,16 +563,23 @@ public abstract class BaseFilmController
                 int a = Math.round(((baseColor >>> 24) & 0xFF) * mainAlpha);
 
                 stack.push();
-                stack.translate(x, y, z);
 
-                if (partial != null)
+                try
                 {
-                    MatrixStackUtils.multiply(stack, partial.createMatrix());
-                }
+                    stack.translate(x, y, z);
 
-                formContext.color((a << 24) | (baseColor & Colors.RGB));
-                FormUtilsClient.render(form, formContext);
-                stack.pop();
+                    if (partial != null)
+                    {
+                        MatrixStackUtils.multiply(stack, partial.createMatrix());
+                    }
+
+                    formContext.color((a << 24) | (baseColor & Colors.RGB));
+                    FormUtilsClient.render(form, formContext);
+                }
+                finally
+                {
+                    stack.pop();
+                }
             }
 
             if (distortFactor > 0F)
@@ -716,16 +734,23 @@ public abstract class BaseFilmController
             float stretch = 1F + random.nextFloat() * (0.5F + distortFactor);
 
             stack.push();
-            stack.translate(x + jx, y + yPos * (1F - squash), z + jz);
 
-            if (partial != null)
+            try
             {
-                MatrixStackUtils.multiply(stack, partial.createMatrix());
-            }
+                stack.translate(x + jx, y + yPos * (1F - squash), z + jz);
 
-            stack.scale(stretch, squash, stretch);
-            FormUtilsClient.render(form, formContext);
-            stack.pop();
+                if (partial != null)
+                {
+                    MatrixStackUtils.multiply(stack, partial.createMatrix());
+                }
+
+                stack.scale(stretch, squash, stretch);
+                FormUtilsClient.render(form, formContext);
+            }
+            finally
+            {
+                stack.pop();
+            }
         }
     }
 
@@ -1205,7 +1230,7 @@ public abstract class BaseFilmController
         }
     }
 
-    private static void renderAxes(String bone, boolean local, StencilMap stencilMap, Form form, IEntity entity, float transition, MatrixStack stack)
+    private static void renderAxes(String bone, TransformOrientation space, StencilMap stencilMap, Form form, IEntity entity, float transition, MatrixStack stack)
     {
         Form root = FormUtils.getRoot(form);
         MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
@@ -1220,10 +1245,11 @@ public abstract class BaseFilmController
         Form rootForm = FormUtils.getRoot(form);
         boolean bobj = rootForm instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
 
-        matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local, bobj);
+        matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, space, bobj);
 
         if (matrix != null)
         {
+            Gizmo.INSTANCE.setActiveOrientation(space);
             stack.push();
             MatrixStackUtils.multiply(stack, matrix);
 
@@ -1635,6 +1661,14 @@ public abstract class BaseFilmController
                             double z = replay.keyframes.z.interpolate(replayTick);
                             boolean sneaking = replay.keyframes.sneaking.interpolate(replayTick) > 0;
                             boolean sprinting = replay.keyframes.sprinting.interpolate(replayTick) > 0;
+                            boolean swimming = replay.keyframes.swimming.interpolate(replayTick) > 0;
+                            boolean flying = replay.keyframes.flying.interpolate(replayTick) > 0;
+                            boolean fallFlying = replay.keyframes.fallFlying.interpolate(replayTick) > 0;
+                            boolean crawling = replay.keyframes.crawling.interpolate(replayTick) > 0;
+                            boolean climbing = replay.keyframes.climbing.interpolate(replayTick) > 0;
+                            boolean blocking = replay.keyframes.blocking.interpolate(replayTick) > 0;
+                            boolean sleeping = replay.keyframes.sleeping.interpolate(replayTick) > 0;
+                            boolean riptide = replay.keyframes.riptide.interpolate(replayTick) > 0;
                             boolean grounded = replay.keyframes.grounded.interpolate(replayTick) > 0;
 
                             Vec3d pos = player.getPos();
@@ -1649,6 +1683,25 @@ public abstract class BaseFilmController
 
                             player.setSneaking(sneaking);
                             player.setSprinting(sprinting);
+                            player.setSwimming(swimming);
+                            player.getAbilities().flying = flying;
+                            player.setFlag(7, fallFlying);
+                            player.setFlag(4, riptide);
+
+                            if (crawling)
+                            {
+                                player.setPose(EntityPose.SWIMMING);
+                            }
+                            else if (sleeping)
+                            {
+                                player.setPose(EntityPose.SLEEPING);
+                            }
+
+                            if (blocking)
+                            {
+                                player.setLivingFlag(1, true);
+                            }
+
                             player.setOnGround(grounded);
 
                             if (player instanceof ClientPlayerEntityAccessor accessor)
@@ -2136,19 +2189,7 @@ public abstract class BaseFilmController
 
     private boolean isSemiTransparent(Form form)
     {
-        if (form == null)
-        {
-            return false;
-        }
-
-        BaseValue colorValue = form.get("color");
-
-        if (colorValue instanceof ValueColor valueColor)
-        {
-            return valueColor.get().a < 0.999F;
-        }
-
-        return false;
+        return FormRenderDepth.isSemiTransparent(form);
     }
 
     protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity, int index)
@@ -2182,16 +2223,19 @@ public abstract class BaseFilmController
 
             filmContext.stack.push();
 
-            if (!this.applyGroupProperties(replay, filmContext))
+            try
+            {
+                if (!this.applyGroupProperties(replay, filmContext))
+                {
+                    return;
+                }
+
+                renderEntity(filmContext);
+            }
+            finally
             {
                 filmContext.stack.pop();
-
-                return;
             }
-
-            renderEntity(filmContext);
-
-            filmContext.stack.pop();
         }
     }
 
@@ -2448,7 +2492,8 @@ public abstract class BaseFilmController
             current.sync = current.sync || groupPaint.sync;
             current.shaderShadow = PaintSettings.resolveAutoShaderShadow(current.intensity);
             form.paintSettings.setRuntimeValue(current);
-            form.shaderShadow.setRuntimeValue(current.intensity != 0F);
+            /* Keep casting; paint.shaderShadow float is the Complementary flag only. */
+            form.shaderShadow.setRuntimeValue(null);
         }
 
         if (groupGlow != null)

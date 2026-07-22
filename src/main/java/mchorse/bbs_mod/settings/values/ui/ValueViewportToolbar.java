@@ -26,12 +26,14 @@ public class ValueViewportToolbar extends BaseValue implements IIconToolbarValue
     public static final String RECORD_REPLAY = "record_replay";
     public static final String RECORD_VIDEO = "record_video";
     public static final String RENDER_QUEUE = "render_queue";
+    public static final String RESTORE_BLOCKS = "restore_blocks";
 
     public static final List<String> DEFAULT_ORDER = Collections.unmodifiableList(Arrays.asList(
         HIDE_OVERLAYS,
         ONION_SKIN,
         TOGGLE_SHADERS,
         PLAYBACK,
+        RESTORE_BLOCKS,
         TELEPORT,
         FLIGHT,
         CONTROL,

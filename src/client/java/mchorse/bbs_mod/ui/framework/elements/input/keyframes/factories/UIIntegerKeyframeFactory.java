@@ -54,6 +54,7 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
         this.value = new UITrackpad(this::setValue);
         this.value.setValue(keyframe.getValue());
         this.handles = new UIBezierHandles(keyframe);
+        this.registerValueTrackpad(this.value);
 
         if (repeatAxis != null)
         {
@@ -262,7 +263,12 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
     {
         super.update();
 
-        this.value.setValue(this.keyframe.getValue());
+        if (!this.value.isActivelyEditing() && !this.value.isDragging())
+        {
+            this.value.setValue(this.keyframe.getValue());
+        }
+
+        this.handles.setKeyframe(this.keyframe);
         this.handles.update();
     }
 

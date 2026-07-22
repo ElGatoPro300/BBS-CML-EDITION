@@ -1,11 +1,14 @@
 package mchorse.bbs_mod.ui.forms.editors.utils;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
@@ -54,10 +57,17 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     private IEntity target;
     private Supplier<Boolean> renderForm;
     private Supplier<Boolean> renderFormMesh;
+    /** True when the gizmo is dragging a ModelForm pose bone (not form General transform). */
+    private boolean poseBoneGizmoDrag;
 
     public UIPickableFormRenderer(UIFormEditor formEditor)
     {
         this.formEditor = formEditor;
+    }
+
+    public void setPoseBoneGizmoDrag(boolean poseBoneGizmoDrag)
+    {
+        this.poseBoneGizmoDrag = poseBoneGizmoDrag;
     }
 
     public void updatable()
@@ -160,6 +170,14 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     }
 
     @Override
+    public boolean subMouseReleased(UIContext context)
+    {
+        this.formEditor.finishGizmoPendingClick();
+
+        return super.subMouseReleased(context);
+    }
+
+    @Override
     protected void renderUserModel(UIContext context)
     {
         if (this.form == null)
@@ -208,6 +226,9 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             Texture fboTexture = this.stencil.getFramebuffer().getMainTexture();
             int fboW = fboTexture.width;
             int fboH = fboTexture.height;
+            int[] prevViewport = new int[4];
+
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
 
             GlStateManager._disableScissorTest();
 
@@ -216,6 +237,11 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
             this.beginStencilViewport(fboW, fboH);
             this.setupViewport(context);
+
+            /* Restore depth writes so the closest bone along the cursor ray wins picking. */
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            RenderSystem.depthMask(true);
 
             FormUtilsClient.render(this.form, formContext.stencilMap(this.stencilMap));
 
@@ -229,9 +255,12 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
                 MatrixStackUtils.multiply(stack, matrix);
             }
 
-            RenderSystem.disableCull();
-            Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-            RenderSystem.enableCull();
+            if (Gizmo.isInteractive())
+            {
+                RenderSystem.disableCull();
+                Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
+                RenderSystem.enableCull();
+            }
 
             stack.pop();
 
@@ -249,7 +278,12 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
             this.endStencilViewport();
 
-            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
+            /* beginWrite(true) clears the main FB → white wash + corrupted GUI text. */
+            BBSRendering.ensureMainFramebuffer();
+            MinecraftClient.getInstance().getFramebuffer().beginWrite(false);
+            GL11.glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
 
             GlStateManager._enableScissorTest();
         }
@@ -257,6 +291,9 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         this.setupViewport(context);
         this.prepareGizmoRenderState();
         this.renderAxes(context);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
     }
 
     private void prepareGizmoRenderState()
@@ -280,13 +317,11 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
         if (matrix != null)
         {
-            this.lastGizmoMatrix.set(matrix);
             MatrixStackUtils.multiply(stack, matrix);
         }
-        else
-        {
-            this.lastGizmoMatrix.identity();
-        }
+
+        /* Full drawn MV so drag matches film (view-space rays ↔ view-space gizmo). */
+        this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
 
         /* Draw axes */
         if (UIBaseMenu.renderAxes)
@@ -309,7 +344,63 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             return;
         }
 
-        transform.setGizmoRayProvider(GizmoRayFrame.fromCamera(
+        /* Model Block → Edit (and any form palette): pose bone gizmo must match Film Pose
+         * signs for .bbs.json (Ry(180°) bone-local). General form transform keeps the
+         * per-ring process-bar flips below. */
+        if (this.poseBoneGizmoDrag)
+        {
+            boolean bobjModel = this.form instanceof ModelForm modelForm
+                && ModelFormRenderer.isBobjModel(modelForm);
+
+            transform.setModel(false);
+            transform.configurePoseRingTuning(bobjModel);
+            transform.setInvertGizmoViewRing(true);
+            transform.setInvertGizmoTrackball(false);
+            transform.setInvertFilmPoseGizmoAxes(false);
+            transform.clearTrackballEulerInverts();
+
+            if (bobjModel)
+            {
+                transform.invertModelPoseTrackballXZ();
+            }
+
+            transform.setInvertTrackballDragY(false);
+            transform.setInvertFilmArcballDragY(false);
+            transform.setFilmArcballTrackball(true);
+            transform.setFilmMatchPoseTrackball(false);
+            transform.setInvertRotationArcSweep(false);
+            transform.setInvertRotationArcViewRing(false);
+            transform.setInvertRotationArcY(false);
+            /* Skip filmArcball X/Z process-bar undo for Z only (arc winds with value delta). */
+            transform.setInvertRotationArcZ(true);
+            transform.setForceFrozenRotationArc(false);
+            transform.translationScale(bobjModel ? 1F : 16F);
+            transform.setAxisProjectedTranslation(bobjModel);
+            transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
+                this.camera,
+                this.area,
+                () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null
+            ));
+
+            return;
+        }
+
+        /* Same as model-editor General: per-ring process-bar flips (not global sweep — that
+         * reversed the X ring incorrectly). */
+        transform.setInvertGizmoViewRing(false);
+        transform.setInvertGizmoTrackball(false);
+        transform.setInvertFilmPoseGizmoAxes(false);
+        transform.setFilmArcballTrackball(false);
+        transform.clearTrackballEulerInverts();
+        transform.setInvertTrackballDragY(true);
+        transform.setInvertFilmArcballDragY(false);
+        transform.setInvertRotationArcSweep(false);
+        transform.setInvertRotationArcViewRing(true);
+        transform.setInvertRotationArcY(true);
+        transform.setInvertRotationArcZ(true);
+        transform.configurePoseRingTuning(true);
+        transform.setFilmMatchPoseTrackball(true);
+        transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
             this.camera,
             this.area,
             () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null

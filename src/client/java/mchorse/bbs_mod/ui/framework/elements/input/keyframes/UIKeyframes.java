@@ -412,7 +412,7 @@ public class UIKeyframes extends UIElement
 
             for (Keyframe keyframe : selected)
             {
-                keyframe.setValue(factory.yToValue(factory.getY(keyframe.getValue()) + difference));
+                keyframe.setValue(sheet.clampValue(factory.yToValue(factory.getY(keyframe.getValue()) + difference)));
             }
 
             sheet.channel.postNotify();
@@ -421,7 +421,20 @@ public class UIKeyframes extends UIElement
 
     public UIKeyframes changed(Runnable runnable)
     {
-        this.changeCallback = runnable;
+        if (this.changeCallback == null)
+        {
+            this.changeCallback = runnable;
+        }
+        else
+        {
+            Runnable previous = this.changeCallback;
+
+            this.changeCallback = () ->
+            {
+                previous.run();
+                runnable.run();
+            };
+        }
 
         return this;
     }

@@ -22,6 +22,15 @@ public class EffectTransformMath
     /** Half-height at scale 1.0; full vertical span is 2x this value (feet to head for humanoids). */
     public static final float MODEL_MASK_HALF_BASE = 1F;
     public static final float MODEL_MASK_Y_BIAS = 1F;
+    /**
+     * Legacy fixed half for structures (~2 blocks). Prefer
+     * {@link #resolveStructureMaskHalfExtents(EffectTransform, Vector3f, float, float, float)}.
+     */
+    public static final float STRUCTURE_MASK_HALF_BASE = 2F;
+    /** Circle/ellipsoid must grow by √3 so scale 1 covers AABB corners. */
+    public static final float STRUCTURE_CIRCLE_COVER = 1.7320508F;
+    /** Triangle prism enlarge so scale 1 covers the structure AABB corners. */
+    public static final float STRUCTURE_TRIANGLE_COVER = 3F;
 
     private static final Matrix4f MATRIX = new Matrix4f();
     private static final Vector3f LOCAL = new Vector3f();
@@ -47,6 +56,55 @@ public class EffectTransformMath
     public static void resolveBlockMaskHalfExtents(EffectTransform transform, Vector3f dest)
     {
         resolveMaskHalfExtents(transform, dest, 0.5F, 1F);
+    }
+
+    public static void resolveStructureMaskHalfExtents(EffectTransform transform, Vector3f dest)
+    {
+        resolveStructureMaskHalfExtents(transform, dest, STRUCTURE_MASK_HALF_BASE * 2F, STRUCTURE_MASK_HALF_BASE * 2F, STRUCTURE_MASK_HALF_BASE * 2F);
+    }
+
+    /**
+     * Structure paint/color masks: UI scale 1 covers the full structure AABB for box,
+     * circle, and triangle; scale 0 covers nothing. {@code size*} are block counts.
+     */
+    public static void resolveStructureMaskHalfExtents(EffectTransform transform, Vector3f dest, float sizeX, float sizeY, float sizeZ)
+    {
+        float baseX = Math.max(sizeX, 1F) * 0.5F;
+        float baseY = Math.max(sizeY, 1F) * 0.5F;
+        float baseZ = Math.max(sizeZ, 1F) * 0.5F;
+        float scaleX = 1F;
+        float scaleY = 1F;
+        float scaleZ = 1F;
+        float cover = 1F;
+
+        if (transform != null)
+        {
+            scaleX = transform.scaleX;
+            scaleY = transform.scaleY;
+            scaleZ = transform.scaleZ;
+            cover = structureShapeCover(transform.shape);
+        }
+
+        dest.set(
+            Math.abs(baseX * scaleX) * cover,
+            Math.abs(baseY * scaleY) * cover,
+            Math.abs(baseZ * scaleZ) * cover
+        );
+    }
+
+    private static float structureShapeCover(PaintMaskShape shape)
+    {
+        if (shape == PaintMaskShape.CIRCLE)
+        {
+            return STRUCTURE_CIRCLE_COVER;
+        }
+
+        if (shape == PaintMaskShape.TRIANGLE)
+        {
+            return STRUCTURE_TRIANGLE_COVER;
+        }
+
+        return 1F;
     }
 
     public static void resolveItemMaskHalfExtents(EffectTransform transform, Vector3f dest)
@@ -75,7 +133,7 @@ public class EffectTransformMath
         return scaleY + ITEM_MASK_SCALE_Y_BIAS;
     }
 
-    private static void resolveMaskHalfExtents(EffectTransform transform, Vector3f dest, float baseHalf, float yBias)
+    public static void resolveMaskHalfExtents(EffectTransform transform, Vector3f dest, float baseHalf, float yBias)
     {
         if (transform == null)
         {
@@ -135,11 +193,16 @@ public class EffectTransformMath
     }
 
     /**
-     * Billboard paint mask always evaluates the soft volume so identity transform does not
-     * jump between full paint and a clipped volume when the first value is nudged.
+     * Billboard paint mask. When the transform is inactive the full quad is painted
+     * (same as {@link #mask3DModel}); once move/scale/rotate is edited the soft volume applies.
      */
     public static float maskBillboard(float x, float y, float z, EffectTransform transform)
     {
+        if (!isTransformActive(transform))
+        {
+            return 1F;
+        }
+
         Vector3f half = new Vector3f();
 
         resolveBillboardMaskHalfExtents(transform, half);
@@ -158,6 +221,14 @@ public class EffectTransformMath
             LOCAL.y -= halfExtents.y;
         }
 
+        float maxHalf = Math.max(halfExtents.x, Math.max(halfExtents.y, halfExtents.z));
+
+        /* Scale 0 → empty mask (no residual falloff speck). */
+        if (maxHalf < EPSILON)
+        {
+            return 0F;
+        }
+
         PaintMaskShape shape = transform == null ? PaintMaskShape.BOX : transform.shape;
         float dist;
 
@@ -170,7 +241,6 @@ public class EffectTransformMath
             float qy = LOCAL.y / hy;
             float qz = LOCAL.z / hz;
             float radius = (float) Math.sqrt(qx * qx + qy * qy + qz * qz);
-            float maxHalf = Math.max(hx, Math.max(hy, hz));
 
             dist = (radius - 1F) * maxHalf;
         }
@@ -203,8 +273,7 @@ public class EffectTransformMath
             return 1F;
         }
 
-        float maxHalf = Math.max(halfExtents.x, Math.max(halfExtents.y, halfExtents.z));
-        float falloff = Math.max(maxHalf * 0.15F, 0.1F);
+        float falloff = Math.max(maxHalf * 0.15F, EPSILON);
 
         if (dist >= falloff)
         {

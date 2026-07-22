@@ -76,12 +76,14 @@ public class CinematicClip extends CameraClip
         float hsp = (this.heatSpeed.isEmpty() ? 1F : (float) (double) this.heatSpeed.interpolate(t)) * 0.25F;
         float hsc = (this.heatScale.isEmpty() ? 1F : (float) (double) this.heatScale.interpolate(t)) * 0.25F;
 
+        float lens = ld * factor;
+
         if (ab != 0F || vh != 0F || ld != 0F || vt != 0F || rb != 0F || rn != 0F || ds != 0F || ll != 0F || hs != 0F)
         {
             this.effect.hasCinematic = true;
             this.effect.aberration = ab * factor;
             this.effect.vhs = vh * factor;
-            this.effect.lensDistortion = ld * factor;
+            this.effect.lensDistortion = lens;
             this.effect.vintage = vt * factor;
             this.effect.radialBlur = rb * factor;
             this.effect.rain = rn * factor;

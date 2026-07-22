@@ -64,16 +64,18 @@ public class UIImageRenderer
 
             float widthPercent = overlay.width / 100F;
             float heightPercent = overlay.height / 100F;
-            int fw = widthPercent == 0F ? 0 : Math.max(1, Math.round(width * Math.abs(widthPercent))) * (widthPercent < 0F ? -1 : 1);
-            int fh = heightPercent == 0F ? 0 : Math.max(1, Math.round(height * Math.abs(heightPercent))) * (heightPercent < 0F ? -1 : 1);
+            /* Keep sub-pixel size so width/height keyframes interpolate smoothly
+             * instead of stair-stepping on whole pixels (worse over long spans). */
+            float fw = widthPercent == 0F ? 0F : width * widthPercent;
+            float fh = heightPercent == 0F ? 0F : height * heightPercent;
 
-            if (fw == 0 || fh == 0)
+            if (fw == 0F || fh == 0F)
             {
                 continue;
             }
 
-            int x = (int) (width * overlay.windowX + overlay.x);
-            int y = (int) (height * overlay.windowY + overlay.y);
+            float x = width * overlay.windowX + overlay.x;
+            float y = height * overlay.windowY + overlay.y;
 
             FormTextureBlendRenderer.draw(overlay.textureBlend, overlay.texture, (link, alphaFactor) ->
             {

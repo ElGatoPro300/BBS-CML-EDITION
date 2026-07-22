@@ -42,6 +42,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.GameMode;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -301,12 +302,13 @@ public class ClientNetwork
                 UIBaseMenu menu = UIScreen.getCurrentMenu();
                 UIDashboard dashboard = BBSModClient.getDashboard();
 
+                dashboard.setPanel(dashboard.getPanel(UIMorphingPanel.class));
+
                 if (menu == null)
                 {
                     UIScreen.open(dashboard);
                 }
 
-                dashboard.setPanel(dashboard.getPanel(UIMorphingPanel.class));
                 BBSModClient.getFormCategories().getRecentForms().getCategories().get(0).addForm(finalForm);
                 dashboard.context.notifyInfo(UIKeys.FORMS_SHARED_NOTIFICATION.format(finalForm.getDisplayName()));
             });
@@ -509,6 +511,22 @@ public class ClientNetwork
 
         crusher.send(MinecraftClient.getInstance().player, ServerNetwork.SERVER_PLAYER_FORM_PACKET, mapType == null ? new MapType() : mapType, (packetByteBuf) ->
         {});
+    }
+
+    /**
+     * Ask the server to change this client's gamemode without chat feedback.
+     */
+    public static void sendSetGameMode(GameMode mode)
+    {
+        if (mode == null || MinecraftClient.getInstance().player == null)
+        {
+            return;
+        }
+
+        PacketByteBuf buf = PacketByteBufs.create();
+
+        buf.writeVarInt(mode.getId());
+        ClientPlayNetworking.send(ServerNetwork.SERVER_SET_GAME_MODE, buf);
     }
 
     public static void sendModelBlockTransforms(MapType data)
