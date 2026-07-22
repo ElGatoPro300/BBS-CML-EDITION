@@ -93,6 +93,7 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         if (editor != null)
         {
             SCROLLS.put(editor.keyframe.getFactory(), (int) editor.scroll.scroll.getScroll());
+            editor.saveUiState();
         }
     }
 
@@ -393,6 +394,20 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         this.editor.getGraph().setValue(value, true);
         this.editor.triggerChange();
     }
+
+    /**
+     * Persist ephemeral UI (collapse open/closed, etc.) before the panel is rebuilt
+     * for another keyframe of the same factory type.
+     */
+    public void saveUiState()
+    {}
+
+    /**
+     * Re-apply {@link #saveUiState()} after the new panel is parented and resized
+     * (collapse shells need a parent to open).
+     */
+    public void restoreUiState()
+    {}
 
     public void update()
     {
