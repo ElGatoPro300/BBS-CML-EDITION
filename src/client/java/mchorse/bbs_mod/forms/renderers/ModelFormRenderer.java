@@ -544,6 +544,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             DiffuseLighting.disableGuiDepthLighting();
             RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            mchorse.bbs_mod.client.BBSRendering.restoreGuiRenderState();
         }
         else
         {
@@ -1025,9 +1026,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 /* Complementary VL: soft opacity waits until after translucent terrain
                  * (water/lava/portals). Near-opaque stays live with depth for pack shading.
                  * Orbit editors / UI previews must stay live — post-deferred never redraws them. */
-                boolean filmRenderDepth = renderContext != null && renderContext.renderDepthFrame != null;
+                /* Soft opacity only — opaque film actors already sort by render depth in
+                 * BaseFilmController. Forcing filmRenderDepth here put solid meshes on the
+                 * translucent deferred queue and made them see-through / holey. */
                 boolean delaySoftOpacity = !softOpacityLive
-                    && ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, filmRenderDepth);
+                    && ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, false);
 
                 if (delaySoftOpacity)
                 {
@@ -2318,7 +2321,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             Supplier<ShaderProgram> mainShader = this.getModelShader(model);
             Supplier<ShaderProgram> shader = this.getShader(context, mainShader, BBSShaders::getPickerModelsProgram);
-            boolean deferParentMesh = context.renderDepthFrame != null && !this.form.parts.getAllTyped().isEmpty();
+            boolean deferParentMesh = FormRenderDepth.BODY_PART_RENDER_DEPTH
+                && context.renderDepthFrame != null
+                && !this.form.parts.getAllTyped().isEmpty();
 
             if (deferParentMesh)
             {
@@ -2423,13 +2428,24 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         try
         {
-            if (context.renderDepthFrame != null)
+            if (FormRenderDepth.BODY_PART_RENDER_DEPTH && context.renderDepthFrame != null)
             {
                 this.renderDepthSortedBodyParts(context, parts);
             }
             else
             {
-                this.renderBodyPartLayers(context, parts);
+                FormRenderDepth.Frame savedFrame = context.renderDepthFrame;
+
+                context.renderDepthFrame = null;
+
+                try
+                {
+                    this.renderBodyPartLayers(context, parts);
+                }
+                finally
+                {
+                    context.renderDepthFrame = savedFrame;
+                }
             }
         }
         finally
