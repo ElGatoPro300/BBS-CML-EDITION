@@ -544,6 +544,7 @@ public class ShaderOpacityPatch
             }
             else
             {
+                modelViewStack.push();
                 modelViewStack.peek().getPositionMatrix().identity();
                 modelViewStack.peek().getNormalMatrix().identity();
                 RenderSystem.applyModelViewMatrix();
