@@ -1443,7 +1443,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             && this.filmPanel.getController().getCurrentEntity() != null;
     }
 
-    private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "death_time", "using_item", "item_use_time", "fire", "particles", "active_hand", "fall", "sneaking", "riding", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow");
+    private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "death_time", "using_item", "item_use_time", "fire", "particles", "active_hand", "fall", "sneaking", "riding", "sprinting", "swimming", "flying", "fall_flying", "crawling", "climbing", "blocking", "sleeping", "riptide", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow");
     private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "render", "lighting", "render_depth", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "look_at", "inverse_kinematics", "illusion", "illusion_transform", "color", "opacity", "paint", "paint_color", "glow", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
     private static final Set<String> HIDDEN_MODEL_PROPERTIES = Set.of("glowing_color", "glow_settings", "glow_intensity", "paint_color", "paint");
 
@@ -1560,6 +1560,46 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         if (trackName.equals("sprinting"))
         {
             return UIKeys.FILM_REPLAY_TRACK_SPRINTING;
+        }
+
+        if (trackName.equals("swimming"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_SWIMMING;
+        }
+
+        if (trackName.equals("flying"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_FLYING;
+        }
+
+        if (trackName.equals("fall_flying"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_FALL_FLYING;
+        }
+
+        if (trackName.equals("crawling"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_CRAWLING;
+        }
+
+        if (trackName.equals("climbing"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_CLIMBING;
+        }
+
+        if (trackName.equals("blocking"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_BLOCKING;
+        }
+
+        if (trackName.equals("sleeping"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_SLEEPING;
+        }
+
+        if (trackName.equals("riptide"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_RIPTIDE;
         }
 
         if (trackName.equals("item_main_hand"))
