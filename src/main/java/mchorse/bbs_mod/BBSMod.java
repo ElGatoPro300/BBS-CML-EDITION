@@ -163,6 +163,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -383,6 +384,49 @@ public class BBSMod implements ModInitializer
         return assetsFolder;
     }
 
+    /**
+     * Copy a bundled internal asset into {@code config/bbs/assets} when missing so
+     * Emoticons (and anything else that reads {@code actions.bobj}) always resolve it
+     * through the external pack as well as the jar.
+     */
+    private static void ensureBundledAsset(String path)
+    {
+        File out = new File(assetsFolder, path);
+
+        if (out.exists() && out.length() > 0L)
+        {
+            return;
+        }
+
+        try
+        {
+            File parent = out.getParentFile();
+
+            if (parent != null)
+            {
+                parent.mkdirs();
+            }
+
+            try (InputStream stream = provider.getAsset(Link.assets(path)))
+            {
+                if (stream == null)
+                {
+                    System.err.println("Bundled asset missing from classpath: " + path);
+
+                    return;
+                }
+
+                java.nio.file.Files.copy(stream, out.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                System.out.println("Extracted bundled asset to " + out.getAbsolutePath());
+            }
+        }
+        catch (Exception e)
+        {
+            System.err.println("Failed to extract bundled asset: " + path);
+            e.printStackTrace();
+        }
+    }
+
     public static File getAudioFolder()
     {
         return getAssetsPath("audio");
@@ -503,6 +547,7 @@ public class BBSMod implements ModInitializer
         provider.register(new InternalAssetsSourcePack());
 
         events.post(new RegisterSourcePacksEvent(provider));
+        ensureBundledAsset("actions.bobj");
 
         settings = new SettingsManager();
         forms = new FormArchitect();

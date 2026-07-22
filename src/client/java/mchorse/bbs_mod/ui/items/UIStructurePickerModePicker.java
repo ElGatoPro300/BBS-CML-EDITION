@@ -19,8 +19,8 @@ import mchorse.bbs_mod.utils.colors.Colors;
  */
 public class UIStructurePickerModePicker extends UIElement
 {
-    private static final int ROW_H = 24;
-    private static final int STRIPE_W = 3;
+    private static final int ROW_H = 28;
+    private static final int STRIPE_W = 4;
     private static final int GLOW_W = 20;
     private static final int ICON = 16;
     private static final int PAD = 8;
@@ -29,9 +29,24 @@ public class UIStructurePickerModePicker extends UIElement
     private static final int COLOR_ROW_HOVER = 0x33000000;
     private static final int COLOR_ROW_SELECTED = 0x66000000;
 
+    /* Same sits under Block for flood-fill of connected identical blocks. */
+    private static final StructurePickerMode[] MODE_ORDER = new StructurePickerMode[]
+    {
+        StructurePickerMode.BLOCK,
+        StructurePickerMode.SAME,
+        StructurePickerMode.RECTANGLE,
+        StructurePickerMode.CUBE,
+        StructurePickerMode.CIRCLE,
+        StructurePickerMode.SPHERE,
+        StructurePickerMode.TRIANGLE,
+        StructurePickerMode.CONE,
+        StructurePickerMode.CYLINDER
+    };
+
     private static final Icon[] MODE_ICONS = new Icon[]
     {
         Icons.SP_BLOCK,
+        Icons.BUCKET,
         Icons.SP_RECTANGLE,
         Icons.SP_CUBE,
         Icons.SP_CIRCLE,
@@ -45,6 +60,7 @@ public class UIStructurePickerModePicker extends UIElement
     private static final int[] STRIPE_COLORS = new int[]
     {
         0xFF14B8A6, /* teal - Block */
+        0xFF6366F1, /* indigo - Same */
         0xFFF97316, /* orange - Rectangle */
         0xFFA78BFA, /* light purple - Cube */
         0xFF84CC16, /* lime - Circle */
@@ -58,18 +74,18 @@ public class UIStructurePickerModePicker extends UIElement
     {
         super();
 
-        this.wh(100, MODE_ICONS.length * ROW_H + PAD * 2);
+        this.wh(120, MODE_ORDER.length * ROW_H + PAD * 2);
         this.mouseEventPropagataion(EventPropagation.BLOCK);
     }
 
     public int preferredHeight()
     {
-        return MODE_ICONS.length * ROW_H + PAD * 2;
+        return MODE_ORDER.length * ROW_H + PAD * 2;
     }
 
     private static StructurePickerMode modeAt(int index)
     {
-        return StructurePickerMode.fromIndex(index);
+        return MODE_ORDER[MathUtils.clamp(index, 0, MODE_ORDER.length - 1)];
     }
 
     private static Icon iconAt(int index)
@@ -79,7 +95,9 @@ public class UIStructurePickerModePicker extends UIElement
 
     private static IKey labelAt(int index)
     {
-        return UIKeys.STRUCTURE_PICKER_MODE_LABELS[MathUtils.clamp(index, 0, UIKeys.STRUCTURE_PICKER_MODE_LABELS.length - 1)];
+        StructurePickerMode mode = modeAt(index);
+
+        return UIKeys.STRUCTURE_PICKER_MODE_LABELS[MathUtils.clamp(mode.index, 0, UIKeys.STRUCTURE_PICKER_MODE_LABELS.length - 1)];
     }
 
     private static int stripeAt(int index)
@@ -91,17 +109,32 @@ public class UIStructurePickerModePicker extends UIElement
     {
         int local = mouseY - this.area.y - PAD;
 
-        if (local < 0 || local >= MODE_ICONS.length * ROW_H)
+        if (local < 0 || local >= MODE_ORDER.length * ROW_H)
         {
             return -1;
         }
 
-        return MathUtils.clamp(local / ROW_H, 0, MODE_ICONS.length - 1);
+        return MathUtils.clamp(local / ROW_H, 0, MODE_ORDER.length - 1);
     }
 
     private void selectIndex(int index)
     {
         StructurePickerClient.setMode(modeAt(index));
+    }
+
+    private int selectedRow()
+    {
+        StructurePickerMode current = StructurePickerClient.getMode();
+
+        for (int i = 0; i < MODE_ORDER.length; i++)
+        {
+            if (MODE_ORDER[i] == current)
+            {
+                return i;
+            }
+        }
+
+        return 0;
     }
 
     @Override
@@ -125,10 +158,10 @@ public class UIStructurePickerModePicker extends UIElement
     @Override
     public void render(UIContext context)
     {
-        int selected = StructurePickerClient.getMode().index;
+        int selected = this.selectedRow();
         int hovered = this.area.isInside(context) ? this.hitTest(context.mouseY) : -1;
 
-        for (int i = 0; i < MODE_ICONS.length; i++)
+        for (int i = 0; i < MODE_ORDER.length; i++)
         {
             int y = this.area.y + PAD + i * ROW_H;
             int x = this.area.x;

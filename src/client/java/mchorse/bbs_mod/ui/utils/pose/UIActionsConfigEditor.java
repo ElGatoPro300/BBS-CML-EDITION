@@ -17,6 +17,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.utils.UI;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 public class UIActionsConfigEditor extends UIElement
@@ -117,12 +118,22 @@ public class UIActionsConfigEditor extends UIElement
     public void setConfigs(ActionsConfig configs, ModelForm form)
     {
         ModelFormRenderer renderer = (ModelFormRenderer) FormUtilsClient.getRenderer(form);
-        ModelInstance model = renderer.getModel();
+        String modelId = form.model.get();
+        ModelInstance model = modelId == null || modelId.isEmpty()
+            ? null
+            : mchorse.bbs_mod.BBSModClient.getModels().getModel(modelId, true);
+
+        if (model == null)
+        {
+            model = renderer.getModel();
+        }
 
         renderer.ensureAnimator(0F);
 
         IAnimator animator = renderer.getAnimator();
-        Collection<String> animations = model != null ? model.animations.animations.keySet() : null;
+        Collection<String> animations = model != null && model.animations != null
+            ? model.animations.animations.keySet()
+            : null;
         Collection<String> actions = animator != null ? animator.getActions() : null;
 
         this.setConfigs(configs, animations, actions);
@@ -132,14 +143,21 @@ public class UIActionsConfigEditor extends UIElement
     {
         this.configs = configs;
 
+        this.animations.filter("", true);
+        this.actionsSearch.filter("", true);
         this.animations.list.clear();
         this.actions.clear();
 
         if (animations != null)
         {
-            this.animations.list.add(animations);
+            this.animations.list.add(new ArrayList<>(animations));
             this.animations.list.sort();
             this.animations.list.getList().add(0, UIKeys.GENERAL_NONE.get());
+            this.animations.list.update();
+        }
+        else
+        {
+            this.animations.list.add(UIKeys.GENERAL_NONE.get());
             this.animations.list.update();
         }
 

@@ -120,10 +120,18 @@ public class UIOverlay extends UIElement
             flex.y.offset = offset.y;
         }
 
+        /* Restore absolute pixel size. Offset-only restore breaks panels opened with
+         * wh(300, 300) after a relative-sized confirm (0.5F) saved offset 0. */
         if (size != null)
         {
-            flex.w.offset = size.x;
-            flex.h.offset = size.y;
+            int minW = panel.getMinWidth();
+            int minH = panel.getMinHeight();
+
+            if (size.x >= minW && size.y >= minH)
+            {
+                flex.w.set(0, size.x);
+                flex.h.set(0, size.y);
+            }
         }
 
         overlay.full(context.menu.overlay);
@@ -184,13 +192,21 @@ public class UIOverlay extends UIElement
             element.removeFromParent();
             element.onClose();
 
-            /* Save offset */
+            /* Save drag offset and absolute pixel size (not flex offsets). */
             Vector2i offset = new Vector2i(element.getFlex().x.offset, element.getFlex().y.offset);
-            Vector2i size = new Vector2i(element.getFlex().w.offset, element.getFlex().h.offset);
+            Vector2i size = new Vector2i(element.area.w, element.area.h);
             String key = element.getClass().getSimpleName();
 
             offsets.put(key, offset);
-            sizes.put(key, size);
+
+            if (size.x >= element.getMinWidth() && size.y >= element.getMinHeight())
+            {
+                sizes.put(key, size);
+            }
+            else
+            {
+                sizes.remove(key);
+            }
         }
     }
 

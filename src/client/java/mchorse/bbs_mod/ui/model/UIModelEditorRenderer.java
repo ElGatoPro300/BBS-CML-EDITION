@@ -576,6 +576,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         }
 
         this.setupViewport(context);
+        BBSRendering.restoreGuiRenderState();
     }
 
     private Matrix4f resolveGizmoMatrix(UIContext context, MatrixCache matrixCache)

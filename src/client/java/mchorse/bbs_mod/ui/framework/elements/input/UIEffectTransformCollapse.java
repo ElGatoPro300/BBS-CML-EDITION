@@ -91,4 +91,9 @@ public class UIEffectTransformCollapse extends UIElement
         this.toggle.setLabel(this.baseLabel);
         this.toggle.setExpanded(this.expanded);
     }
+
+    public boolean isExpanded()
+    {
+        return this.expanded || this.shell.isOpen();
+    }
 }

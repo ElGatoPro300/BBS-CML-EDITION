@@ -296,6 +296,8 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        BBSRendering.restoreGuiRenderState();
     }
 
     private void prepareGizmoRenderState()

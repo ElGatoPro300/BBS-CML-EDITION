@@ -401,9 +401,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             /* Noshading opacity: redraw after paint via BBS translucent queue, not Iris post-deferred. */
             boolean noshadingPaintPath = BBSRendering.needsIrisNoshadingOpacityDeferral(color.a, this.form.noshadingOpacity.get());
             boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(color.a);
-            boolean depthWrite = afterFluids
-                ? ShaderOpacityPatch.shouldWriteDepthForOpacity(color.a)
-                : this.form.renderDepthEnabled.get();
+            /* Never gate depth-write on renderDepthEnabled — translucent billboard quads would
+             * stamp opaque depth and punch holes through the parent mesh (eye flares, etc.).
+             * Soft-opacity depth write stays opacity-based; layering uses sortDepth + getFade. */
+            boolean depthWrite = ShaderOpacityPatch.shouldWriteDepthForOpacity(color.a);
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, deferContext == null ? null : deferContext.renderDepthFrame);
             double distanceSq = 0D;
             /* Iris deferred: apply FormColorGrade in model.fsh on the post-deferred BBS draw. */

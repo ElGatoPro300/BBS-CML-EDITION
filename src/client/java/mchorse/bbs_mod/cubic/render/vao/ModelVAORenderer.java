@@ -140,10 +140,27 @@ public class ModelVAORenderer
 
         private void set(EffectTransform transform)
         {
+            this.setModel(transform);
+        }
+
+        private void setModel(EffectTransform transform)
+        {
             EffectTransformMath.buildInverseMatrix(transform, this.inverse);
             this.active = EffectTransformMath.isTransformActive(transform);
             this.shape = transform == null || transform.shape == null ? 0F : transform.shape.id;
             EffectTransformMath.resolveModelMaskHalfExtents(transform, this.half);
+            this.bottomAnchored = true;
+        }
+
+        /**
+         * Structure Color Grade: UI scale 1 covers the full AABB (same as paint / Blend Color).
+         */
+        private void setStructure(EffectTransform transform, float sizeX, float sizeY, float sizeZ)
+        {
+            EffectTransformMath.buildInverseMatrix(transform, this.inverse);
+            this.active = EffectTransformMath.isTransformActive(transform);
+            this.shape = transform == null || transform.shape == null ? 0F : transform.shape.id;
+            EffectTransformMath.resolveStructureMaskHalfExtents(transform, this.half, sizeX, sizeY, sizeZ);
             this.bottomAnchored = true;
         }
 
@@ -1346,6 +1363,27 @@ public class ModelVAORenderer
         applyGradeEffectTransforms(color.brightnessTransform, color.contrastTransform, color.hueTransform, color.saturationTransform);
     }
 
+    /**
+     * Structure Color Grade channel masks: scale 1 = 100% of the structure AABB
+     * (same convention as paint / Blend Color on structures).
+     */
+    public static void setGradeEffectTransformsForStructure(Color color, float sizeX, float sizeY, float sizeZ)
+    {
+        if (color == null)
+        {
+            clearGradeEffectTransforms();
+            clearBaseGradeEffectTransforms();
+
+            return;
+        }
+
+        copyEffectTransform(baseGradeBrightnessTransform, color.brightnessTransform);
+        copyEffectTransform(baseGradeContrastTransform, color.contrastTransform);
+        copyEffectTransform(baseGradeHueTransform, color.hueTransform);
+        copyEffectTransform(baseGradeSaturationTransform, color.saturationTransform);
+        applyGradeEffectTransformsStructure(color.brightnessTransform, color.contrastTransform, color.hueTransform, color.saturationTransform, sizeX, sizeY, sizeZ);
+    }
+
     public static void setGradeEffectTransforms(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation)
     {
         copyEffectTransform(baseGradeBrightnessTransform, brightness);
@@ -1384,10 +1422,18 @@ public class ModelVAORenderer
 
     private static void applyGradeEffectTransforms(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation)
     {
-        gradeBrightnessMask.set(brightness);
-        gradeContrastMask.set(contrast);
-        gradeHueMask.set(hue);
-        gradeSaturationMask.set(saturation);
+        gradeBrightnessMask.setModel(brightness);
+        gradeContrastMask.setModel(contrast);
+        gradeHueMask.setModel(hue);
+        gradeSaturationMask.setModel(saturation);
+    }
+
+    private static void applyGradeEffectTransformsStructure(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation, float sizeX, float sizeY, float sizeZ)
+    {
+        gradeBrightnessMask.setStructure(brightness, sizeX, sizeY, sizeZ);
+        gradeContrastMask.setStructure(contrast, sizeX, sizeY, sizeZ);
+        gradeHueMask.setStructure(hue, sizeX, sizeY, sizeZ);
+        gradeSaturationMask.setStructure(saturation, sizeX, sizeY, sizeZ);
     }
 
     private static void copyEffectTransform(EffectTransform target, EffectTransform source)

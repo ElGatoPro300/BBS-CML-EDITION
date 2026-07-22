@@ -2532,7 +2532,6 @@ public class UIFormList extends UIElement
         private float expansionTransition = 0F;
         private float targetExpansion = 0F;
         private long lastTickTime = -1L;
-        private boolean pendingScrollToExpanded;
 
         private final List<UIFormCategory> filteredCategories = new ArrayList<>();
         private final List<CategoryCell> cardCells = new ArrayList<>();
@@ -2599,7 +2598,6 @@ public class UIFormList extends UIElement
         public void collapseExpandedCategory()
         {
             this.targetExpansion = 0F;
-            this.pendingScrollToExpanded = false;
             this.invalidateCache();
         }
 
@@ -2607,7 +2605,6 @@ public class UIFormList extends UIElement
         {
             this.targetExpansion = 0F;
             this.expansionTransition = 0F;
-            this.pendingScrollToExpanded = false;
             UIFormList.this.expandedCategory = null;
             UIFormList.this.activeExpandedFolder = null;
             this.invalidateCache();
@@ -2627,7 +2624,6 @@ public class UIFormList extends UIElement
                 if (this.expansionTransition <= 0F)
                 {
                     this.expansionTransition = 0F;
-                    this.pendingScrollToExpanded = true;
                 }
 
                 this.folderTransition = 1F;
@@ -2688,7 +2684,6 @@ public class UIFormList extends UIElement
                 this.expansionTransition = 1F;
                 this.folderTransition = 1F;
                 this.oldExpandedItems.clear();
-                this.pendingScrollToExpanded = true;
 
                 if (nextCategory.category instanceof ModelFormCategory.Folder folder)
                 {
@@ -2727,7 +2722,6 @@ public class UIFormList extends UIElement
             this.targetExpansion = 1F;
             this.expansionTransition = 1F;
             this.folderTransition = 0F;
-            this.pendingScrollToExpanded = true;
 
             if (nextCategory.category instanceof ModelFormCategory.Folder folder)
             {
@@ -2802,13 +2796,14 @@ public class UIFormList extends UIElement
             {
                 UIFormList.this.expandedCategory = null;
                 UIFormList.this.activeExpandedFolder = null;
-                this.pendingScrollToExpanded = false;
                 this.invalidateCache();
             }
         }
 
         /**
-         * @param shrinkPx positive when the expanded panel got shorter (closing)
+         * Keep the user's scroll when the drawer opens or closes. Shrinking used to
+         * subtract the lost height from scroll every animation frame, which yanked the
+         * view upward on close. Opening still grows the panel under the category row.
          */
         private void applyContentHeight()
         {
@@ -2818,16 +2813,8 @@ public class UIFormList extends UIElement
 
             if (this.lastHeight == contentHeight)
             {
-                if (this.pendingScrollToExpanded)
-                {
-                    this.scrollExpandedCategoryIntoView();
-                }
-
                 return;
             }
-
-            int previousHeight = this.lastHeight;
-            int shrinkPx = previousHeight > 0 ? previousHeight - contentHeight : 0;
 
             this.lastHeight = contentHeight;
             this.h(contentHeight);
@@ -2849,78 +2836,8 @@ public class UIFormList extends UIElement
             {
                 /* Ensure the scroll range matches drawer height (column resizer can lag). */
                 scroll.scrollSize = Math.max(scroll.scrollSize, contentHeight);
+                scroll.setScroll(scrollBefore);
                 scroll.clamp();
-
-                if (this.pendingScrollToExpanded && this.targetExpansion > 0F)
-                {
-                    this.scrollExpandedCategoryIntoView();
-                }
-                else if (shrinkPx > 0)
-                {
-                    scroll.setScroll(scrollBefore - shrinkPx);
-                    scroll.clamp();
-                }
-                else
-                {
-                    scroll.setScroll(scrollBefore);
-                    scroll.clamp();
-                }
-            }
-        }
-
-        private void scrollExpandedCategoryIntoView()
-        {
-            if (UIFormList.this.expandedCategory == null)
-            {
-                return;
-            }
-
-            this.rebuildIfNeeded();
-
-            CategoryCell cell = null;
-
-            for (CategoryCell c : this.cardCells)
-            {
-                if (c.category == UIFormList.this.expandedCategory)
-                {
-                    cell = c;
-                    break;
-                }
-            }
-
-            if (cell == null)
-            {
-                return;
-            }
-
-            UIElement parent = this.getParent();
-
-            if (!(parent instanceof UIScrollView scrollView))
-            {
-                return;
-            }
-
-            Scroll scroll = scrollView.scroll;
-            /* Keep the section title (e.g. "Miscellaneous") fully visible above the
-             * opened category row — scrolling only to the card clips that label. */
-            CardGroup group = this.getCardGroup(UIFormList.this.expandedCategory);
-            int targetY = cell.y - this.area.y - CATEGORY_GROUP_HEADER_HEIGHT - CATEGORY_CARD_GAP;
-
-            for (GroupDivider divider : this.groupDividers)
-            {
-                if (divider.group == group)
-                {
-                    targetY = divider.y - this.area.y - CATEGORY_CARD_GAP;
-                    break;
-                }
-            }
-
-            scroll.scrollTo(Math.max(0, targetY));
-            scroll.clamp();
-
-            if (this.targetExpansion >= 1F && this.expansionTransition >= 0.999F)
-            {
-                this.pendingScrollToExpanded = false;
             }
         }
 
@@ -3006,7 +2923,6 @@ public class UIFormList extends UIElement
             {
                 /* Animate close; clear category when transition hits 0 */
                 this.targetExpansion = 0F;
-                this.pendingScrollToExpanded = false;
                 this.oldExpandedItems.clear();
             }
             else if (UIFormList.this.expandedCategory != null && this.expansionTransition > 0.15F && this.targetExpansion > 0F)
@@ -3020,7 +2936,6 @@ public class UIFormList extends UIElement
                 this.targetExpansion = 1F;
                 this.expansionTransition = 0F;
                 this.folderTransition = 1F;
-                this.pendingScrollToExpanded = true;
                 this.oldExpandedItems.clear();
 
                 if (cell.category.category instanceof ModelFormCategory.Folder folder)
@@ -3807,7 +3722,6 @@ public class UIFormList extends UIElement
                 UIFormList.this.activeExpandedFolder = null;
                 this.targetExpansion = 0F;
                 this.expansionTransition = 0F;
-                this.pendingScrollToExpanded = false;
                 this.oldExpandedItems.clear();
             }
 

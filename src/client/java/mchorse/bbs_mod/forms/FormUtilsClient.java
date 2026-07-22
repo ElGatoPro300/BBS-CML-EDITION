@@ -148,11 +148,14 @@ public class FormUtilsClient
 
             try
             {
+                context.batcher.flush();
                 renderer.renderUI(context, x1, y1, x2, y2);
+                context.batcher.flush();
             }
             finally
             {
                 UI_PREVIEW_ANIMATE.set(Boolean.FALSE);
+                mchorse.bbs_mod.client.BBSRendering.restoreGuiRenderState();
             }
         }
     }

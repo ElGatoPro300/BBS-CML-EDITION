@@ -310,14 +310,26 @@ public class VirtualBlockRenderView implements BlockRenderView
     {
         if (biomeId == null || biomeId.isEmpty())
         {
-            this.biomeOverrideId = null;
-            this.biomeOverride = null;
+            if (this.biomeOverrideId != null || this.biomeOverride != null)
+            {
+                this.biomeOverrideId = null;
+                this.biomeOverride = null;
+            }
+
             return this;
         }
 
         try
         {
-            this.biomeOverrideId = Identifier.of(biomeId);
+            Identifier id = Identifier.of(biomeId);
+
+            if (id.equals(this.biomeOverrideId) && this.biomeOverride != null)
+            {
+                return this;
+            }
+
+            this.biomeOverrideId = id;
+
             /* Resolve preferably from the client world */
             if (MinecraftClient.getInstance().world != null)
             {
@@ -344,6 +356,7 @@ public class VirtualBlockRenderView implements BlockRenderView
     public VirtualBlockRenderView setLightsEnabled(boolean enabled)
     {
         this.lightsEnabled = enabled;
+
         return this;
     }
 
@@ -352,9 +365,18 @@ public class VirtualBlockRenderView implements BlockRenderView
      */
     public VirtualBlockRenderView setLightIntensity(int level)
     {
-        if (level < 1) level = 1;
-        if (level > 15) level = 15;
+        if (level < 1)
+        {
+            level = 1;
+        }
+
+        if (level > 15)
+        {
+            level = 15;
+        }
+
         this.lightIntensity = level;
+
         return this;
     }
 

@@ -9,7 +9,8 @@ public enum StructurePickerMode
     SPHERE(4),
     TRIANGLE(5),
     CONE(6),
-    CYLINDER(7);
+    CYLINDER(7),
+    SAME(8);
 
     public final int index;
 
@@ -38,7 +39,7 @@ public enum StructurePickerMode
 
     public boolean isSingleClick()
     {
-        return this == BLOCK;
+        return this == BLOCK || this == SAME;
     }
 
     public boolean hasShapeOutline()

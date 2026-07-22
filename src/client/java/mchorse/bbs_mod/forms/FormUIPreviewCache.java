@@ -2,6 +2,7 @@ package mchorse.bbs_mod.forms;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
@@ -329,6 +330,7 @@ public final class FormUIPreviewCache
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        BBSRendering.restoreGuiRenderState();
 
         entry.revision = revision;
         entry.angleBucket = angleBucket;

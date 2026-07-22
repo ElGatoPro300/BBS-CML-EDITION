@@ -1036,6 +1036,8 @@ public class UIKeys
     public static final IKey STRUCTURE_PICKER_MODE_TRIANGLE = L10n.lang("bbs.ui.items.structure_picker.mode.triangle");
     public static final IKey STRUCTURE_PICKER_MODE_CONE = L10n.lang("bbs.ui.items.structure_picker.mode.cone");
     public static final IKey STRUCTURE_PICKER_MODE_CYLINDER = L10n.lang("bbs.ui.items.structure_picker.mode.cylinder");
+    public static final IKey STRUCTURE_PICKER_MODE_SAME = L10n.lang("bbs.ui.items.structure_picker.mode.same");
+    public static final IKey STRUCTURE_PICKER_SAME_LIMIT = L10n.lang("bbs.ui.items.structure_picker.same_limit");
     public static final IKey STRUCTURE_PICKER_CONFIRM_TITLE = L10n.lang("bbs.ui.items.structure_picker.confirm.title");
     public static final IKey STRUCTURE_PICKER_NAME = L10n.lang("bbs.ui.items.structure_picker.name");
     public static final IKey STRUCTURE_PICKER_NAME_PLACEHOLDER = L10n.lang("bbs.ui.items.structure_picker.name_placeholder");
@@ -1050,6 +1052,15 @@ public class UIKeys
     public static final IKey STRUCTURE_PICKER_REMOVE_CONFIRM = L10n.lang("bbs.ui.items.structure_picker.remove_confirm");
     public static final IKey STRUCTURE_PICKER_BREAK_CONFIRM = L10n.lang("bbs.ui.items.structure_picker.break_confirm");
     public static final IKey STRUCTURE_PICKER_CLICK_ON_AIR = L10n.lang("bbs.ui.items.structure_picker.click_on_air");
+    public static final IKey STRUCTURE_PICKER_CUBE_RESIZE = L10n.lang("bbs.ui.items.structure_picker.cube_resize");
+    public static final IKey STRUCTURE_PICKER_CUBE_RESIZE_HINT = L10n.lang("bbs.ui.items.structure_picker.cube_resize_hint");
+    public static final IKey STRUCTURE_PICKER_PLACE_STRUCTURE = L10n.lang("bbs.ui.items.structure_picker.place_structure");
+    public static final IKey STRUCTURE_PICKER_SAVE_STRUCTURE = L10n.lang("bbs.ui.items.structure_picker.save_structure");
+    public static final IKey STRUCTURE_PICKER_SAVE_STRUCTURE_HINT = L10n.lang("bbs.ui.items.structure_picker.save_structure_hint");
+    public static final IKey STRUCTURE_PICKER_PLACE_AND_SELECT = L10n.lang("bbs.ui.items.structure_picker.place_and_select");
+    public static final IKey STRUCTURE_PICKER_PLACE_CANCEL = L10n.lang("bbs.ui.items.structure_picker.place_cancel");
+    public static final IKey STRUCTURE_PICKER_PLACE_HINT = L10n.lang("bbs.ui.items.structure_picker.place_hint");
+    public static final IKey STRUCTURE_PICKER_BROWSE_TITLE = L10n.lang("bbs.ui.items.structure_picker.browse_title");
     public static final IKey[] STRUCTURE_PICKER_MODE_LABELS = new IKey[]
     {
         STRUCTURE_PICKER_MODE_BLOCK,
@@ -1059,7 +1070,8 @@ public class UIKeys
         STRUCTURE_PICKER_MODE_SPHERE,
         STRUCTURE_PICKER_MODE_TRIANGLE,
         STRUCTURE_PICKER_MODE_CONE,
-        STRUCTURE_PICKER_MODE_CYLINDER
+        STRUCTURE_PICKER_MODE_CYLINDER,
+        STRUCTURE_PICKER_MODE_SAME
     };
     public static final IKey GENERAL_EXPORT = L10n.lang("bbs.ui.export");
     public static final IKey GENERAL_FFMPEG_ERROR_DESCRIPTION = L10n.lang("bbs.ui.ffmpeg.error-description");

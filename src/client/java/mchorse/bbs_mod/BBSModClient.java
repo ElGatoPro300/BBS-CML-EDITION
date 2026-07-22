@@ -715,6 +715,10 @@ public class BBSModClient implements ClientModInitializer
         {
             mchorse.bbs_mod.graphics.Draw.flushIrisBoxes();
 
+            /* After clouds / translucents / model blocks so selection+gizmos stay on top. */
+            mchorse.bbs_mod.client.StructurePickerRenderer.render(context);
+            mchorse.bbs_mod.graphics.Draw.flushIrisBoxes();
+
             if (Gizmo.INSTANCE.hasDeferred())
             {
                 RenderSystem.enableDepthTest();

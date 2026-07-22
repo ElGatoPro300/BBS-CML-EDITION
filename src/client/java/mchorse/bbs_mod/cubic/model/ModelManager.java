@@ -212,6 +212,16 @@ public class ModelManager implements IWatchDogListener
 
     public ModelInstance loadModel(String id)
     {
+        /* MolangParser (and animation fromData) is not thread-safe. Parallel ModelLoader
+         * workers must not parse models concurrently on the shared parser. */
+        synchronized (this.parser)
+        {
+            return this.loadModelLocked(id);
+        }
+    }
+
+    private ModelInstance loadModelLocked(String id)
+    {
         ModelInstance model = null;
         Link modelLink = Link.assets(MODELS_PREFIX + id);
         Collection<Link> links = this.provider.getLinksFromPath(modelLink, true);

@@ -2009,6 +2009,17 @@ public class UIReplayList extends UIList<Replay> {
         this.updateFilmEditor();
     }
 
+    public void refreshAfterExternalEdit()
+    {
+        this.buildVisualList();
+
+        int size = this.list.size();
+        int index = MathUtils.clamp(this.getIndex(), 0, Math.max(0, size - 1));
+
+        this.panel.replayEditor.setReplay(size == 0 ? null : CollectionUtils.getSafe(this.list, index));
+        this.updateFilmEditor();
+    }
+
     public void dupeReplay() {
         if (this.isDeselected()) {
             return;

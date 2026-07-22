@@ -1,11 +1,16 @@
 package mchorse.bbs_mod.items;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class StructurePickerSelection
 {
@@ -168,8 +173,61 @@ public class StructurePickerSelection
             case CONE -> StructurePickerSelection.inCone(min, max, x, y, z);
             case SPHERE -> StructurePickerSelection.inSphere(min, max, x, y, z);
             case CYLINDER -> StructurePickerSelection.inCircle(min, max, x, z);
-            case BLOCK -> x == min.getX() && y == min.getY() && z == min.getZ();
+            case BLOCK, SAME -> x == min.getX() && y == min.getY() && z == min.getZ();
         };
+    }
+
+    /**
+     * Face-connected flood fill of the same block type (ignores blockstate properties
+     * so e.g. rotated logs still connect).
+     */
+    public static List<BlockPos> collectConnectedSame(World world, BlockPos origin, int maxBlocks)
+    {
+        List<BlockPos> found = new ArrayList<>();
+
+        if (world == null || origin == null || maxBlocks <= 0)
+        {
+            return found;
+        }
+
+        BlockState originState = world.getBlockState(origin);
+        Block match = originState.getBlock();
+
+        if (originState.isAir())
+        {
+            return found;
+        }
+
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        Set<Long> visited = new HashSet<>();
+
+        queue.add(origin.toImmutable());
+        visited.add(origin.asLong());
+
+        while (!queue.isEmpty() && found.size() < maxBlocks)
+        {
+            BlockPos pos = queue.removeFirst();
+
+            if (world.getBlockState(pos).getBlock() != match)
+            {
+                continue;
+            }
+
+            found.add(pos);
+
+            for (Direction direction : Direction.values())
+            {
+                BlockPos next = pos.offset(direction);
+                long key = next.asLong();
+
+                if (visited.add(key))
+                {
+                    queue.add(next.toImmutable());
+                }
+            }
+        }
+
+        return found;
     }
 
     private static boolean onFlatPlane(BlockPos first, BlockPos second, BlockPos min, BlockPos max, int x, int y, int z)

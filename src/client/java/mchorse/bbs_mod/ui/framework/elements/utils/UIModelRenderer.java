@@ -289,6 +289,7 @@ public abstract class UIModelRenderer extends UIElement
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
+        mchorse.bbs_mod.client.BBSRendering.restoreGuiRenderState();
 
         this.processInputs(context);
     }

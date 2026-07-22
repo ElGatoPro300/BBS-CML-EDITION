@@ -109,6 +109,15 @@ public abstract class UIBaseMenu
     }
 
     /**
+     * When {@link #preserveMinecraftGuiScale()} is false, a positive value forces that GUI scale
+     * instead of {@link mchorse.bbs_mod.BBSModClient#getGUIScale()}.
+     */
+    public int forcedGuiScale()
+    {
+        return 0;
+    }
+
+    /**
      * When false, hide mouse/keystroke overlay (Printscreen hints, etc.).
      */
     public boolean showInputOverlay()

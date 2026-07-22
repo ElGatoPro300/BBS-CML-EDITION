@@ -121,7 +121,14 @@ public class UIScreen extends Screen implements IFileDropListener
 
         if (!this.menu.preserveMinecraftGuiScale())
         {
-            MinecraftClient.getInstance().options.getGuiScale().setValue(BBSModClient.getGUIScale());
+            int scale = this.menu.forcedGuiScale();
+
+            if (scale <= 0)
+            {
+                scale = BBSModClient.getGUIScale();
+            }
+
+            MinecraftClient.getInstance().options.getGuiScale().setValue(scale);
             MinecraftClient.getInstance().onResolutionChanged();
         }
 
@@ -205,7 +212,12 @@ public class UIScreen extends Screen implements IFileDropListener
         this.menu.context.setTransition(this.client.getRenderTickCounter().getTickDelta(false));
         this.menu.renderMenu(this.context, mouseX, mouseY);
         this.menu.context.render.executeRunnables();
-        this.client.options.hudHidden = this.menu.canHideHUD();
+
+        /* Overlay close can call setScreen(null) mid-render; do not re-hide HUD after that. */
+        if (this.client.currentScreen == this)
+        {
+            this.client.options.hudHidden = this.menu.canHideHUD();
+        }
     }
 
     @Override
