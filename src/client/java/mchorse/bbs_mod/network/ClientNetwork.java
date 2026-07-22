@@ -526,7 +526,7 @@ public class ClientNetwork
         PacketByteBuf buf = PacketByteBufs.create();
 
         buf.writeVarInt(mode.getId());
-        ClientPlayNetworking.send(ServerNetwork.BufPayload.from(buf, ServerNetwork.idFor(ServerNetwork.SERVER_SET_GAME_MODE)));
+        ClientPlayNetworking.send(ServerNetwork.SERVER_SET_GAME_MODE, buf);
     }
 
     public static void sendModelBlockTransforms(MapType data)

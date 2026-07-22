@@ -534,7 +534,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
             try
             {
-                BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
+                BufferBuilder builder = Tessellator.getInstance().getBuffer();
+            builder.begin(VertexFormat.DrawMode.TRIANGLES, format);
 
         /* Front */
                 this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, FACE_Z_BIAS, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, 1F);
@@ -627,7 +628,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
     {
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         MatrixStack.Entry entry = matrices.peek();
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, format);
 
         /* Allow both faces during deferred Iris redraw — FACE_Z_BIAS prevents front/back
          * self z-fight. Only skip dual geometry on the paint-overlay pass. */
@@ -986,7 +988,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
         FlatColorTintOverlayPass.render(() ->
         {
-            BufferBuilder tintBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+            BufferBuilder tintBuilder = Tessellator.getInstance().getBuffer();
+            tintBuilder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
             int tintLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
             RenderSystem.disableCull();
@@ -1030,7 +1033,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         float g = 1F + (formColor.g - 1F) * mask;
         float b = 1F + (formColor.b - 1F) * mask;
 
-        builder.vertex(matrix, x, y, z).color(r, g, b, mask).texture(u, v).overlay(overlay).light(light).normal(entry, 0F, 0F, nz);
+        builder.vertex(matrix, x, y, z).color(r, g, b, mask).texture(u, v).overlay(overlay).light(light).normal(entry.getNormalMatrix(), 0F, 0F, nz);
     }
 
     /**

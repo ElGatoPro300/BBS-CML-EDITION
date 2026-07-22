@@ -2,6 +2,7 @@ package mchorse.bbs_mod.utils.iris;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.mixin.client.iris.IrisRenderingPipelineAccessor;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.irisshaders.iris.gl.blending.AlphaTest;
 import net.irisshaders.iris.gl.blending.AlphaTestFunction;
@@ -543,7 +544,8 @@ public class ShaderOpacityPatch
             }
             else
             {
-                modelViewStack.identity();
+                modelViewStack.peek().getPositionMatrix().identity();
+                modelViewStack.peek().getNormalMatrix().identity();
                 RenderSystem.applyModelViewMatrix();
                 mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer.beginDeferredTranslucentModelPass(entry.depthWrite, true);
                 beganDeferredPass = true;

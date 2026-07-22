@@ -5,6 +5,7 @@ import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
@@ -163,7 +164,8 @@ public class Draw
     private static void renderBoxSolidEdges(MatrixStack stack, float fw, float fh, float fd, float r, float g, float b)
     {
         float t = 1 / 96F + (float) (Math.sqrt(fw * fw + fh + fh + fd + fd) / 2000);
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         fillBox(builder, stack, -t, -t, -t, t, t + fh, t, r, g, b, 1F);
         fillBox(builder, stack, -t + fw, -t, -t, t + fw, t + fh, t, r, g, b, 1F);
@@ -201,7 +203,8 @@ public class Draw
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.lineWidth(2F);
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         wireLine(builder, matrix, x1, y1, z1, x2, y1, z1, r, g, b, a);
         wireLine(builder, matrix, x2, y1, z1, x2, y1, z2, r, g, b, a);

@@ -984,7 +984,8 @@ public class Gizmo
             return;
         }
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE) this.drawRotate(builder, stack, scale, thickness, false, null);
         else if (this.mode == Mode.SCALE) this.drawScale(builder, stack, scale, thickness, false, null);
