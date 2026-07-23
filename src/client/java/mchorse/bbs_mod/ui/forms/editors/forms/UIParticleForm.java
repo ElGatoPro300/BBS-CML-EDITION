@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.forms.editors.forms;
 
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.ParticleForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.renderers.ParticleFormRenderer;
 import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import mchorse.bbs_mod.resources.Link;
@@ -12,7 +13,6 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
-import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Color;
 

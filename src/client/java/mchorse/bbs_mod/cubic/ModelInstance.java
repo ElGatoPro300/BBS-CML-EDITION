@@ -43,7 +43,6 @@ import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;

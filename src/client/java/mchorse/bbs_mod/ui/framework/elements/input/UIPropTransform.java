@@ -35,6 +35,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -2010,14 +2011,14 @@ public class UIPropTransform extends UITransform
     {
         if (degrees)
         {
-            return String.format(java.util.Locale.ENGLISH, "X %.1f\u00B0  Y %.1f\u00B0  Z %.1f\u00B0",
+            return String.format(Locale.ENGLISH, "X %.1f\u00B0  Y %.1f\u00B0  Z %.1f\u00B0",
                 MathUtils.toDeg(vector.x),
                 MathUtils.toDeg(vector.y),
                 MathUtils.toDeg(vector.z)
             );
         }
 
-        return String.format(java.util.Locale.ENGLISH, "X %.3f  Y %.3f  Z %.3f", vector.x, vector.y, vector.z);
+        return String.format(Locale.ENGLISH, "X %.3f  Y %.3f  Z %.3f", vector.x, vector.y, vector.z);
     }
 
     @Override

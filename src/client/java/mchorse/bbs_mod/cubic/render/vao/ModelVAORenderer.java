@@ -6,9 +6,13 @@ import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.iris.FormColorGradePatch;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
@@ -125,7 +129,7 @@ public class ModelVAORenderer
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
     private static NativeImageBackedTexture whiteTexture;
     /* Scene color copy for ColorGradeOverlay (Iris-lit pixels → FormColorGrade). */
-    private static mchorse.bbs_mod.graphics.texture.Texture gradeSceneColor;
+    private static Texture gradeSceneColor;
 
     /* Saved GL state for the paint overlay pass (restored in endPaintOverlayPass). */
     private static int savedDepthFunc;
@@ -143,10 +147,27 @@ public class ModelVAORenderer
 
         private void set(EffectTransform transform)
         {
+            this.setModel(transform);
+        }
+
+        private void setModel(EffectTransform transform)
+        {
             EffectTransformMath.buildInverseMatrix(transform, this.inverse);
             this.active = EffectTransformMath.isTransformActive(transform);
             this.shape = transform == null || transform.shape == null ? 0F : transform.shape.id;
             EffectTransformMath.resolveModelMaskHalfExtents(transform, this.half);
+            this.bottomAnchored = true;
+        }
+
+        /**
+         * Structure Color Grade: UI scale 1 covers the full AABB (same as paint / Blend Color).
+         */
+        private void setStructure(EffectTransform transform, float sizeX, float sizeY, float sizeZ)
+        {
+            EffectTransformMath.buildInverseMatrix(transform, this.inverse);
+            this.active = EffectTransformMath.isTransformActive(transform);
+            this.shape = transform == null || transform.shape == null ? 0F : transform.shape.id;
+            EffectTransformMath.resolveStructureMaskHalfExtents(transform, this.half, sizeX, sizeY, sizeZ);
             this.bottomAnchored = true;
         }
 
@@ -640,7 +661,7 @@ public class ModelVAORenderer
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         /* Flat / extruded / billboard overlays need a large units bias — factor alone is not
          * enough for near-zero depth slope at distance (see FlatPaintOverlayPass). */
-        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+        GL11.glPolygonOffset(FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
     }
 
     /**
@@ -715,10 +736,10 @@ public class ModelVAORenderer
 
         RenderSystem.enableBlend();
         RenderSystem.blendFuncSeparate(
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.DST_COLOR,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ZERO,
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.DST_ALPHA,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ZERO
+            GlStateManager.SrcFactor.DST_COLOR,
+            GlStateManager.DstFactor.ZERO,
+            GlStateManager.SrcFactor.DST_ALPHA,
+            GlStateManager.DstFactor.ZERO
         );
 
         RenderSystem.enableDepthTest();
@@ -726,7 +747,7 @@ public class ModelVAORenderer
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+        GL11.glPolygonOffset(FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
     }
 
     /**
@@ -758,7 +779,7 @@ public class ModelVAORenderer
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+        GL11.glPolygonOffset(FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
     }
 
     public static void endColorGradeOverlayPass()
@@ -816,7 +837,7 @@ public class ModelVAORenderer
 
         if (gradeSceneColor == null)
         {
-            gradeSceneColor = new mchorse.bbs_mod.graphics.texture.Texture();
+            gradeSceneColor = new Texture();
             gradeSceneColor.setFilter(GL11.GL_NEAREST);
         }
 
@@ -910,10 +931,10 @@ public class ModelVAORenderer
 
         RenderSystem.enableBlend();
         RenderSystem.blendFuncSeparate(
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.SRC_ALPHA,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA,
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.ONE,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA
+            GlStateManager.SrcFactor.SRC_ALPHA,
+            GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA,
+            GlStateManager.SrcFactor.ONE,
+            GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA
         );
 
         if (depthTest)
@@ -1364,6 +1385,27 @@ public class ModelVAORenderer
         applyGradeEffectTransforms(color.brightnessTransform, color.contrastTransform, color.hueTransform, color.saturationTransform);
     }
 
+    /**
+     * Structure Color Grade channel masks: scale 1 = 100% of the structure AABB
+     * (same convention as paint / Blend Color on structures).
+     */
+    public static void setGradeEffectTransformsForStructure(Color color, float sizeX, float sizeY, float sizeZ)
+    {
+        if (color == null)
+        {
+            clearGradeEffectTransforms();
+            clearBaseGradeEffectTransforms();
+
+            return;
+        }
+
+        copyEffectTransform(baseGradeBrightnessTransform, color.brightnessTransform);
+        copyEffectTransform(baseGradeContrastTransform, color.contrastTransform);
+        copyEffectTransform(baseGradeHueTransform, color.hueTransform);
+        copyEffectTransform(baseGradeSaturationTransform, color.saturationTransform);
+        applyGradeEffectTransformsStructure(color.brightnessTransform, color.contrastTransform, color.hueTransform, color.saturationTransform, sizeX, sizeY, sizeZ);
+    }
+
     public static void setGradeEffectTransforms(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation)
     {
         copyEffectTransform(baseGradeBrightnessTransform, brightness);
@@ -1397,15 +1439,23 @@ public class ModelVAORenderer
         formColorGradeContrast = contrast;
         formColorGradeHue = hue;
         formColorGradeSaturation = saturation;
-        mchorse.bbs_mod.utils.iris.FormColorGradePatch.set(brightness, contrast, hue, saturation);
+        FormColorGradePatch.set(brightness, contrast, hue, saturation);
     }
 
     private static void applyGradeEffectTransforms(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation)
     {
-        gradeBrightnessMask.set(brightness);
-        gradeContrastMask.set(contrast);
-        gradeHueMask.set(hue);
-        gradeSaturationMask.set(saturation);
+        gradeBrightnessMask.setModel(brightness);
+        gradeContrastMask.setModel(contrast);
+        gradeHueMask.setModel(hue);
+        gradeSaturationMask.setModel(saturation);
+    }
+
+    private static void applyGradeEffectTransformsStructure(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation, float sizeX, float sizeY, float sizeZ)
+    {
+        gradeBrightnessMask.setStructure(brightness, sizeX, sizeY, sizeZ);
+        gradeContrastMask.setStructure(contrast, sizeX, sizeY, sizeZ);
+        gradeHueMask.setStructure(hue, sizeX, sizeY, sizeZ);
+        gradeSaturationMask.setStructure(saturation, sizeX, sizeY, sizeZ);
     }
 
     private static void copyEffectTransform(EffectTransform target, EffectTransform source)
@@ -1452,7 +1502,7 @@ public class ModelVAORenderer
         formColorGradeSaturation = 0F;
         clearBaseGradeEffectTransforms();
         clearGradeEffectTransforms();
-        mchorse.bbs_mod.utils.iris.FormColorGradePatch.clear();
+        FormColorGradePatch.clear();
     }
 
     public static void clearColorEffectTransform()
@@ -1493,12 +1543,18 @@ public class ModelVAORenderer
 
         RenderSystem.setShader(shader);
         shader.bind();
+<<<<<<< HEAD
 
         int textureID = RenderSystem.getShaderTexture(0);
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(textureID);
 
         modelVAO.render(VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL, r, g, b, a, light, overlay);
+=======
+        ShaderOpacityPatch.reassertPostDeferredDepthState();
+        FormColorGradePatch.uploadToCurrentProgram();
+        modelVAO.render(shader.getFormat(), r, g, b, a, light, overlay);
+>>>>>>> master
         shader.unbind();
 
         GL30.glBindVertexArray(currentVAO);

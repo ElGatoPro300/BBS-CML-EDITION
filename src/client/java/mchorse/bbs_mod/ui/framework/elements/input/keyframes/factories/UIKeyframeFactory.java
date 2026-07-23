@@ -5,6 +5,8 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.clips.UIBossBarColorKeyframeFactory;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
@@ -29,6 +31,7 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +96,7 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         if (editor != null)
         {
             SCROLLS.put(editor.keyframe.getFactory(), (int) editor.scroll.scroll.getScroll());
+            editor.saveUiState();
         }
     }
 
@@ -339,15 +343,15 @@ public abstract class UIKeyframeFactory <T> extends UIElement
             {
                 if (hostSheet.selection.hasAny())
                 {
-                    mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils.moveCompanionPaintForSelectedColor(this.editor, diff);
+                    UIReplaysEditorUtils.moveCompanionPaintForSelectedColor(this.editor, diff);
                 }
                 else
                 {
-                    mchorse.bbs_mod.ui.film.replays.UIReplaysEditor replays = this.editor.getParent(mchorse.bbs_mod.ui.film.replays.UIReplaysEditor.class);
+                    UIReplaysEditor replays = this.editor.getParent(UIReplaysEditor.class);
 
                     if (replays != null && replays.getReplay() != null)
                     {
-                        replays.getReplay().properties.moveCompanionPaintBy(diff, java.util.Collections.singletonList(this.keyframe.getTick()));
+                        replays.getReplay().properties.moveCompanionPaintBy(diff, Collections.singletonList(this.keyframe.getTick()));
                     }
                 }
             }
@@ -393,6 +397,20 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         this.editor.getGraph().setValue(value, true);
         this.editor.triggerChange();
     }
+
+    /**
+     * Persist ephemeral UI (collapse open/closed, etc.) before the panel is rebuilt
+     * for another keyframe of the same factory type.
+     */
+    public void saveUiState()
+    {}
+
+    /**
+     * Re-apply {@link #saveUiState()} after the new panel is parented and resized
+     * (collapse shells need a parent to open).
+     */
+    public void restoreUiState()
+    {}
 
     public void update()
     {

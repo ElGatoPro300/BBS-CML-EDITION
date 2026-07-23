@@ -483,6 +483,10 @@ public abstract class Form extends ValueGroup
                 map.put("glow", map.get("glow_settings"));
                 map.remove("glow_settings");
             }
+
+            /* render_depth_enabled briefly defaulted to true and was written onto every morph.
+             * Drop that baked-on state when depth was never customized (still 0). */
+            this.stripLegacyDefaultRenderDepthEnabled(map);
         }
 
         super.fromData(data);
@@ -631,5 +635,25 @@ public abstract class Form extends ValueGroup
         Color source = valueColor.get().copy();
 
         map.put("color", new IntType(Colors.setA(source.getRGBColor(), opacityA)));
+    }
+
+    /**
+     * Older builds defaulted {@code render_depth_enabled} to true and saved it on every morph.
+     * Remove that baked-on flag when depth was never customized so the feature stays off by default.
+     */
+    private void stripLegacyDefaultRenderDepthEnabled(MapType map)
+    {
+        if (!map.has("render_depth_enabled"))
+        {
+            return;
+        }
+
+        boolean enabled = map.getBool("render_depth_enabled");
+        float depth = map.has("render_depth") ? map.getFloat("render_depth") : 0F;
+
+        if (enabled && Math.abs(depth) < 0.0001F)
+        {
+            map.remove("render_depth_enabled");
+        }
     }
 }

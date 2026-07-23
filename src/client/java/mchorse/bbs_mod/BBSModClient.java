@@ -77,7 +77,6 @@ import mchorse.bbs_mod.settings.ui.UIValueMap;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.WorldPropertiesHelper;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
@@ -98,7 +97,6 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
-import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
@@ -107,6 +105,8 @@ import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
+import mchorse.bbs_mod.utils.iris.IrisUtils;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.resources.MinecraftSourcePack;
 
 import net.fabricmc.api.ClientModInitializer;
@@ -569,6 +569,7 @@ public class BBSModClient implements ClientModInitializer
 
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
+
         IValueListener refreshModelHover = (v, f) ->
         {
             if (!UISettingsOverlayPanel.isDeferringLiveSettings())
@@ -718,7 +719,7 @@ public class BBSModClient implements ClientModInitializer
 
         WorldRenderEvents.LAST.register((context) ->
         {
-            mchorse.bbs_mod.graphics.Draw.flushIrisBoxes();
+            Draw.flushIrisBoxes();
 
             if (Gizmo.INSTANCE.hasDeferred())
             {

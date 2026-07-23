@@ -6,6 +6,10 @@ import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.forms.ShapeForm;
+import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
+import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.TextureNode;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
@@ -13,15 +17,11 @@ import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.utils.FlatColorTintOverlayPass;
 import mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
-import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
-import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.TextureNode;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
@@ -266,9 +266,8 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             /* Noshading opacity: redraw after paint via BBS translucent queue, not Iris post-deferred. */
             boolean noshadingPaintPath = BBSRendering.needsIrisNoshadingOpacityDeferral(c.a, this.form.noshadingOpacity.get());
             boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(c.a);
-            boolean depthWrite = afterFluids
-                ? ShaderOpacityPatch.shouldWriteDepthForOpacity(c.a)
-                : this.form.renderDepthEnabled.get();
+            /* Same as billboards: renderDepthEnabled must not force depth writes on flats. */
+            boolean depthWrite = ShaderOpacityPatch.shouldWriteDepthForOpacity(c.a);
             double sortDepth = FormRenderDepth.resolveSortDepth(this.form, renderContext == null ? null : renderContext.renderDepthFrame);
             double distanceSq = 0D;
 

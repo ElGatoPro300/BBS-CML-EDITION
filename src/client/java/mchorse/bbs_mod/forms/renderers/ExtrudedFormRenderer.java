@@ -8,10 +8,10 @@ import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
-import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
@@ -427,7 +427,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             TextureBlend textureBlendSnapshot = textureBlend == null ? null : new TextureBlend(textureBlend.from, textureBlend.to, textureBlend.blend);
             float opacityAlpha = color.a;
 
-            if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, renderContext != null && renderContext.renderDepthFrame != null))
+            if (ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, false))
             {
                 boolean irisCamera = BBSRendering.isIrisWorldModelPass() && !bbsModelShader;
                 Matrix4f positionMatrix = irisCamera
@@ -635,7 +635,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             if (forceDepth || suppressDepth)
             {
-                savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+                savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
                 RenderSystem.enableDepthTest();
 
                 if (forceDepth)

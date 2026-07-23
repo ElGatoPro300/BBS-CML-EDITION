@@ -353,16 +353,30 @@ public abstract class FormRenderer <T extends Form>
             return;
         }
 
-        List<BodyPart> parts = this.getSortedBodyParts(context);
+        FormRenderDepth.Frame savedFrame = context.renderDepthFrame;
 
-        if (ItemBodyPartBatch.renderBodyParts(this, parts, context))
+        if (!FormRenderDepth.BODY_PART_RENDER_DEPTH)
         {
-            return;
+            context.renderDepthFrame = null;
         }
 
-        for (BodyPart part : parts)
+        try
         {
-            this.renderBodyPart(part, context);
+            List<BodyPart> parts = this.getSortedBodyParts(context);
+
+            if (ItemBodyPartBatch.renderBodyParts(this, parts, context))
+            {
+                return;
+            }
+
+            for (BodyPart part : parts)
+            {
+                this.renderBodyPart(part, context);
+            }
+        }
+        finally
+        {
+            context.renderDepthFrame = savedFrame;
         }
     }
 
@@ -370,7 +384,7 @@ public abstract class FormRenderer <T extends Form>
     {
         List<BodyPart> parts = new ArrayList<>(this.form.parts.getAllTyped());
 
-        if (context.renderDepthFrame == null)
+        if (!FormRenderDepth.BODY_PART_RENDER_DEPTH || context.renderDepthFrame == null)
         {
             return parts;
         }
