@@ -525,8 +525,24 @@ public class Batcher2D
 
     public void texturedArea(Texture texture, int color, float x, float y, float w, float h, float u, float v, float tileW, float tileH, int tw, int th)
     {
-        int countX = (int) (((w - 1) / tileW) + 1);
-        int countY = (int) (((h - 1) / tileH) + 1);
+        if (w <= 0 || h <= 0 || tileW <= 0 || tileH <= 0)
+        {
+            return;
+        }
+
+        int countX = (int) Math.ceil(w / tileW);
+        int countY = (int) Math.ceil(h / tileH);
+        
+        if (countX <= 0) countX = 1;
+        if (countY <= 0) countY = 1;
+        
+        long c = (long) countX * countY;
+        
+        if (c <= 0 || c > 10000) // Safety limit to prevent freeze/crash
+        {
+             return;
+        }
+
         float fillerX = w - (countX - 1) * tileW;
         float fillerY = h - (countY - 1) * tileH;
 
@@ -538,7 +554,7 @@ public class Batcher2D
 
         builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
 
-        for (int i = 0, c = countX * countY; i < c; i ++)
+        for (int i = 0; i < c; i++)
         {
             float ix = i % countX;
             float iy = i / countX;

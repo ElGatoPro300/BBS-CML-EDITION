@@ -8,10 +8,10 @@ import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
-import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
@@ -120,7 +120,6 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             shading = true;
         }
 
-
         PaintSettings paint = this.form.paintSettings.get();
         float paintStrength = paint.resolveIntensity(this.form.paintColor.get());
         boolean irisWorldModelPass = BBSRendering.isIrisWorldModelPass();
@@ -153,14 +152,23 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
                 modelMatrix.getScale(scale);
 
+                if (invertY)
+                {
+                    scale.y = -scale.y;
+                }
+
                 modelMatrix.m00(1).m01(0).m02(0);
                 modelMatrix.m10(0).m11(1).m12(0);
                 modelMatrix.m20(0).m21(0).m22(1);
 
+                if (camera != null && !modelRenderer)
+                {
+                    modelMatrix.mul(camera.view);
+                }
+
                 modelMatrix.scale(scale);
 
                 matrices.peek().getNormalMatrix().identity();
-
 
                 if (camera != null && !modelRenderer)
                 {
@@ -614,7 +622,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             if (forceDepth || suppressDepth)
             {
-                savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+                savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
                 RenderSystem.enableDepthTest();
 
                 if (forceDepth)

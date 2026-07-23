@@ -7,6 +7,7 @@ import mchorse.bbs_mod.items.StructurePickerSelection;
 import mchorse.bbs_mod.ui.items.UIStructurePickerPanel;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.util.math.MatrixStack;
@@ -14,10 +15,10 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 public class StructurePickerRenderer
 {

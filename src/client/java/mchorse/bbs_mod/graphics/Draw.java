@@ -17,9 +17,13 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.opengl.GL11;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Draw
 {
@@ -85,7 +89,7 @@ public class Draw
     }
 
 
-    private static final java.util.List<IrisBox> irisBoxQueue = new java.util.ArrayList<>();
+    private static final List<IrisBox> irisBoxQueue = new ArrayList<>();
 
     private static final class IrisBox
     {
@@ -280,6 +284,12 @@ public class Draw
 
     public static void fillBoxTo(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float thickness, float r, float g, float b, float a)
     {
+        if (stack == null)
+        {
+            stack = new MatrixStack();
+            MatrixStackUtils.multiply(stack, RenderSystem.getModelViewMatrix());
+        }
+
         float dx = x2 - x1;
         float dy = y2 - y1;
         float dz = z2 - z1;

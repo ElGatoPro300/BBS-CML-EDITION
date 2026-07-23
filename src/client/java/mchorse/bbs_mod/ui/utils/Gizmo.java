@@ -9,8 +9,8 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
 import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -1009,9 +1009,8 @@ public class Gizmo
         RenderSystem.depthMask(false);
 
         MatrixStack mvStack = RenderSystem.getModelViewStack();
-        boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.push();
             mvStack.peek().getPositionMatrix().identity();
@@ -1021,7 +1020,7 @@ public class Gizmo
 
         this.drawBufferIfNotEmpty(builder);
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.pop();
             RenderSystem.applyModelViewMatrix();
@@ -1063,9 +1062,8 @@ public class Gizmo
         RenderSystem.depthMask(false);
 
         MatrixStack mvStack = RenderSystem.getModelViewStack();
-        boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.push();
             mvStack.peek().getPositionMatrix().identity();
@@ -1075,7 +1073,7 @@ public class Gizmo
 
         this.drawBufferIfNotEmpty(builder);
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.pop();
             RenderSystem.applyModelViewMatrix();

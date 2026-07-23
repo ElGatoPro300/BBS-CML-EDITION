@@ -48,7 +48,6 @@ import net.minecraft.world.World;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
-import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -413,7 +412,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         if (translucent)
         {
-            savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+            savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
             RenderSystem.depthMask(false);
         }
 
@@ -422,6 +421,8 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             BlockState blockState = this.form.blockState.get();
             boolean pickVolume = picking && this.needsPickVolume(blockState);
 
+            /* Signs/chests/beds/etc. have no solid mesh (or only thin BE parts). During Alt-pick
+             * draw one solid unit cube only — outline shapes / BE meshes make noisy multi-hitboxes. */
             if (pickVolume)
             {
                 this.renderPickVolume(stack, consumers, light, overlay);

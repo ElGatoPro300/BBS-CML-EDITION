@@ -23,6 +23,7 @@ import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
@@ -164,6 +165,11 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             modelMatrix.m10(0).m11(1).m12(0);
             modelMatrix.m20(0).m21(0).m22(1);
 
+            if (!context.modelRenderer && !context.isPicking())
+            {
+                modelMatrix.mul(context.camera.view);
+            }
+
             modelMatrix.scale(scale);
 
             context.stack.peek().getNormalMatrix().identity();
@@ -238,7 +244,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
     }
 
     /**
-     * Text {@link net.minecraft.client.render.RenderLayer}s restore GL culling in
+     * Text {@link RenderLayer}s restore GL culling in
      * {@code startDrawing}. Labels use a negative Y scale (flipped winding), so both faces
      * must stay unculled at flush time or the back of the last drawn label disappears.
      */

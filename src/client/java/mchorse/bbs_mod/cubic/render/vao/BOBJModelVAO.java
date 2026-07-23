@@ -8,6 +8,7 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.cubic.render.CubicRenderer;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
+import mchorse.bbs_mod.utils.iris.FormColorGradePatch;
 import mchorse.bbs_mod.utils.joml.Matrices;
 
 import net.minecraft.client.gl.ShaderProgram;
@@ -409,7 +410,7 @@ public class BOBJModelVAO
 
         RenderSystem.setShader(() -> shader);
         shader.bind();
-        mchorse.bbs_mod.utils.iris.FormColorGradePatch.uploadToCurrentProgram();
+        FormColorGradePatch.uploadToCurrentProgram();
 
         GL30.glBindVertexArray(this.vao);
 

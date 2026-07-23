@@ -39,9 +39,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 
 import org.lwjgl.opengl.GL11;
-import org.slf4j.Logger;
 
 import java.util.function.Function;
+
+import org.slf4j.Logger;
 
 public class ItemFormRenderer extends FormRenderer<ItemForm>
 {

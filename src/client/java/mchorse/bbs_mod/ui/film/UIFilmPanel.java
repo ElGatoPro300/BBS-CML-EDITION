@@ -118,6 +118,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
@@ -6297,7 +6298,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (!BBSRendering.isIrisShadowPass())
         {
             this.lastProjection.set(RenderSystem.getProjectionMatrix());
-            this.lastView.set(context.matrixStack().peek().getPositionMatrix());
+            MatrixStack ms = context.matrixStack();
+            if (ms != null)
+            {
+                this.lastView.set(ms.peek().getPositionMatrix());
+            }
+            else
+            {
+                this.lastView.set(RenderSystem.getModelViewMatrix());
+            }
         }
 
         this.controller.renderFrame(context);
