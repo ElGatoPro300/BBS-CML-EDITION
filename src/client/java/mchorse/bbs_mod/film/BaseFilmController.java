@@ -2093,7 +2093,7 @@ public abstract class BaseFilmController
          * fully visible through that layer. */
         List<Map.Entry<Integer, IEntity>> sorted = new ArrayList<>(this.entities.entrySet());
         Camera camera = context.camera();
-        float transition = context.tickDelta();
+        float transition = context.tickCounter().getTickDelta(false);
 
         sorted.sort(Comparator
             .comparingDouble(this::getEntityRenderDepth)
@@ -2250,7 +2250,7 @@ public abstract class BaseFilmController
             FilmControllerContext filmContext = getFilmControllerContext(context, replay, entity);
             FormRenderDepth.Frame renderDepthFrame = new FormRenderDepth.Frame(this.currentRenderDepthOccluders, replay.form.get());
 
-            filmContext.transition = getTransition(entity, context.tickDelta());
+            filmContext.transition = getTransition(entity, context.tickCounter().getTickDelta(false));
             filmContext.renderDepthFrame(renderDepthFrame);
 
             filmContext.stack.push();
@@ -2567,7 +2567,7 @@ public abstract class BaseFilmController
 
     protected FilmControllerContext getFilmControllerContext(WorldRenderContext context, Replay replay, IEntity entity)
     {
-        float tick = replay.getTick(this.getTick()) + this.getTransition(entity, context.tickDelta());
+        float tick = replay.getTick(this.getTick()) + this.getTransition(entity, context.tickCounter().getTickDelta(false));
         ShadowSettings shadow = resolveShadowSettings(replay, tick);
 
         return FilmControllerContext.instance

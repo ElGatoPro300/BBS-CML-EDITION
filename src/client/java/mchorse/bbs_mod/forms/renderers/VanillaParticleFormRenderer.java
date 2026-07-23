@@ -25,9 +25,8 @@ import net.minecraft.particle.ItemStackParticleEffect;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleType;
 import net.minecraft.particle.ParticleTypes;
-import net.minecraft.particle.DefaultParticleType;
+import net.minecraft.particle.SimpleParticleType;
 import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
@@ -138,7 +137,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                 {
                     RegistryWrapper.WrapperLookup registries = world.getRegistryManager();
 
-                    if (type instanceof DefaultParticleType simple)
+                    if (type instanceof SimpleParticleType simple)
                     {
                         effect = simple;
                     }
@@ -154,7 +153,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
 
                         try
                         {
-                            effect = ParticleEffectArgumentType.readParameters(new StringReader(full), registries.getWrapperOrThrow(RegistryKeys.PARTICLE_TYPE));
+                            effect = ParticleEffectArgumentType.readParameters(new StringReader(full), registries);
                         }
                         catch (Exception e)
                         {

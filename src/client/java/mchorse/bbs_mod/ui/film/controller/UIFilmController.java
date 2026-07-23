@@ -89,6 +89,7 @@ import net.minecraft.world.World;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
@@ -1248,7 +1249,6 @@ public class UIFilmController extends UIElement
         MatrixStackUtils.cacheMatrices();
 
         RenderSystem.setProjectionMatrix(this.panel.lastProjection, VertexSorter.BY_Z);
-        RenderSystem.setInverseViewRotationMatrix(new Matrix3f(this.panel.lastView).invert());
 
         /* Render the stencil */
         MatrixStack worldStack = this.worldRenderContext.matrixStack();
@@ -1262,15 +1262,15 @@ public class UIFilmController extends UIElement
         }
         else
         {
-            MatrixStack mvStack = RenderSystem.getModelViewStack();
-            mvStack.push();
-            mvStack.loadIdentity();
-            MatrixStackUtils.multiply(mvStack, BBSRendering.camera);
+            Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+            mvStack.pushMatrix();
+            mvStack.identity();
+            mvStack.set(BBSRendering.camera);
             RenderSystem.applyModelViewMatrix();
 
             this.renderStencil(this.worldRenderContext, context, altPressed);
 
-            mvStack.pop();
+            mvStack.popMatrix();
             RenderSystem.applyModelViewMatrix();
         }
 
@@ -1374,7 +1374,7 @@ public class UIFilmController extends UIElement
                 int tick = runner.ticks;
                 int duration = runner.getContext().clips == null ? 0 : runner.getContext().clips.calculateDuration();
 
-                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick, context.tickDelta(), duration, runner.getPosition(), context.camera(), context.matrixStack());
+                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick, context.tickCounter().getTickDelta(true), duration, runner.getPosition(), context.camera(), context.matrixStack());
             }
         }
 
@@ -1441,7 +1441,8 @@ public class UIFilmController extends UIElement
         double cx = context.camera().getPos().x;
         double cy = context.camera().getPos().y;
         double cz = context.camera().getPos().z;
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         /* Preview path follows ItemEntity-like drag and gravity and stops on first block hit. */
         int primaryColor = BBSSettings.primaryColor.get() & 0x00FFFFFF;
@@ -1453,7 +1454,6 @@ public class UIFilmController extends UIElement
         RenderSystem.depthMask(false);
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
-        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         MatrixStack stack = context.matrixStack();
 
         final int maxSteps = 80;
@@ -1615,7 +1615,7 @@ public class UIFilmController extends UIElement
                     .setup(this.getEntities(), entry.getValue(), replay, renderContext)
                     .film(this.panel.getData())
                     .filmTick(cursorTick)
-                    .transition(isPlaying ? renderContext.tickDelta() : 0)
+                    .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
                     .stencil(this.stencilMap)
                     .relative(replay.relative.get()));
             }
@@ -1663,7 +1663,7 @@ public class UIFilmController extends UIElement
                         .setup(this.getEntities(), currentEntity, currentReplay, renderContext)
                         .film(this.panel.getData())
                         .filmTick(cursorTick)
-                        .transition(isPlaying ? renderContext.tickDelta() : 0)
+                        .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
                         .stencil(this.stencilMap)
                         .relative(currentReplay.relative.get())
                         .bone(bone != null ? bone.a : null, bone != null ? bone.b : TransformOrientation.PARENT));
