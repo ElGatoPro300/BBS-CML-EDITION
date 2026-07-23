@@ -70,6 +70,7 @@ import net.minecraft.state.property.Property;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.random.Random;
+import net.minecraft.world.BlockRenderView;
 import net.minecraft.world.LightType;
 
 import org.joml.Matrix3f;
@@ -1016,7 +1017,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
      * Fancy leaves: same layer as world trees ({@code cutout_mipped}). Do not use
      * {@code renderBlockAsEntity} under Iris — that picks entity_cutout and packs treat it opaque.
      */
-    private void renderStructureLeaves(BlockState state, BlockPos pos, net.minecraft.world.BlockRenderView view, MatrixStack stack, VertexConsumerProvider consumers, Function<VertexConsumer, VertexConsumer> recolor)
+    private void renderStructureLeaves(BlockState state, BlockPos pos, BlockRenderView view, MatrixStack stack, VertexConsumerProvider consumers, Function<VertexConsumer, VertexConsumer> recolor)
     {
         try
         {

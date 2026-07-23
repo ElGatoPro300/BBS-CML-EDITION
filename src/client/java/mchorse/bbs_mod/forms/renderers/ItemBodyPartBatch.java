@@ -10,6 +10,7 @@ import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
+import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -218,7 +219,7 @@ public final class ItemBodyPartBatch
         SCRATCH_TRANSFORM.copy(item.transform.get());
         applyOverlay(SCRATCH_TRANSFORM, item.transformOverlay.get());
 
-        for (mchorse.bbs_mod.settings.values.core.ValueTransform extra : item.additionalTransforms)
+        for (ValueTransform extra : item.additionalTransforms)
         {
             applyOverlay(SCRATCH_TRANSFORM, extra.get());
         }

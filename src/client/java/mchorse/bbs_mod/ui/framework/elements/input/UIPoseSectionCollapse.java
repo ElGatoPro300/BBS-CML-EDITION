@@ -7,6 +7,8 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIClickable;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.utils.colors.Colors;
 
+import java.util.function.Consumer;
+
 /**
  * Slim colored disclosure bar (left label, right arrow) with animated body.
  * Same open/close animation as before; header is thinner than a chunky {@code UIButton}.
@@ -118,7 +120,7 @@ public class UIPoseSectionCollapse extends UIElement
         private boolean open;
         private int color = Colors.ACTIVE & Colors.RGB;
 
-        public SectionHeader(java.util.function.Consumer<SectionHeader> callback)
+        public SectionHeader(Consumer<SectionHeader> callback)
         {
             super(callback);
 

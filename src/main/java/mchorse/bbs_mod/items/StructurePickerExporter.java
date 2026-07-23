@@ -8,6 +8,7 @@ import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.mixin.StructureTemplateAccessor;
 import mchorse.bbs_mod.mixin.StructureTemplatePalettedListAccessor;
 
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.fluid.Fluids;
@@ -217,7 +218,7 @@ public class StructurePickerExporter
 
         form.structureFile.set(structurePath);
 
-        net.minecraft.block.BlockState modelState = BBSMod.MODEL_BLOCK.getDefaultState()
+        BlockState modelState = BBSMod.MODEL_BLOCK.getDefaultState()
             .with(Properties.WATERLOGGED, world.getFluidState(center).isOf(Fluids.WATER))
             .with(ModelBlock.LIGHT_LEVEL, 0);
 

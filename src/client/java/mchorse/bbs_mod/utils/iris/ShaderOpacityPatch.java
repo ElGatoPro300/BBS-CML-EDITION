@@ -1,13 +1,24 @@
 package mchorse.bbs_mod.utils.iris;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.mixin.client.iris.IrisRenderingPipelineAccessor;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 
+import net.minecraft.client.MinecraftClient;
+
 import net.irisshaders.iris.gl.blending.AlphaTest;
 import net.irisshaders.iris.gl.blending.AlphaTestFunction;
+import net.irisshaders.iris.gl.texture.DepthCopyStrategy;
 import net.irisshaders.iris.helpers.OptionalBoolean;
+import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
+import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
 import net.irisshaders.iris.shaderpack.properties.ShaderProperties;
+import net.irisshaders.iris.targets.RenderTargets;
+
+import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -15,6 +26,7 @@ import com.mojang.blaze3d.systems.VertexSorter;
 import org.joml.Matrix4f;
 
 import net.minecraft.client.util.math.MatrixStack;
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -194,13 +206,13 @@ public class ShaderOpacityPatch
         if (forceLiveDepthWrite)
         {
             RenderSystem.enableDepthTest();
-            RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
             RenderSystem.depthMask(true);
         }
         else if (suppressLiveDepthWrite)
         {
             RenderSystem.enableDepthTest();
-            RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
             RenderSystem.depthMask(false);
         }
     }
@@ -213,7 +225,7 @@ public class ShaderOpacityPatch
         }
 
         RenderSystem.enableDepthTest();
-        RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         RenderSystem.depthMask(depthWrite);
     }
 
@@ -253,7 +265,7 @@ public class ShaderOpacityPatch
         try
         {
             /* Casters must hit the shadow map live — post-deferred never writes shadows. */
-            if (mchorse.bbs_mod.client.BBSRendering.isIrisShadowPass())
+            if (BBSRendering.isIrisShadowPass())
             {
                 return false;
             }
@@ -377,7 +389,7 @@ public class ShaderOpacityPatch
      * After translucent terrain (water/lava/portals). Default soft forms (Opacity
      * "No shading" off) flush here with depth so pack body shadows stay; end-of-frame
      * paint stays clipped behind them. Noshading soft forms skip this queue and redraw
-     * after paint in {@link mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer}'s deferred queue.
+     * after paint in {@link ModelVAORenderer}'s deferred queue.
      */
     public static void onAfterTranslucentTerrain()
     {
@@ -442,11 +454,11 @@ public class ShaderOpacityPatch
             );
 
             RenderSystem.enableDepthTest();
-            RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
             RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
 
-            net.minecraft.client.MinecraftClient mc = net.minecraft.client.MinecraftClient.getInstance();
+            MinecraftClient mc = MinecraftClient.getInstance();
 
             if (mc != null && mc.gameRenderer != null)
             {
@@ -483,18 +495,18 @@ public class ShaderOpacityPatch
     {
         try
         {
-            mchorse.bbs_mod.client.BBSRendering.ensurePaintOverlayTargetFramebuffer();
+            BBSRendering.ensurePaintOverlayTargetFramebuffer();
 
-            net.irisshaders.iris.pipeline.WorldRenderingPipeline pipeline =
+            WorldRenderingPipeline pipeline =
                 net.irisshaders.iris.Iris.getPipelineManager().getPipelineNullable();
 
-            if (!(pipeline instanceof net.irisshaders.iris.pipeline.IrisRenderingPipeline irisPipeline))
+            if (!(pipeline instanceof IrisRenderingPipeline irisPipeline))
             {
                 return;
             }
 
             IrisRenderingPipelineAccessor access = (IrisRenderingPipelineAccessor) irisPipeline;
-            net.irisshaders.iris.targets.RenderTargets targets = access.bbs$renderTargets();
+            RenderTargets targets = access.bbs$renderTargets();
 
             if (targets == null)
             {
@@ -508,7 +520,7 @@ public class ShaderOpacityPatch
 
             if (width > 0 && height > 0 && opaqueDepth > 0 && liveDepth > 0)
             {
-                net.irisshaders.iris.gl.texture.DepthCopyStrategy.fastest(false)
+                DepthCopyStrategy.fastest(false)
                     .copy(null, opaqueDepth, null, liveDepth, width, height);
             }
 
@@ -523,9 +535,9 @@ public class ShaderOpacityPatch
     private static void runEntry(PostDeferredEntry entry)
     {
         Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
+        Matrix4f savedModelView = new Matrix4f(modelViewStack);
         MatrixStack modelViewStack = RenderSystem.getModelViewStack();
-        boolean savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+        boolean savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         boolean beganDeferredPass = false;
 
         try
@@ -548,7 +560,7 @@ public class ShaderOpacityPatch
                 modelViewStack.peek().getPositionMatrix().identity();
                 modelViewStack.peek().getNormalMatrix().identity();
                 RenderSystem.applyModelViewMatrix();
-                mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer.beginDeferredTranslucentModelPass(entry.depthWrite, true);
+                ModelVAORenderer.beginDeferredTranslucentModelPass(entry.depthWrite, true);
                 beganDeferredPass = true;
             }
 
@@ -575,7 +587,7 @@ public class ShaderOpacityPatch
         {
             if (beganDeferredPass)
             {
-                mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer.endDeferredTranslucentModelPass();
+                ModelVAORenderer.endDeferredTranslucentModelPass();
             }
 
             RenderSystem.depthMask(savedDepthMask);
