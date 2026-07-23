@@ -157,7 +157,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         if (this.form.billboard.get())
         {
             Matrix4f modelMatrix = context.stack.peek().getPositionMatrix();
-            Vector3f scale = Vectors.TEMP_3F;
+            Vector3f scale = new Vector3f();
 
             modelMatrix.getScale(scale);
 

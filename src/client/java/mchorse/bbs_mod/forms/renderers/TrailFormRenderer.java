@@ -60,14 +60,11 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
     protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
         Texture texture = context.render.getTextures().getTexture(this.form.texture.get());
-
         float min = Math.min(texture.width, texture.height);
         int ow = (x2 - x1) - 4;
         int oh = (y2 - y1) - 4;
-
         int w = (int) ((texture.width / min) * ow);
         int h = (int) ((texture.height / min) * ow);
-
         int x = x1 + (ow - w) / 2 + 2;
         int y = y1 + (oh - h) / 2 + 2;
 
@@ -88,16 +85,12 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         {
             MatrixStack stack = context.stack;
             float scale = BBSSettings.axesScale.get();
-            float axisSize = 1F;
-            float axisOffset = 0.01F;
+            float axisOffset = 0.01F * scale;
             float outlineSize = 1.01F;
-            float outlineOffset = 0.02F;
+            float outlineOffset = 0.02F * scale;
 
-            axisOffset *= scale;
-            outlineOffset *= scale;
-
-            BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
+            Tessellator tessellator = Tessellator.getInstance();
+            BufferBuilder builder = tessellator.getBuffer();
             builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
             Draw.fillBox(builder, stack, -outlineOffset, -outlineSize, -outlineOffset, outlineOffset, outlineSize, outlineOffset, 0, 0, 0);
@@ -105,8 +98,8 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
 
             RenderSystem.setShader(GameRenderer::getPositionColorProgram);
             RenderSystem.disableDepthTest();
-
             BufferRenderer.drawWithGlobalProgram(builder.end());
+            RenderSystem.enableDepthTest();
 
             return;
         }
@@ -117,37 +110,27 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         }
 
         MatrixStack stack = context.stack;
-        Matrix4f camInverse = new Matrix4f(RenderSystem.getInverseViewRotationMatrix());
-
         Camera camera = context.camera;
         double baseX = camera.position.x;
         double baseY = camera.position.y;
         double baseZ = camera.position.z;
-
         float current = (float) this.tick + context.transition;
         ArrayDeque<Trail> trails = this.record.computeIfAbsent(context.type, (k) -> new ArrayDeque<>());
 
         if (!this.form.paused.get())
         {
-            Matrix4f modelView = stack.peek().getPositionMatrix();
+            Matrix4f modelPosMatrix = new Matrix4f(stack.peek().getPositionMatrix());
+            Vector4f topVec = new Vector4f(0F, 1F, 0F, 1F);
+            Vector4f bottomVec = new Vector4f(0F, -1F, 0F, 1F);
 
-            Vector4f top = new Vector4f(0F, 1F, 0F, 1F);
-            Vector4f bottom = new Vector4f(0F, -1F, 0F, 1F);
-
-            modelView.transform(top);
-            modelView.transform(bottom);
-            camInverse.transform(top);
-            camInverse.transform(bottom);
-
-            top.mul(1F / top.w);
-            bottom.mul(1F / bottom.w);
+            modelPosMatrix.transform(topVec);
+            modelPosMatrix.transform(bottomVec);
 
             Trail record = new Trail();
-
             record.tick = current;
-            record.top = new Vector3d(top.x + baseX, top.y + baseY, top.z + baseZ);
-            record.bottom = new Vector3d(bottom.x + baseX, bottom.y + baseY, bottom.z + baseZ);
-            record.stop = new Vector3f(top.x - bottom.x, top.y - bottom.y, top.z - bottom.z).lengthSquared() < 1.0E-4D;
+            record.top = new Vector3d(topVec.x + baseX, topVec.y + baseY, topVec.z + baseZ);
+            record.bottom = new Vector3d(bottomVec.x + baseX, bottomVec.y + baseY, bottomVec.z + baseZ);
+            record.stop = new Vector3f((float) (topVec.x - bottomVec.x), (float) (topVec.y - bottomVec.y), (float) (topVec.z - bottomVec.z)).lengthSquared() < 1.0E-4D;
 
             trails.addLast(record);
         }
@@ -156,7 +139,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         float length = this.form.length.get();
         float end = current - length;
         Iterator<Trail> it = trails.iterator();
-        boolean render = false;
+        boolean hasSomethingToRender = false;
         boolean lastStop = true;
 
         while (it.hasNext())
@@ -169,12 +152,12 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             }
             else
             {
-                render |= !trail.stop && !lastStop;
+                hasSomethingToRender |= !trail.stop && !lastStop;
                 lastStop = trail.stop;
             }
         }
 
-        if (!render || trails.size() <= 1 || !(length > 0.001D))
+        if (!hasSomethingToRender || trails.size() <= 1 || !(length > 0.001D))
         {
             return;
         }
@@ -467,9 +450,9 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
 
     public static class Trail
     {
-        public float tick;
         public Vector3d top;
         public Vector3d bottom;
+        public float tick;
         public boolean stop;
     }
 }

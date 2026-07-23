@@ -1,16 +1,13 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
-import mchorse.bbs_mod.mixin.client.sodium.SodiumBufferBuilderAccessor;
 import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexFormat;
 
 import org.lwjgl.system.MemoryStack;
 
-import net.caffeinemc.mods.sodium.api.vertex.buffer.VertexBufferWriter;
-import net.caffeinemc.mods.sodium.api.vertex.format.VertexFormatDescription;
-
-public class RecolorVertexSodiumConsumer extends RecolorVertexConsumer implements VertexBufferWriter
+public class RecolorVertexSodiumConsumer extends RecolorVertexConsumer
 {
     public RecolorVertexSodiumConsumer(VertexConsumer consumer, Color color)
     {
@@ -20,17 +17,5 @@ public class RecolorVertexSodiumConsumer extends RecolorVertexConsumer implement
     public RecolorVertexSodiumConsumer(VertexConsumer consumer, Color color, Color paintColor)
     {
         super(consumer, color, paintColor);
-
-        newColor = color;
-        newPaintColor = paintColor != null && paintColor.a != 0F ? paintColor : null;
-    }
-
-    @Override
-    public void push(MemoryStack memoryStack, long l, int i, VertexFormatDescription vertexFormatDescription)
-    {
-        if (this.consumer instanceof SodiumBufferBuilderAccessor accessor)
-        {
-            accessor.bbs$getBuilder().push(memoryStack, l, i, vertexFormatDescription);
-        }
     }
 }

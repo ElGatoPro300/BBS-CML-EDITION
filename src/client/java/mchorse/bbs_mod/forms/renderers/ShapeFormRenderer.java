@@ -31,6 +31,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -82,7 +83,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.translate((x2 + x1) / 2, (y2 + y1) / 2, 40);
         MatrixStackUtils.scaleStack(stack, scale, scale, scale);
 
-        // Simple rotation for UI preview
+        /* Simple rotation for UI preview */
         stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(context.getTransition() * 2));
         stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(20));
 
@@ -91,9 +92,11 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        RenderSystem.setupLevelDiffuseLighting(light0, light1, new Matrix4f());
+        RenderSystem.setupGui3DDiffuseLighting(light0, light1);
 
         this.renderShape(stack, GameRenderer::getRenderTypeEntityTranslucentProgram, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, null);
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
     }
@@ -230,7 +233,6 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         // Transform
         stack.push();
         stack.scale(this.form.sizeX.get(), this.form.sizeY.get(), this.form.sizeZ.get());
-
 
         ShapeForm.ShapeType type = this.form.type.get();
         boolean opacityPatch = ShaderOpacityPatch.isActive();
