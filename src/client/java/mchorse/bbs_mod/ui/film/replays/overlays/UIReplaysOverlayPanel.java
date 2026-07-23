@@ -38,9 +38,9 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 
-import org.lwjgl.glfw.GLFW;
-
 import com.mojang.logging.LogUtils;
+
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;

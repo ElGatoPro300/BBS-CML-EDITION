@@ -14,13 +14,13 @@ import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.base.BaseKeyframeFactoryValue;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
+import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -29,6 +29,7 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+import mchorse.bbs_mod.utils.keyframes.factories.ColorKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Pose;
@@ -1135,7 +1136,7 @@ public class FormProperties extends ValueGroup
             modernMap.putInt("color", modern.getARGBColor());
         }
 
-        modernMap.putFloat(mchorse.bbs_mod.utils.keyframes.factories.ColorKeyframeFactory.BLEND_A, modern.a);
+        modernMap.putFloat(ColorKeyframeFactory.BLEND_A, modern.a);
         keyframeMap.put("value_bbs", modernMap);
         keyframeMap.put("value", new IntType(Colors.setA(modern.getRGBColor(), opacityA)));
     }
@@ -1197,7 +1198,7 @@ public class FormProperties extends ValueGroup
 
     private void stripUnsafeKeyframeTypes(MapType data)
     {
-        java.util.ArrayList<String> remove = new java.util.ArrayList<>();
+        ArrayList<String> remove = new ArrayList<>();
 
         for (String key : data.keys())
         {

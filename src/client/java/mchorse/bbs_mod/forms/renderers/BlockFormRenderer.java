@@ -415,7 +415,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         if (translucent)
         {
-            savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+            savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
             RenderSystem.depthMask(false);
         }
 

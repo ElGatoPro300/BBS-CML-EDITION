@@ -6,9 +6,13 @@ import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.iris.FormColorGradePatch;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
@@ -24,6 +28,7 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
@@ -122,7 +127,7 @@ public class ModelVAORenderer
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
     private static NativeImageBackedTexture whiteTexture;
     /* Scene color copy for ColorGradeOverlay (Iris-lit pixels → FormColorGrade). */
-    private static mchorse.bbs_mod.graphics.texture.Texture gradeSceneColor;
+    private static Texture gradeSceneColor;
 
     /* Saved GL state for the paint overlay pass (restored in endPaintOverlayPass). */
     private static int savedDepthFunc;
@@ -640,7 +645,7 @@ public class ModelVAORenderer
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         /* Flat / extruded / billboard overlays need a large units bias — factor alone is not
          * enough for near-zero depth slope at distance (see FlatPaintOverlayPass). */
-        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+        GL11.glPolygonOffset(FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
     }
 
     /**
@@ -715,10 +720,10 @@ public class ModelVAORenderer
 
         RenderSystem.enableBlend();
         RenderSystem.blendFuncSeparate(
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.DST_COLOR,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ZERO,
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.DST_ALPHA,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ZERO
+            GlStateManager.SrcFactor.DST_COLOR,
+            GlStateManager.DstFactor.ZERO,
+            GlStateManager.SrcFactor.DST_ALPHA,
+            GlStateManager.DstFactor.ZERO
         );
 
         RenderSystem.enableDepthTest();
@@ -726,7 +731,7 @@ public class ModelVAORenderer
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+        GL11.glPolygonOffset(FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
     }
 
     /**
@@ -758,7 +763,7 @@ public class ModelVAORenderer
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+        GL11.glPolygonOffset(FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
     }
 
     public static void endColorGradeOverlayPass()
@@ -816,7 +821,7 @@ public class ModelVAORenderer
 
         if (gradeSceneColor == null)
         {
-            gradeSceneColor = new mchorse.bbs_mod.graphics.texture.Texture();
+            gradeSceneColor = new Texture();
             gradeSceneColor.setFilter(GL11.GL_NEAREST);
         }
 
@@ -910,10 +915,10 @@ public class ModelVAORenderer
 
         RenderSystem.enableBlend();
         RenderSystem.blendFuncSeparate(
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.SRC_ALPHA,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA,
-            com.mojang.blaze3d.platform.GlStateManager.SrcFactor.ONE,
-            com.mojang.blaze3d.platform.GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA
+            GlStateManager.SrcFactor.SRC_ALPHA,
+            GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA,
+            GlStateManager.SrcFactor.ONE,
+            GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA
         );
 
         if (depthTest)
@@ -1417,7 +1422,7 @@ public class ModelVAORenderer
         formColorGradeContrast = contrast;
         formColorGradeHue = hue;
         formColorGradeSaturation = saturation;
-        mchorse.bbs_mod.utils.iris.FormColorGradePatch.set(brightness, contrast, hue, saturation);
+        FormColorGradePatch.set(brightness, contrast, hue, saturation);
     }
 
     private static void applyGradeEffectTransforms(EffectTransform brightness, EffectTransform contrast, EffectTransform hue, EffectTransform saturation)
@@ -1480,7 +1485,7 @@ public class ModelVAORenderer
         formColorGradeSaturation = 0F;
         clearBaseGradeEffectTransforms();
         clearGradeEffectTransforms();
-        mchorse.bbs_mod.utils.iris.FormColorGradePatch.clear();
+        FormColorGradePatch.clear();
     }
 
     public static void clearColorEffectTransform()
@@ -1521,8 +1526,8 @@ public class ModelVAORenderer
 
         RenderSystem.setShader(() -> shader);
         shader.bind();
-        mchorse.bbs_mod.utils.iris.ShaderOpacityPatch.reassertPostDeferredDepthState();
-        mchorse.bbs_mod.utils.iris.FormColorGradePatch.uploadToCurrentProgram();
+        ShaderOpacityPatch.reassertPostDeferredDepthState();
+        FormColorGradePatch.uploadToCurrentProgram();
         modelVAO.render(shader.getFormat(), r, g, b, a, light, overlay);
         shader.unbind();
 

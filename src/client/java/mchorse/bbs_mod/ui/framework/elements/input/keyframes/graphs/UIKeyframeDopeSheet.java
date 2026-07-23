@@ -45,9 +45,9 @@ import net.minecraft.client.util.BufferAllocator;
 
 import org.joml.Matrix4f;
 
-import org.lwjgl.glfw.GLFW;
-
 import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.HashSet;

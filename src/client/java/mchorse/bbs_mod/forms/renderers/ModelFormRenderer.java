@@ -40,8 +40,6 @@ import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
-import mchorse.bbs_mod.utils.iris.FormColorGradePatch;
-import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
@@ -53,6 +51,8 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Lerps;
+import mchorse.bbs_mod.utils.iris.FormColorGradePatch;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
@@ -544,7 +544,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             DiffuseLighting.disableGuiDepthLighting();
             RenderSystem.depthFunc(GL11.GL_ALWAYS);
-            mchorse.bbs_mod.client.BBSRendering.restoreGuiRenderState();
+            BBSRendering.restoreGuiRenderState();
         }
         else
         {
@@ -1176,7 +1176,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                     if (forceDepth || suppressDepth)
                     {
-                        savedDepthMask = org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+                        savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
                         RenderSystem.enableDepthTest();
 
                         if (forceDepth)
