@@ -936,6 +936,14 @@ public class UIKeys
     public static final IKey FILM_REPLAY_TRACK_FALL = L10n.lang("bbs.ui.film.replay.track.fall");
     public static final IKey FILM_REPLAY_TRACK_SNEAKING = L10n.lang("bbs.ui.film.replay.track.sneaking");
     public static final IKey FILM_REPLAY_TRACK_SPRINTING = L10n.lang("bbs.ui.film.replay.track.sprinting");
+    public static final IKey FILM_REPLAY_TRACK_SWIMMING = L10n.lang("bbs.ui.film.replay.track.swimming");
+    public static final IKey FILM_REPLAY_TRACK_FLYING = L10n.lang("bbs.ui.film.replay.track.flying");
+    public static final IKey FILM_REPLAY_TRACK_FALL_FLYING = L10n.lang("bbs.ui.film.replay.track.fall_flying");
+    public static final IKey FILM_REPLAY_TRACK_CRAWLING = L10n.lang("bbs.ui.film.replay.track.crawling");
+    public static final IKey FILM_REPLAY_TRACK_CLIMBING = L10n.lang("bbs.ui.film.replay.track.climbing");
+    public static final IKey FILM_REPLAY_TRACK_BLOCKING = L10n.lang("bbs.ui.film.replay.track.blocking");
+    public static final IKey FILM_REPLAY_TRACK_SLEEPING = L10n.lang("bbs.ui.film.replay.track.sleeping");
+    public static final IKey FILM_REPLAY_TRACK_RIPTIDE = L10n.lang("bbs.ui.film.replay.track.riptide");
     public static final IKey FILM_REPLAY_TRACK_ITEM_MAIN_HAND = L10n.lang("bbs.ui.film.replay.track.item_main_hand");
     public static final IKey FILM_REPLAY_TRACK_ITEM_OFF_HAND = L10n.lang("bbs.ui.film.replay.track.item_off_hand");
     public static final IKey FILM_REPLAY_TRACK_ITEM_HEAD = L10n.lang("bbs.ui.film.replay.track.item_head");

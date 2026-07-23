@@ -5,6 +5,7 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.MorphFireRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
+import net.minecraft.entity.EntityPose;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -1703,6 +1704,14 @@ public abstract class BaseFilmController
                             double z = replay.keyframes.z.interpolate(replayTick);
                             boolean sneaking = replay.keyframes.sneaking.interpolate(replayTick) > 0;
                             boolean sprinting = replay.keyframes.sprinting.interpolate(replayTick) > 0;
+                            boolean swimming = replay.keyframes.swimming.interpolate(replayTick) > 0;
+                            boolean flying = replay.keyframes.flying.interpolate(replayTick) > 0;
+                            boolean fallFlying = replay.keyframes.fallFlying.interpolate(replayTick) > 0;
+                            boolean crawling = replay.keyframes.crawling.interpolate(replayTick) > 0;
+                            boolean climbing = replay.keyframes.climbing.interpolate(replayTick) > 0;
+                            boolean blocking = replay.keyframes.blocking.interpolate(replayTick) > 0;
+                            boolean sleeping = replay.keyframes.sleeping.interpolate(replayTick) > 0;
+                            boolean riptide = replay.keyframes.riptide.interpolate(replayTick) > 0;
                             boolean grounded = replay.keyframes.grounded.interpolate(replayTick) > 0;
 
                             Vec3d pos = player.getPos();
@@ -1717,6 +1726,25 @@ public abstract class BaseFilmController
 
                             player.setSneaking(sneaking);
                             player.setSprinting(sprinting);
+                            player.setSwimming(swimming);
+                            player.getAbilities().flying = flying;
+                            player.setFlag(7, fallFlying);
+                            player.setFlag(4, riptide);
+
+                            if (crawling)
+                            {
+                                player.setPose(EntityPose.SWIMMING);
+                            }
+                            else if (sleeping)
+                            {
+                                player.setPose(EntityPose.SLEEPING);
+                            }
+
+                            if (blocking)
+                            {
+                                player.setLivingFlag(1, true);
+                            }
+
                             player.setOnGround(grounded);
 
                             if (player instanceof ClientPlayerEntityAccessor accessor)
