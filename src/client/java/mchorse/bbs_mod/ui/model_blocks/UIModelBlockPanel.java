@@ -2179,59 +2179,6 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                         border);
             }
         }
-
-        if (BBSRendering.isIrisShadersEnabled() && this.hasGizmo && this.modelBlock != null && !this.isEditing(this.modelBlock))
-        {
-            MinecraftClient mc = MinecraftClient.getInstance();
-            int previousFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-            int[] previousViewport = new int[4];
-
-            GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
-
-            this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
-
-            Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
-            int w = mc.getWindow().getWidth();
-            int h = mc.getWindow().getHeight();
-
-            if (texture.width != w || texture.height != h) {
-                this.gizmoStencil.resize(w, h);
-            }
-
-            this.gizmoStencilMap.setup();
-            this.gizmoStencil.apply();
-
-            MatrixStack stencilStack = new MatrixStack();
-            stencilStack.push();
-            stencilStack.peek().getPositionMatrix().set(this.gizmoWorldMatrix);
-            stencilStack.peek().getNormalMatrix().identity();
-
-            Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-            RenderSystem.setProjectionMatrix(this.gizmoProjection, VertexSorter.BY_Z);
-
-            MatrixStack mvStack = RenderSystem.getModelViewStack();
-            mvStack.push();
-            mvStack.peek().getPositionMatrix().identity();
-            mvStack.peek().getNormalMatrix().identity();
-            RenderSystem.applyModelViewMatrix();
-
-            Gizmo.INSTANCE.renderStencil(stencilStack, this.gizmoStencilMap);
-
-            mvStack.pop();
-            RenderSystem.applyModelViewMatrix();
-
-            RenderSystem.setProjectionMatrix(prevProjection, VertexSorter.BY_Z);
-
-            int mouseX = (int) mc.mouse.getX();
-            int mouseY = (int) mc.mouse.getY();
-
-            this.gizmoStencil.pick(mouseX, h - mouseY);
-            this.gizmoStencil.unbind(this.gizmoStencilMap);
-            this.gizmoController.updateHover();
-
-            GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
-            GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
-        }
     }
 
     @Override

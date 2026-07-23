@@ -6,6 +6,7 @@ import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.MorphFireRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.film.replays.Replay;
+import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -150,9 +151,25 @@ public abstract class BaseFilmController
 
         if (relative)
         {
-            cx = context.replay.keyframes.x.interpolate(0F) + context.replay.relativeOffset.get().x;
-            cy = context.replay.keyframes.y.interpolate(0F) + context.replay.relativeOffset.get().y;
-            cz = context.replay.keyframes.z.interpolate(0F) + context.replay.relativeOffset.get().z;
+            if (context.map != null)
+            {
+                cx = context.replay.keyframes.x.interpolate(0F) + context.replay.relativeOffset.get().x;
+                cy = context.replay.keyframes.y.interpolate(0F) + context.replay.relativeOffset.get().y;
+                cz = context.replay.keyframes.z.interpolate(0F) + context.replay.relativeOffset.get().z;
+            }
+            else
+            {
+                cx = position.x + context.replay.relativeOffset.get().x;
+                cy = position.y + context.replay.relativeOffset.get().y;
+                cz = position.z + context.replay.relativeOffset.get().z;
+            }
+
+            if (context.isShadowPass)
+            {
+                cx += camera.getPos().x;
+                cy += camera.getPos().y;
+                cz += camera.getPos().z;
+            }
         }
 
         Matrix4f target = null;
@@ -217,6 +234,10 @@ public abstract class BaseFilmController
             .color(context.color)
             .renderDepthFrame(context.renderDepthFrame);
 
+        formContext.relative = relative;
+        formContext.isShadowPass = context.isShadowPass;
+        formContext.viewMatrix = context.viewMatrix;
+
         stack.push();
 
         try
@@ -246,6 +267,8 @@ public abstract class BaseFilmController
                     return;
                 }
 
+                /* Form Opacity is applied once in the form renderer (applyFormOpacity). Do not
+                 * multiply it here or caster alpha becomes opacity² and ground shadows fade too fast. */
                 if (form.getFormOpacity() <= 0.001F)
                 {
                     return;
@@ -258,6 +281,8 @@ public abstract class BaseFilmController
                     return;
                 }
 
+                /* Replay shadowOpacity only — Color-track effects must not crush caster alpha
+                 * (Iris would drop the ground shadow). Opacity 0 already returned above. */
                 formContext.color(Colors.setA(formContext.color, MathUtils.clamp(shadowAlpha, 0F, 1F)));
 
                 if (context.shadowOffsetX != 0F || context.shadowOffsetY != 0F || context.shadowOffsetZ != 0F)
@@ -265,6 +290,7 @@ public abstract class BaseFilmController
                     stack.translate(context.shadowOffsetX, context.shadowOffsetY, context.shadowOffsetZ);
                 }
 
+                /* Independent X/Z scale from default radius 0.5 — stretch wide or long under Iris. */
                 float scaleX = Math.max(0.001F, context.shadowRadiusX / 0.5F);
                 float scaleZ = Math.max(0.001F, context.shadowRadiusZ / 0.5F);
 
@@ -357,12 +383,12 @@ public abstract class BaseFilmController
             }
         }
 
-        if (!relative && !context.nameTag.isEmpty() && context.map == null)
+        if (!relative && !context.nameTag.isEmpty())
         {
             stack.push();
             stack.translate(position.x - cx, position.y - cy, position.z - cz);
 
-            renderNameTag(entity, Text.literal(StringUtils.processColoredText(context.nameTag)), stack, context.consumers, light);
+            renderNameTag(entity, Text.literal(StringUtils.processColoredText(context.nameTag)), stack, context.consumers, LightmapTextureManager.MAX_LIGHT_COORDINATE);
 
             stack.pop();
         }
@@ -1428,7 +1454,7 @@ public abstract class BaseFilmController
         matrices.push();
         matrices.translate(0F, hitboxH, 0F);
         matrices.multiply(MinecraftClient.getInstance().getEntityRenderDispatcher().getRotation());
-        matrices.scale(-0.025F, -0.025F, 0.025F);
+        matrices.scale(0.025F, -0.025F, 0.025F);
 
         Matrix4f matrix4f = matrices.peek().getPositionMatrix();
         TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
@@ -1437,12 +1463,29 @@ public abstract class BaseFilmController
         int background = (int) (opacity * 255F) << 24;
         float h = (float) (-textRenderer.getWidth(text) / 2);
 
-        textRenderer.draw(text, h, 0, 0x20ffffff, false, matrix4f, vertexConsumers, sneaking ? TextRenderer.TextLayerType.SEE_THROUGH : TextRenderer.TextLayerType.NORMAL, background, light);
+        int maxLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
-        if (sneaking)
-        {
-            textRenderer.draw(text, h, 0, -1, false, matrix4f, vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-        }
+            RenderSystem.enableBlend();
+            RenderSystem.disableCull();
+
+            CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
+
+            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+            {
+                RenderSystem.disableDepthTest();
+            });
+
+            textRenderer.draw(text, h, 0, 0x00FFFFFF, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, background, maxLight);
+            consumers.draw();
+
+            textRenderer.draw(text, h, 0, -1, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, 0, maxLight);
+            consumers.draw();
+
+            CustomVertexConsumerProvider.clearRunnables();
+            RenderSystem.enableDepthTest();
+
+            RenderSystem.enableCull();
+            RenderSystem.disableBlend();
 
         matrices.pop();
     }
@@ -2209,18 +2252,6 @@ public abstract class BaseFilmController
 
             filmContext.transition = getTransition(entity, context.tickDelta());
             filmContext.renderDepthFrame(renderDepthFrame);
-
-            Form sourceForm = FormRenderDepth.getSourceForm(renderDepthFrame.sourceRootForm, replay.form.get());
-            double distanceSq = FormRenderDepth.getEntityDistanceSq(entity, filmContext.camera, filmContext.transition);
-            float renderDepthFade = FormRenderDepth.getFade(replay.form.get(), sourceForm, distanceSq, renderDepthFrame.occluders);
-
-            if (renderDepthFade < 1F)
-            {
-                int color = filmContext.color;
-                int alpha = Math.round(((color >>> 24) & 0xFF) * renderDepthFade);
-
-                filmContext.color((alpha << 24) | (color & Colors.RGB));
-            }
 
             filmContext.stack.push();
 

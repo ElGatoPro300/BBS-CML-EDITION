@@ -20,6 +20,8 @@ import org.joml.Matrix4f;
 
 import io.netty.util.collection.IntObjectMap;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
 public class FilmControllerContext
 {
     public final static FilmControllerContext instance = new FilmControllerContext();
@@ -46,7 +48,6 @@ public class FilmControllerContext
     /* Tick (with sub-tick transition) at which the replay's form properties were applied
      * this frame; NaN when the render path doesn't know it (illusion delay needs it) */
     public float propertyTick = Float.NaN;
-    public boolean isShadowPass;
 
     /* Film timeline tick used to restore other replays' form properties after temporary sampling */
     public int filmTick = -1;
@@ -61,6 +62,7 @@ public class FilmControllerContext
 
     public String nameTag = "";
     public boolean relative;
+    public boolean isShadowPass;
     public Matrix4f localGroupTransform;
     public Matrix4f viewMatrix;
     public PaintSettings groupPaint;
@@ -74,7 +76,6 @@ public class FilmControllerContext
     {
         this.film = null;
         this.propertyTick = Float.NaN;
-        this.isShadowPass = false;
         this.filmTick = -1;
         this.map = null;
         this.shadowRadius = 0F;
@@ -93,6 +94,7 @@ public class FilmControllerContext
         this.orientation2 = TransformOrientation.PARENT;
         this.nameTag = "";
         this.relative = false;
+        this.isShadowPass = false;
         this.localGroupTransform = null;
         this.viewMatrix = null;
         this.groupPaint = null;
@@ -109,6 +111,11 @@ public class FilmControllerContext
         this.replay = replay;
         this.camera = context.camera();
         this.stack = context.matrixStack();
+        if (this.stack == null)
+        {
+            this.stack = new MatrixStack();
+            MatrixStackUtils.multiply(this.stack, RenderSystem.getModelViewMatrix());
+        }
         this.consumers = context.consumers();
         this.transition = context.tickDelta();
 
@@ -161,6 +168,13 @@ public class FilmControllerContext
     public FilmControllerContext stencil(StencilMap map)
     {
         this.map = map;
+
+        return this;
+    }
+
+    public FilmControllerContext viewMatrix(Matrix4f viewMatrix)
+    {
+        this.viewMatrix = viewMatrix;
 
         return this;
     }
@@ -269,6 +283,7 @@ public class FilmControllerContext
 
         return this;
     }
+
     public FilmControllerContext renderDepthFrame(FormRenderDepth.Frame renderDepthFrame)
     {
         this.renderDepthFrame = renderDepthFrame;
@@ -279,13 +294,6 @@ public class FilmControllerContext
     public FilmControllerContext isShadowPass(boolean isShadowPass)
     {
         this.isShadowPass = isShadowPass;
-
-        return this;
-    }
-
-    public FilmControllerContext viewMatrix(Matrix4f viewMatrix)
-    {
-        this.viewMatrix = viewMatrix;
 
         return this;
     }

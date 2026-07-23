@@ -541,6 +541,7 @@ public class BBSModClient implements ClientModInitializer
                 panel.fillData();
             }
         });
+
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
 
@@ -669,7 +670,6 @@ public class BBSModClient implements ClientModInitializer
 
                     RenderSystem.enableDepthTest();
                     BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
                     builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
                     float fov = MinecraftClient.getInstance().options.getFov().getValue();
@@ -685,7 +685,16 @@ public class BBSModClient implements ClientModInitializer
 
                     RenderSystem.setShader(GameRenderer::getPositionColorProgram);
 
+                    MatrixStack mvStack = RenderSystem.getModelViewStack();
+                    mvStack.push();
+                    mvStack.loadIdentity();
+                    RenderSystem.applyModelViewMatrix();
+
                     BufferRenderer.drawWithGlobalProgram(builder.end());
+
+                    mvStack.pop();
+                    RenderSystem.applyModelViewMatrix();
+
                     RenderSystem.disableDepthTest();
 
                     stack.pop();

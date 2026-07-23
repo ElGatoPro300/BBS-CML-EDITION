@@ -312,9 +312,19 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
             modelMatrix.getScale(scale);
 
+            if (invertY)
+            {
+                scale.y = -scale.y;
+            }
+
             modelMatrix.m00(1).m01(0).m02(0);
             modelMatrix.m10(0).m11(1).m12(0);
             modelMatrix.m20(0).m21(0).m22(1);
+
+            if (camera != null && !modelRenderer)
+            {
+                modelMatrix.mul(camera.view);
+            }
 
             modelMatrix.scale(scale);
 
@@ -329,15 +339,18 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         }
 
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-
-        gameRenderer.getLightmapTextureManager().enable();
-        gameRenderer.getOverlayTexture().setupOverlayColor();
+        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
+        {
+            gameRenderer.getLightmapTextureManager().enable();
+            gameRenderer.getOverlayTexture().setupOverlayColor();
+        }
 
         this.bindFormTexture(texture);
         RenderSystem.setShader(shader);
 
         texture.bind();
         texture.setFilterMipmap(this.form.linear.get(), this.form.mipmap.get());
+
         RenderSystem.disableCull();
 
         /* Under Iris, billboards must defer to a BBS redraw — live entity_translucent often
@@ -620,9 +633,11 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         RenderSystem.enableCull();
 
         texture.setFilterMipmap(false, false);
-
-        gameRenderer.getLightmapTextureManager().disable();
-        gameRenderer.getOverlayTexture().teardownOverlayColor();
+        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
+        {
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
+        }
     }
 
     private void drawBillboardFaces(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, Color color, Quad drawQuad, Quad drawUvQuad, int overlay, int light, boolean linear, boolean mipmap, boolean singleSided)

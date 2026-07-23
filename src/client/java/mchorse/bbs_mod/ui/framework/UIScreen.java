@@ -56,6 +56,8 @@ public class UIScreen extends Screen implements IFileDropListener
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
+        this.client = mc;
+
         this.menu = menu;
         this.context = new UIRenderingContext(new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers()));
 

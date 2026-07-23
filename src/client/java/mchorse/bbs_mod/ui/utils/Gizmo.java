@@ -1009,9 +1009,8 @@ public class Gizmo
         RenderSystem.depthMask(false);
 
         MatrixStack mvStack = RenderSystem.getModelViewStack();
-        boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.push();
             mvStack.peek().getPositionMatrix().identity();
@@ -1021,7 +1020,7 @@ public class Gizmo
 
         this.drawBufferIfNotEmpty(builder);
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.pop();
             RenderSystem.applyModelViewMatrix();
@@ -1063,9 +1062,8 @@ public class Gizmo
         RenderSystem.depthMask(false);
 
         MatrixStack mvStack = RenderSystem.getModelViewStack();
-        boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.push();
             mvStack.peek().getPositionMatrix().identity();
@@ -1075,7 +1073,7 @@ public class Gizmo
 
         this.drawBufferIfNotEmpty(builder);
 
-        if (resetModelView)
+        if (BBSRendering.isIrisShadersEnabled())
         {
             mvStack.pop();
             RenderSystem.applyModelViewMatrix();

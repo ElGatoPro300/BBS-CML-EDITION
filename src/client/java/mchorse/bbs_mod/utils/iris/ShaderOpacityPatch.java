@@ -562,24 +562,8 @@ public class ShaderOpacityPatch
                 beganDeferredPass = true;
             }
 
-            try
-            {
-                reassertPostDeferredDepthState(entry.depthWrite);
-                entry.draw.run();
-            }
-            finally
-            {
-                if (entry.irisCamera)
-                {
-                    modelViewStack.pop();
-                    RenderSystem.applyModelViewMatrix();
-                }
-                else
-                {
-                    ModelVAORenderer.endDeferredTranslucentModelPass();
-                    MatrixStackUtils.popModelView();
-                }
-            }
+            reassertPostDeferredDepthState(entry.depthWrite);
+            entry.draw.run();
         }
         finally
         {
