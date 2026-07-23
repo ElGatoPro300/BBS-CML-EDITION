@@ -1543,18 +1543,12 @@ public class ModelVAORenderer
 
         RenderSystem.setShader(shader);
         shader.bind();
-<<<<<<< HEAD
 
         int textureID = RenderSystem.getShaderTexture(0);
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(textureID);
 
         modelVAO.render(VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL, r, g, b, a, light, overlay);
-=======
-        ShaderOpacityPatch.reassertPostDeferredDepthState();
-        FormColorGradePatch.uploadToCurrentProgram();
-        modelVAO.render(shader.getFormat(), r, g, b, a, light, overlay);
->>>>>>> master
         shader.unbind();
 
         GL30.glBindVertexArray(currentVAO);
