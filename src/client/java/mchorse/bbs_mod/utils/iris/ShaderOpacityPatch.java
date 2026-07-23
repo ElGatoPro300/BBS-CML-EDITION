@@ -7,15 +7,7 @@ import mchorse.bbs_mod.mixin.client.iris.IrisRenderingPipelineAccessor;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.minecraft.client.MinecraftClient;
-
-import net.irisshaders.iris.gl.blending.AlphaTest;
-import net.irisshaders.iris.gl.blending.AlphaTestFunction;
-import net.irisshaders.iris.gl.texture.DepthCopyStrategy;
-import net.irisshaders.iris.helpers.OptionalBoolean;
-import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
-import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
-import net.irisshaders.iris.shaderpack.properties.ShaderProperties;
-import net.irisshaders.iris.targets.RenderTargets;
+import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
@@ -23,9 +15,6 @@ import org.joml.Matrix4fStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
-import org.joml.Matrix4f;
-
-import net.minecraft.client.util.math.MatrixStack;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
@@ -36,6 +25,15 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import net.irisshaders.iris.Iris;
+import net.irisshaders.iris.gl.blending.AlphaTest;
+import net.irisshaders.iris.gl.blending.AlphaTestFunction;
+import net.irisshaders.iris.gl.texture.DepthCopyStrategy;
+import net.irisshaders.iris.helpers.OptionalBoolean;
+import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
+import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
+import net.irisshaders.iris.shaderpack.properties.ShaderProperties;
+import net.irisshaders.iris.targets.RenderTargets;
 
 /**
  * Runtime opacity / film render-depth queue (Complementary / BSL patch optional).
@@ -169,7 +167,7 @@ public class ShaderOpacityPatch
 
         try
         {
-            String current = net.irisshaders.iris.Iris.getCurrentPackName();
+            String current = Iris.getCurrentPackName();
 
             return current == null ? "" : current;
         }
@@ -498,7 +496,7 @@ public class ShaderOpacityPatch
             BBSRendering.ensurePaintOverlayTargetFramebuffer();
 
             WorldRenderingPipeline pipeline =
-                net.irisshaders.iris.Iris.getPipelineManager().getPipelineNullable();
+                Iris.getPipelineManager().getPipelineNullable();
 
             if (!(pipeline instanceof IrisRenderingPipeline irisPipeline))
             {
@@ -535,7 +533,7 @@ public class ShaderOpacityPatch
     private static void runEntry(PostDeferredEntry entry)
     {
         Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        Matrix4f savedModelView = new Matrix4f(modelViewStack);
+        Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
         MatrixStack modelViewStack = RenderSystem.getModelViewStack();
         boolean savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         boolean beganDeferredPass = false;
@@ -578,7 +576,7 @@ public class ShaderOpacityPatch
                 }
                 else
                 {
-                    mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer.endDeferredTranslucentModelPass();
+                    ModelVAORenderer.endDeferredTranslucentModelPass();
                     MatrixStackUtils.popModelView();
                 }
             }
