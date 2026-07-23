@@ -162,6 +162,48 @@ public class UIFormColorAdjustments extends UIElement
         this.toggle.setExpanded(this.expanded);
     }
 
+    public boolean isExpanded()
+    {
+        return this.expanded || this.shell.isOpen();
+    }
+
+    public void saveCollapseState(CollapseState state)
+    {
+        if (state == null)
+        {
+            return;
+        }
+
+        state.gradeOpen = this.isExpanded();
+        state.brightnessTransformOpen = this.brightnessTransform.isExpanded();
+        state.contrastTransformOpen = this.contrastTransform.isExpanded();
+        state.saturationTransformOpen = this.saturationTransform.isExpanded();
+        state.hueTransformOpen = this.hueTransform.isExpanded();
+    }
+
+    public void restoreCollapseState(CollapseState state)
+    {
+        if (state == null)
+        {
+            return;
+        }
+
+        this.setExpanded(state.gradeOpen);
+        this.brightnessTransform.setExpanded(state.brightnessTransformOpen);
+        this.contrastTransform.setExpanded(state.contrastTransformOpen);
+        this.saturationTransform.setExpanded(state.saturationTransformOpen);
+        this.hueTransform.setExpanded(state.hueTransformOpen);
+    }
+
+    public static final class CollapseState
+    {
+        public boolean gradeOpen;
+        public boolean brightnessTransformOpen;
+        public boolean contrastTransformOpen;
+        public boolean saturationTransformOpen;
+        public boolean hueTransformOpen;
+    }
+
     private UIEffectTransformCollapse createTransform(Function<Color, EffectTransform> getter, BiConsumer<Color, EffectTransform> assign)
     {
         return new UIEffectTransformCollapse((apply) ->
