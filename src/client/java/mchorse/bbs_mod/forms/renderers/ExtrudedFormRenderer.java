@@ -26,6 +26,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -94,6 +95,10 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         /* Shading fix */
         MatrixStackUtils.invertUiNormalY(stack);
 
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
         this.renderModel(BBSShaders::getModel,
             stack,
@@ -106,6 +111,8 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             null
         );
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
     }
@@ -148,7 +155,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             if (this.form.billboard.get() && (renderContext == null || !renderContext.modelRenderer))
             {
                 Matrix4f modelMatrix = matrices.peek().getPositionMatrix();
-                Vector3f scale = Vectors.TEMP_3F;
+                Vector3f scale = new Vector3f();
 
                 modelMatrix.getScale(scale);
 

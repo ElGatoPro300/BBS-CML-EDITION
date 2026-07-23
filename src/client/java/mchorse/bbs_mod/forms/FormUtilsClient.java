@@ -40,9 +40,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.TexturedRenderLayers;
-import net.minecraft.client.render.model.ModelLoader;
 import net.minecraft.util.Util;
 
 import java.util.Collections;
@@ -85,7 +83,7 @@ public class FormUtilsClient
     {
         if (customVertexConsumerProvider == null)
         {
-            customVertexConsumerProvider = new CustomVertexConsumerProvider(Tessellator.getInstance().getBuffer(), new Object2ObjectLinkedOpenHashMap<>());
+            customVertexConsumerProvider = new CustomVertexConsumerProvider(MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers());
         }
 
         return customVertexConsumerProvider;

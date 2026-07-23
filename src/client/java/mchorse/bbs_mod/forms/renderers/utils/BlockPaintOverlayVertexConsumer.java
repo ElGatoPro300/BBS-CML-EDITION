@@ -47,15 +47,6 @@ public class BlockPaintOverlayVertexConsumer implements VertexConsumer
     }
 
     @Override
-    public void fixedColor(int red, int green, int blue, int alpha)
-    {
-    }
-
-    @Override
-    public void next()
-    {
-    }
-
     public VertexConsumer color(float red, float green, float blue, float alpha)
     {
         float r = MathUtils.clamp(this.paintColor.r * red, 0F, 1F);
@@ -91,8 +82,20 @@ public class BlockPaintOverlayVertexConsumer implements VertexConsumer
     }
 
     @Override
+    public void next()
+    {
+        this.consumer.next();
+    }
+
+    @Override
     public void unfixColor()
     {
         this.consumer.unfixColor();
+    }
+
+    @Override
+    public void fixedColor(int red, int green, int blue, int alpha)
+    {
+        this.consumer.fixedColor(red, green, blue, alpha);
     }
 }

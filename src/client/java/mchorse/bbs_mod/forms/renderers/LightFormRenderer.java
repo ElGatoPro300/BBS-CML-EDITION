@@ -7,9 +7,10 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
+
+import java.util.Map;
 
 public class LightFormRenderer extends FormRenderer<LightForm>
 {
@@ -31,11 +32,7 @@ public class LightFormRenderer extends FormRenderer<LightForm>
 
         if (!stack.isEmpty())
         {
-            NbtCompound nbt = stack.getOrCreateNbt();
-            NbtCompound stateTag = nbt.getCompound("BlockStateTag");
-
-            stateTag.putString("level", Integer.toString(level));
-            nbt.put("BlockStateTag", stateTag);
+            stack.getOrCreateSubNbt("BlockStateTag").putString("level", Integer.toString(level));
         }
 
         if (stack.isEmpty())

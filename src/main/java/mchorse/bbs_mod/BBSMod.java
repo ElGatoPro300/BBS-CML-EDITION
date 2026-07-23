@@ -57,6 +57,7 @@ import mchorse.bbs_mod.camera.clips.screen.GrainClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
 import mchorse.bbs_mod.camera.clips.screen.VignetteClip;
+import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -144,8 +145,11 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.Text;
@@ -158,6 +162,7 @@ import net.minecraft.world.GameRules;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class BBSMod implements ModInitializer
@@ -187,6 +192,25 @@ public class BBSMod implements ModInitializer
     private static FilmManager films;
 
     private static List<Runnable> runnables = new ArrayList<>();
+
+    private static final ThreadLocal<RegistryWrapper.WrapperLookup> registryManager = new ThreadLocal<>();
+
+    public static RegistryWrapper.WrapperLookup getRegistryManager()
+    {
+        return registryManager.get();
+    }
+
+    public static void setRegistryManager(RegistryWrapper.WrapperLookup registryManager)
+    {
+        if (registryManager == null)
+        {
+            BBSMod.registryManager.remove();
+        }
+        else
+        {
+            BBSMod.registryManager.set(registryManager);
+        }
+    }
 
     private static MapFactory<Clip, ClipFactoryData> factoryCameraClips;
     private static MapFactory<Clip, ClipFactoryData> factoryActionClips;
@@ -309,7 +333,6 @@ public class BBSMod implements ModInitializer
     {
         ItemStack stack = new ItemStack(MODEL_BLOCK_ITEM);
         ModelBlockEntity entity = new ModelBlockEntity(BlockPos.ORIGIN, MODEL_BLOCK.getDefaultState());
-        NbtCompound nbt = new NbtCompound();
         BillboardForm form = new BillboardForm();
         ModelProperties properties = entity.getProperties();
 
@@ -318,13 +341,12 @@ public class BBSMod implements ModInitializer
         properties.setForm(form);
         properties.getTransformFirstPerson().translate.set(0F, 0F, -0.25F);
 
-        NbtCompound compound = entity.createNbtWithId();
+        NbtCompound compound = new NbtCompound();
+        compound.putString("id", BlockEntityType.getId(MODEL_BLOCK_ENTITY).toString());
+        DataStorageUtils.writeToNbtCompound(compound, "Properties", properties.toData());
 
-        nbt.put("BlockEntityTag", compound);
-        NbtCompound stateTag = new NbtCompound();
-        stateTag.putInt("light_level", properties.getLightLevel());
-        nbt.put("BlockStateTag", stateTag);
-        stack.setNbt(nbt);
+        stack.setSubNbt("BlockEntityTag", compound);
+        stack.getOrCreateSubNbt("BlockStateTag").putString("light_level", String.valueOf(properties.getLightLevel()));
 
         return stack;
     }
@@ -666,7 +688,10 @@ public class BBSMod implements ModInitializer
             }
         });
 
-        ServerLifecycleEvents.SERVER_STARTED.register((event) -> worldFolder = event.getSavePath(WorldSavePath.ROOT).toFile());
+        ServerLifecycleEvents.SERVER_STARTED.register((event) -> {
+            worldFolder = event.getSavePath(WorldSavePath.ROOT).toFile();
+            setRegistryManager(event.getRegistryManager());
+        });
         ServerPlayConnectionEvents.JOIN.register((a, b, c) -> ServerNetwork.sendHandshake(c, b));
 
         ActionHandler.registerHandlers(actions);
@@ -690,6 +715,7 @@ public class BBSMod implements ModInitializer
         {
             actions.reset();
             ServerNetwork.reset();
+            setRegistryManager(null);
         });
 
         EntityTrackingEvents.START_TRACKING.register((trackedEntity, player) ->

@@ -45,7 +45,7 @@ public class PlayerEntityMixin
     }
 
     @Inject(method = "getDimensions", at = @At("RETURN"), cancellable = true)
-    public void onGetDimensions(CallbackInfoReturnable<EntityDimensions> info)
+    public void onGetDimensions(EntityPose pose, CallbackInfoReturnable<EntityDimensions> info)
     {
         if (this instanceof IMorphProvider provider)
         {
@@ -69,25 +69,4 @@ public class PlayerEntityMixin
         }
     }
 
-    @Inject(method = "getActiveEyeHeight", at = @At("HEAD"), cancellable = true)
-    public void getActiveEyeHeight(CallbackInfoReturnable<Float> info)
-    {
-        if (this instanceof IMorphProvider provider)
-        {
-            Morph morph = provider.getMorph();
-
-            if (morph != null)
-            {
-                Form form = morph.getForm();
-
-                if (form != null && form.hitbox.get())
-                {
-                    PlayerEntity player = (PlayerEntity) (Object) this;
-                    float height = form.hitboxHeight.get() * (player.isSneaking() ? form.hitboxSneakMultiplier.get() : 1F);
-
-                    info.setReturnValue(form.hitboxEyeHeight.get() * height);
-                }
-            }
-        }
-    }
 }

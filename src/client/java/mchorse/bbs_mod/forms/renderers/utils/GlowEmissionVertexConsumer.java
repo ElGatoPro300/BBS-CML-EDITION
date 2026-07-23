@@ -22,15 +22,6 @@ public class GlowEmissionVertexConsumer implements VertexConsumer
     }
 
     @Override
-    public void fixedColor(int red, int green, int blue, int alpha)
-    {
-    }
-
-    @Override
-    public void next()
-    {
-    }
-
     public VertexConsumer vertex(double x, double y, double z)
     {
         return this.consumer.vertex(x, y, z);
@@ -78,8 +69,20 @@ public class GlowEmissionVertexConsumer implements VertexConsumer
     }
 
     @Override
+    public void next()
+    {
+        this.consumer.next();
+    }
+
+    @Override
     public void unfixColor()
     {
         this.consumer.unfixColor();
+    }
+
+    @Override
+    public void fixedColor(int red, int green, int blue, int alpha)
+    {
+        this.consumer.fixedColor(red, green, blue, alpha);
     }
 }

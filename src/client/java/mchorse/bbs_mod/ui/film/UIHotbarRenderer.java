@@ -4,12 +4,15 @@ import mchorse.bbs_mod.camera.clips.misc.HotbarState;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.joml.Vector3f;
 
 import java.util.List;
 import java.util.Random;
@@ -180,6 +183,10 @@ public class UIHotbarRenderer
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
 
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
+        RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+
         for (int i = 0; i < 9; i++)
         {
             ItemStack stackItem = hotbar.items[i];
@@ -204,6 +211,10 @@ public class UIHotbarRenderer
             batcher.getContext().drawItem(hotbar.offhandItem, offhandX, offhandY);
             batcher.getContext().drawItemInSlot(batcher.getFont().getRenderer(), hotbar.offhandItem, offhandX, offhandY);
         }
+
+        batcher.getContext().draw();
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);

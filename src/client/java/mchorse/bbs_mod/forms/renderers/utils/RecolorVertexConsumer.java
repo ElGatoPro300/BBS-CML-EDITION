@@ -4,6 +4,8 @@ import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.render.VertexConsumer;
 
+import org.joml.Matrix4f;
+
 public class RecolorVertexConsumer implements VertexConsumer
 {
     public static Color newColor;
@@ -29,6 +31,12 @@ public class RecolorVertexConsumer implements VertexConsumer
     public VertexConsumer vertex(double x, double y, double z)
     {
         return this.consumer.vertex(x, y, z);
+    }
+
+    @Override
+    public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
+    {
+        return this.consumer.vertex(matrix, x, y, z);
     }
 
     @Override
@@ -80,14 +88,15 @@ public class RecolorVertexConsumer implements VertexConsumer
     }
 
     @Override
+    public void unfixColor()
+    {
+        this.consumer.unfixColor();
+    }
+
+    @Override
     public void fixedColor(int red, int green, int blue, int alpha)
     {
         this.consumer.fixedColor(red, green, blue, alpha);
     }
 
-    @Override
-    public void unfixColor()
-    {
-        this.consumer.unfixColor();
-    }
 }

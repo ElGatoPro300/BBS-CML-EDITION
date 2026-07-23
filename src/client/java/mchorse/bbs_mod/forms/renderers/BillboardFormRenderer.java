@@ -31,6 +31,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -118,6 +119,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         stack.scale(1.5F, 1.5F, 1.5F);
         stack.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+
         VertexFormat format = VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL;
 
         this.renderModel(format, GameRenderer::getRenderTypeEntityTranslucentProgram,
@@ -129,6 +134,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             false,
             null
         );
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
     }
@@ -142,7 +149,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
         VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
         Supplier<ShaderProgram> shader = this.getShader(context,
-            shading ? GameRenderer::getRenderTypeEntityTranslucentProgram : GameRenderer::getPositionTexLightmapColorProgram,
+            shading ? GameRenderer::getRenderTypeEntityTranslucentProgram : GameRenderer::getPositionTexColorProgram,
             shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
         );
 
@@ -234,6 +241,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
             uvQuad.transform(matrix);
         }
+
         this.renderQuad(format, texture, shader, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer, alphaFactor, deferContext, textureLink);
     }
 
@@ -308,7 +316,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         if (this.form.billboard.get() && (deferContext == null || !deferContext.modelRenderer))
         {
             Matrix4f modelMatrix = matrices.peek().getPositionMatrix();
-            Vector3f scale = Vectors.TEMP_3F;
+            Vector3f scale = new Vector3f();
 
             modelMatrix.getScale(scale);
 

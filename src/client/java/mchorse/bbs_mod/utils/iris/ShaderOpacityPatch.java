@@ -522,7 +522,8 @@ public class ShaderOpacityPatch
                     .copy(null, opaqueDepth, null, liveDepth, width, height);
             }
 
-            /* access.bbs$bindDefault() — removed: bindDefault() doesn't exist in Iris 1.7.6 */
+            /* Depth copy may have switched FBOs — return to the visible target. */
+            BBSRendering.ensurePaintOverlayTargetFramebuffer();
         }
         catch (Throwable ignored)
         {

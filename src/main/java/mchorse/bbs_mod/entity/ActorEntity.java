@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.entity;
 
+import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.MCEntity;
@@ -18,7 +19,11 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.packet.s2c.play.ItemPickupAnimationS2CPacket;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Arm;
@@ -373,20 +378,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         return dimensions;
     }
 
-    @Override
-    protected float getActiveEyeHeight(EntityPose pose, EntityDimensions dimensions)
-    {
-        Form currentForm = this.form;
 
-        if (currentForm != null && currentForm.hitbox.get())
-        {
-            float height = currentForm.hitboxHeight.get() * (this.isSneaking() ? currentForm.hitboxSneakMultiplier.get() : 1F);
-
-            return currentForm.hitboxEyeHeight.get() * height;
-        }
-
-        return super.getActiveEyeHeight(pose, dimensions);
-    }
 
         @Override
     public void onDeath(DamageSource damageSource)
@@ -551,6 +543,23 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         super.readCustomDataFromNbt(nbt);
 
         this.despawn = nbt.getBoolean("despawn");
+
+        if (nbt.contains("Equipment", 10))
+        {
+            NbtCompound equipmentNbt = nbt.getCompound("Equipment");
+            RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
+
+            for (EquipmentSlot slot : EquipmentSlot.values())
+            {
+                if (equipmentNbt.contains(slot.getName(), 10))
+                {
+                    NbtCompound itemNbt = equipmentNbt.getCompound(slot.getName());
+                    ItemStack stack = ItemStack.fromNbt(itemNbt);
+
+                    this.equipment.put(slot, stack);
+                }
+            }
+        }
     }
 
     @Override
@@ -559,6 +568,27 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         super.writeCustomDataToNbt(nbt);
 
         nbt.putBoolean("despawn", true);
+
+        NbtCompound equipmentNbt = new NbtCompound();
+        RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
+
+        for (Map.Entry<EquipmentSlot, ItemStack> entry : this.equipment.entrySet())
+        {
+            if (!entry.getValue().isEmpty())
+            {
+                ItemStack stack = entry.getValue();
+                NbtElement itemNbt = registries != null
+                    ? ItemStack.CODEC.encodeStart(RegistryOps.of(NbtOps.INSTANCE, registries), stack).result().orElse(null)
+                    : ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, stack).result().orElse(null);
+
+                if (itemNbt instanceof NbtCompound compound)
+                {
+                    equipmentNbt.put(entry.getKey().getName(), compound);
+                }
+            }
+        }
+
+        nbt.put("Equipment", equipmentNbt);
     }
 
     @Override

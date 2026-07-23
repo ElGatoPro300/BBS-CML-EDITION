@@ -12,6 +12,7 @@ import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
@@ -45,10 +46,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         if (entity instanceof TriggerBlockEntity triggerBlock)
         {
             ItemStack stack = new ItemStack(this);
-            NbtCompound compound = new NbtCompound();
-
-            compound.put("BlockEntityTag", triggerBlock.createNbtWithId());
-            stack.setNbt(compound);
+            stack.setSubNbt("BlockEntityTag", triggerBlock.createNbtWithId());
 
             return stack;
         }
@@ -100,7 +98,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     @Override
     public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit)
     {
-        if (hand == Hand.MAIN_HAND)
+        if (player.getMainHandStack().isEmpty())
         {
             if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer)
             {
