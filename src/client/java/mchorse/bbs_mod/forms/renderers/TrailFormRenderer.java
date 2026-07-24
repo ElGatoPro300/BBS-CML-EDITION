@@ -22,10 +22,9 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.colors.Color;
 
-
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -296,7 +295,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             int paintLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
             int overlay = OverlayTexture.DEFAULT_UV;
 
-            this.buildTrailQuads(paintBuilder, vertexMatrix, trails, loop, length, current, baseX, baseY, baseZ, paintOverlay, paintOverlay, paintTransform);
+            this.buildTrailPaintQuads(paintBuilder, vertexMatrix, trails, loop, length, current, baseX, baseY, baseZ, paintOverlay, overlay, paintLight, paintTransform);
             BufferRenderer.drawWithGlobalProgram(paintBuilder.end());
         });
     }
@@ -325,6 +324,24 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
                 float u2 = loop ? lastTrail.tick / length : (current - lastTrail.tick) / length;
 
                 this.addTrailSegment(builder, matrix, trail, lastTrail, baseX, baseY, baseZ, u1, u2, unblended, blended, colorTransform);
+            }
+
+            lastTrail = trail;
+        }
+    }
+
+    private void buildTrailPaintQuads(BufferBuilder builder, Matrix4f matrix, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Color color, int overlay, int light, EffectTransform paintTransform)
+    {
+        Trail lastTrail = null;
+
+        for (Trail trail : trails)
+        {
+            if (lastTrail != null && !lastTrail.stop && !trail.stop)
+            {
+                float u1 = loop ? trail.tick / length : (current - trail.tick) / length;
+                float u2 = loop ? lastTrail.tick / length : (current - lastTrail.tick) / length;
+
+                this.addTrailPaintSegment(builder, matrix, trail, lastTrail, baseX, baseY, baseZ, u1, u2, color, overlay, light, paintTransform);
             }
 
             lastTrail = trail;

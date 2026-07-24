@@ -570,6 +570,22 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
 
+        if (BBSSettings.irisOpacityFix != null)
+        {
+            BBSSettings.irisOpacityFix.postCallback((v, f) -> IrisUtils.reloadShaders());
+        }
+
+        if (BBSSettings.shaderShadowOpacity != null)
+        {
+            BBSSettings.shaderShadowOpacity.postCallback((v, f) ->
+                ShaderOpacityPatch.syncShadowOpacityDefault());
+        }
+
+        if (BBSSettings.worldGammaPercent != null)
+        {
+            WorldPropertiesHelper.setGammaPercent(BBSSettings.worldGammaPercent.get());
+        }
+
         IValueListener refreshModelHover = (v, f) ->
         {
             if (!UISettingsOverlayPanel.isDeferringLiveSettings())
@@ -947,7 +963,6 @@ public class BBSModClient implements ClientModInitializer
         EntityRendererRegistry.register(BBSMod.ACTOR_ENTITY, (ctx) -> new ActorEntityRenderer(ctx));
         EntityRendererRegistry.register(BBSMod.GUN_PROJECTILE_ENTITY, (ctx) -> new GunProjectileEntityRenderer(ctx));
 
-        /* Block entity renderers */
         BlockEntityRendererFactories.register(BBSMod.MODEL_BLOCK_ENTITY, ModelBlockEntityRenderer::new);
         BlockEntityRendererFactories.register(BBSMod.TRIGGER_BLOCK_ENTITY, TriggerBlockEntityRenderer::new);
 

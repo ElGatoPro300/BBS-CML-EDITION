@@ -20,9 +20,9 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.model.BakedModel;
-import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.world.World;
 
 import com.mojang.blaze3d.systems.RenderSystem;

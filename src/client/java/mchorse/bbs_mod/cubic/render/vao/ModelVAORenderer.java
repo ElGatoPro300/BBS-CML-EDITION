@@ -1543,12 +1543,13 @@ public class ModelVAORenderer
 
         RenderSystem.setShader(shader);
         shader.bind();
-
-        int textureID = RenderSystem.getShaderTexture(0);
-        GlStateManager._activeTexture(GL30.GL_TEXTURE0);
-        GlStateManager._bindTexture(textureID);
-
+        ShaderOpacityPatch.reassertPostDeferredDepthState();
+        FormColorGradePatch.uploadToCurrentProgram();
         modelVAO.render(VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL, r, g, b, a, light, overlay);
+
+        GlStateManager._activeTexture(GL30.GL_TEXTURE0);
+        GlStateManager._bindTexture(RenderSystem.getShaderTexture(0));
+
         shader.unbind();
 
         GL30.glBindVertexArray(currentVAO);
@@ -1656,21 +1657,21 @@ public class ModelVAORenderer
 
         if (formRootInverseUniform != null)
         {
-            shader.fogStart.set(fog.start());
+            formRootInverseUniform.set(overlayFormRootInverse());
         }
 
         GlUniform paintEffectInverseUniform = shader.getUniform("PaintEffectInverse");
 
         if (paintEffectInverseUniform != null)
         {
-            shader.fogEnd.set(fog.end());
+            paintEffectInverseUniform.set(paintEffectInverse);
         }
 
         GlUniform paintEffectActiveUniform = shader.getUniform("PaintEffectActive");
 
         if (paintEffectActiveUniform != null)
         {
-            shader.fogColor.set(fog.red(), fog.green(), fog.blue(), fog.alpha());
+            paintEffectActiveUniform.set(paintEffectActive ? 1F : 0F);
         }
 
         GlUniform paintMaskHalfUniform = shader.getUniform("PaintMaskHalf");
@@ -1835,6 +1836,7 @@ public class ModelVAORenderer
 
         RenderSystem.setupShaderLights(shader);
     }
+
     private static void setModelViewUniform(MatrixStack stack, ShaderProgram shader)
     {
         Matrix4f modelView;

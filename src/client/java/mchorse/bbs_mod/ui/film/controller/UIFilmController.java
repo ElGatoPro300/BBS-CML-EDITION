@@ -1311,6 +1311,7 @@ public class UIFilmController extends UIElement
         }
 
         RenderSystem.enableBlend();
+
         int paletteIndex = altPressed ? this.stencil.getIndex() - Gizmo.STENCIL_HANDLE_MAX - 1 : 0;
         int highlight = altPressed
             ? BBSSettings.modelEditorAltHoverHighlight(paletteIndex)

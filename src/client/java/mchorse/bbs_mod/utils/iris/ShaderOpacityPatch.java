@@ -19,8 +19,8 @@ import net.irisshaders.iris.targets.RenderTargets;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.ProjectionType;
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
 
@@ -559,7 +559,7 @@ public class ShaderOpacityPatch
             else
             {
                 modelViewStack.identity();
-                mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer.beginDeferredTranslucentModelPass(entry.depthWrite, true);
+                ModelVAORenderer.beginDeferredTranslucentModelPass(entry.depthWrite, true);
                 beganDeferredPass = true;
             }
 

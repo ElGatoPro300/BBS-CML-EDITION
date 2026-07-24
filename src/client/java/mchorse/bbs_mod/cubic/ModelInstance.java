@@ -773,21 +773,24 @@ public class ModelInstance implements IModelInstance
             }
             else
             {
-                RenderSystem.setShader(program.get());
+                ShaderProgram shader = program.get();
+                Link texture = defaultTexture != null ? defaultTexture : this.texture;
+                boolean disableCull = this.hasShapeKeys()
+                    && !ModelVAORenderer.isDeferredTranslucentPass()
+                    && !ModelVAORenderer.isPaintOverlayPass();
+
+                RenderSystem.setShader(shader);
 
                 if (texture != null)
                 {
                     BBSModClient.getTextures().bindTexture(texture);
                 }
 
-                boolean disableCull = true;
-
                 if (disableCull)
                 {
                     RenderSystem.disableCull();
                 }
 
-                ShaderProgram shader = program.get();
                 CubicCpuGroupDrawRenderer renderProcessor = new CubicCpuGroupDrawRenderer(light, overlay, stencilMap, keys, shader, texture);
 
                 renderProcessor.setColor(cr, cg, cb, ca);
