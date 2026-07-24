@@ -143,19 +143,55 @@ public final class ModelBlockSolidCollisions
             return;
         }
 
-        appendBoxes(data.localBoxes, matrix, query, collisions);
+        Matrix4f inverse = new Matrix4f(matrix).invert();
+
+        /* Conservative local AABB of the world query — only nearby meshed boxes are transformed. */
+        Box localQuery = transformBox(query, inverse).expand(0.05D);
+
+        data.forEachOverlapping(localQuery, (local) ->
+        {
+            Box worldBox = transformBox(local, matrix);
+
+            if (worldBox.intersects(query) && worldBox.getAverageSideLength() > 1.0E-4D)
+            {
+                collisions.add(VoxelShapes.cuboid(worldBox));
+            }
+        });
     }
 
     private static void appendModelShapes(ModelBlockEntity entity, ModelForm form, Box query, List<VoxelShape> collisions)
     {
         ModelCollisionData data = ModelCollisionData.get(form);
 
-        if (data == null || data.localBoxes.isEmpty())
+        if (data == null || !data.hasCollision())
         {
             return;
         }
 
         Matrix4f matrix = buildModelWorldMatrix(entity, form, data.modelScale);
+
+        if (data.skinnedVertices != null)
+        {
+            Box worldBounds = transformBox(data.localBounds, matrix);
+
+            if (!worldBounds.intersects(query))
+            {
+                return;
+            }
+
+            List<Box> worldSlabs = ModelCollisionData.buildWorldSpaceBobjSlabs(data.skinnedVertices, matrix);
+
+            for (Box worldBox : worldSlabs)
+            {
+                if (worldBox.intersects(query) && worldBox.getAverageSideLength() > 1.0E-4D)
+                {
+                    collisions.add(VoxelShapes.cuboid(worldBox));
+                }
+            }
+
+            return;
+        }
+
         Box worldBounds = transformBox(data.localBounds, matrix);
 
         if (!worldBounds.intersects(query))
@@ -354,22 +390,66 @@ public final class ModelBlockSolidCollisions
                 return false;
             }
 
-            localBoxes = data.localBoxes;
-            localBounds = data.localBounds;
             matrix = buildStructureWorldMatrix(entity, structure);
+            Box worldBounds = transformBox(data.localBounds, matrix);
+
+            if (!worldBounds.intersects(probe))
+            {
+                return false;
+            }
+
+            Matrix4f inverse = new Matrix4f(matrix).invert();
+            Box localQuery = transformBox(probe, inverse).expand(0.05D);
+            boolean[] found = new boolean[1];
+
+            data.forEachOverlapping(localQuery, (local) ->
+            {
+                if (found[0])
+                {
+                    return;
+                }
+
+                if (isClimbableWorldBox(transformBox(local, matrix), feet, probe))
+                {
+                    found[0] = true;
+                }
+            });
+
+            return found[0];
         }
         else if (modelForm != null)
         {
             ModelCollisionData data = ModelCollisionData.get(modelForm);
 
-            if (data == null || data.localBoxes.isEmpty())
+            if (data == null || !data.hasCollision())
             {
                 return false;
             }
 
-            localBoxes = data.localBoxes;
-            localBounds = data.localBounds;
             matrix = buildModelWorldMatrix(entity, modelForm, data.modelScale);
+            localBounds = data.localBounds;
+
+            if (data.skinnedVertices != null)
+            {
+                Box worldBounds = transformBox(localBounds, matrix);
+
+                if (!worldBounds.intersects(probe))
+                {
+                    return false;
+                }
+
+                for (Box worldBox : ModelCollisionData.buildWorldSpaceBobjSlabs(data.skinnedVertices, matrix))
+                {
+                    if (isClimbableWorldBox(worldBox, feet, probe))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            localBoxes = data.localBoxes;
         }
         else
         {
@@ -383,29 +463,37 @@ public final class ModelBlockSolidCollisions
             return false;
         }
 
+        return hasClimbableFromBoxes(localBoxes, matrix, feet, probe);
+    }
+
+    private static boolean hasClimbableFromBoxes(List<Box> localBoxes, Matrix4f matrix, Box feet, Box probe)
+    {
         for (Box local : localBoxes)
         {
-            Box worldBox = transformBox(local, matrix);
-
-            /* Use ledge height above the feet, not full AABB height (rotation inflates AABB). */
-            double ledge = worldBox.maxY - feet.minY;
-
-            if (ledge <= 1.0E-3D || ledge > CLIMB_STEP_HEIGHT + 0.05D)
-            {
-                continue;
-            }
-
-            if (worldBox.maxY <= feet.minY + 1.0E-3D)
-            {
-                continue;
-            }
-
-            if (worldBox.intersects(probe))
+            if (isClimbableWorldBox(transformBox(local, matrix), feet, probe))
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static boolean isClimbableWorldBox(Box worldBox, Box feet, Box probe)
+    {
+        /* Use ledge height above the feet, not full AABB height (rotation inflates AABB). */
+        double ledge = worldBox.maxY - feet.minY;
+
+        if (ledge <= 1.0E-3D || ledge > CLIMB_STEP_HEIGHT + 0.05D)
+        {
+            return false;
+        }
+
+        if (worldBox.maxY <= feet.minY + 1.0E-3D)
+        {
+            return false;
+        }
+
+        return worldBox.intersects(probe);
     }
 }

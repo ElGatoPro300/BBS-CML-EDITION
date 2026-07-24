@@ -50,14 +50,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ModelCollisionData
 {
     private static final int MAX_BOXES = 512;
+    private static final int MAX_BOXES_BOBJ = 2048;
     /** Bump when collision bake algorithm changes so pose cache cannot serve stale boxes. */
-    private static final int BAKE_VERSION = 7;
-    /** XZ cell size for skinned BOBJ columns (full cells = no fall-through gaps). */
-    private static final float BOBJ_GRID_CELL = 0.2F;
-    /** Walkable slab thickness under the skinned top (not full column height). */
-    private static final float BOBJ_SLAB_THICKNESS = 0.1F;
-    /** Pull collision tops down slightly so feet sit on the visible texture, not AABB inflate. */
-    private static final double SURFACE_SNUG = 0.015D;
+    private static final int BAKE_VERSION = 11;
+    /** World-space XZ cell size for BOBJ tops (built after the full model matrix). */
+    public static final float BOBJ_GRID_CELL = 0.2F;
+    /** Walkable slab thickness under the skinned world-space top. */
+    public static final float BOBJ_SLAB_THICKNESS = 0.25F;
+    /**
+     * Pull cubic AABB tops down (rotation/subdivision inflate). Structures use exact voxels;
+     * BOBJ tops are skinned world-space vertices and need almost no pull.
+     */
+    private static final double SURFACE_SNUG_CUBIC = 0.04D;
+    public static final double SURFACE_SNUG_BOBJ = 0.01D;
     /** Sub-cell size for cubic cubes so rotated limbs keep a tight surface. */
     private static final float CUBE_CELL = 0.2F;
     private static final int CUBE_CELL_MAX = 10;
@@ -69,12 +74,28 @@ public final class ModelCollisionData
     public final List<Box> localBoxes;
     public final Box localBounds;
     public final Vector3f modelScale;
+    /**
+     * Skinned BOBJ vertices in model-local space (xyz interleaved). World-space XZ columns are
+     * built after the full model matrix so horizontal / sideways rotations stay walkable.
+     */
+    public final float[] skinnedVertices;
 
     private ModelCollisionData(List<Box> localBoxes, Box localBounds, Vector3f modelScale)
+    {
+        this(localBoxes, localBounds, modelScale, null);
+    }
+
+    private ModelCollisionData(List<Box> localBoxes, Box localBounds, Vector3f modelScale, float[] skinnedVertices)
     {
         this.localBoxes = List.copyOf(localBoxes);
         this.localBounds = localBounds;
         this.modelScale = new Vector3f(modelScale);
+        this.skinnedVertices = skinnedVertices == null || skinnedVertices.length < 3 ? null : skinnedVertices.clone();
+    }
+
+    public boolean hasCollision()
+    {
+        return (this.skinnedVertices != null && this.skinnedVertices.length >= 3) || !this.localBoxes.isEmpty();
     }
 
     /**
@@ -131,11 +152,12 @@ public final class ModelCollisionData
 
         collectCubicBoxes(model, boxes);
 
-        return finishBoxes(boxes, modelScale != null ? modelScale : new Vector3f(1F));
+        return finishBoxes(boxes, modelScale != null ? modelScale : new Vector3f(1F), SURFACE_SNUG_CUBIC);
     }
 
     /**
      * Bake collision from a posed BOBJ armature + rest mesh (same skinning as the VAO).
+     * Stores skinned vertices so world-space tops can be built after any form rotation.
      */
     public static ModelCollisionData bakeFromSkinnedBobj(BOBJLoader.CompiledData mesh, BOBJArmature armature, Vector3f modelScale)
     {
@@ -146,9 +168,21 @@ public final class ModelCollisionData
             return new ModelCollisionData(List.of(), new Box(0, 0, 0, 0, 0, 0), scale);
         }
 
-        List<Box> boxes = skinBobjBoxes(mesh, armature);
+        float[] vertices = skinBobjVertices(mesh, armature);
 
-        return finishBoxes(boxes, scale);
+        if (vertices == null || vertices.length < 3)
+        {
+            return new ModelCollisionData(List.of(), new Box(0, 0, 0, 0, 0, 0), scale);
+        }
+
+        Box localBounds = aabbFromPosData(vertices);
+
+        if (localBounds == null)
+        {
+            localBounds = new Box(0, 0, 0, 0, 0, 0);
+        }
+
+        return new ModelCollisionData(List.of(), localBounds, scale, vertices);
     }
 
     private static ModelCollisionData bakeStatic(ModelForm form)
@@ -199,7 +233,12 @@ public final class ModelCollisionData
                 {
                     applyBobjPose(cached.bobjArmature, pose);
                     cached.bobjArmature.setupMatrices();
-                    boxes.addAll(skinBobjBoxes(cached.bobjMesh, cached.bobjArmature));
+
+                    ModelCollisionData data = bakeFromSkinnedBobj(cached.bobjMesh, cached.bobjArmature, cached.modelScale);
+
+                    POSE_CACHE.put(form, new PosedCache(modelId, poseHash, revision, BAKE_VERSION, data));
+
+                    return data;
                 }
             }
             else
@@ -207,7 +246,7 @@ public final class ModelCollisionData
                 boxes.addAll(cached.bobjBoxes);
             }
 
-            ModelCollisionData data = finishBoxes(boxes, cached.modelScale);
+            ModelCollisionData data = finishBoxes(boxes, cached.modelScale, SURFACE_SNUG_CUBIC);
 
             POSE_CACHE.put(form, new PosedCache(modelId, poseHash, revision, BAKE_VERSION, data));
 
@@ -219,7 +258,7 @@ public final class ModelCollisionData
         }
     }
 
-    private static ModelCollisionData finishBoxes(List<Box> boxes, Vector3f modelScale)
+    private static ModelCollisionData finishBoxes(List<Box> boxes, Vector3f modelScale, double surfaceSnug)
     {
         if (boxes.isEmpty())
         {
@@ -230,7 +269,7 @@ public final class ModelCollisionData
 
         for (Box box : boxes)
         {
-            Box fitted = snugTop(box);
+            Box fitted = snugTop(box, surfaceSnug);
 
             if (fitted != null)
             {
@@ -243,9 +282,11 @@ public final class ModelCollisionData
             snug.addAll(boxes);
         }
 
-        if (snug.size() > MAX_BOXES)
+        int maxBoxes = surfaceSnug == SURFACE_SNUG_BOBJ ? MAX_BOXES_BOBJ : MAX_BOXES;
+
+        if (snug.size() > maxBoxes)
         {
-            snug = thinBoxes(snug, MAX_BOXES);
+            snug = thinBoxes(snug, maxBoxes);
         }
 
         return new ModelCollisionData(snug, unionBounds(snug), modelScale);
@@ -255,7 +296,7 @@ public final class ModelCollisionData
      * Lower only the top of the box so the player rests on the visible surface instead of
      * floating on an inflated AABB. Sides/bottom stay put for solid contact.
      */
-    private static Box snugTop(Box box)
+    private static Box snugTop(Box box, double surfaceSnug)
     {
         if (box == null)
         {
@@ -269,7 +310,7 @@ public final class ModelCollisionData
             return null;
         }
 
-        double pull = Math.min(SURFACE_SNUG, height * 0.35D);
+        double pull = Math.min(surfaceSnug, height * 0.35D);
 
         return new Box(box.minX, box.minY, box.minZ, box.maxX, box.maxY - pull, box.maxZ);
     }
@@ -506,70 +547,111 @@ public final class ModelCollisionData
 
     private static BobjCollisionSource loadBobjSource(Collection<Link> links)
     {
+        List<Link> bobjLinks = new ArrayList<>();
+
         for (Link link : links)
         {
-            if (link == null || link.path == null || !link.path.endsWith(".bobj"))
+            if (link != null && link.path != null && link.path.endsWith(".bobj"))
             {
-                continue;
+                bobjLinks.add(link);
             }
+        }
 
+        if (bobjLinks.isEmpty())
+        {
+            return null;
+        }
+
+        /* Same preference as BOBJModelLoader — never bake collision from actions.bobj alone. */
+        bobjLinks.sort((a, b) -> Integer.compare(bobjMeshPreference(b), bobjMeshPreference(a)));
+
+        for (Link link : bobjLinks)
+        {
             try (InputStream stream = BBSMod.getProvider().getAsset(link))
             {
+                if (stream == null)
+                {
+                    continue;
+                }
+
                 BOBJLoader.BOBJData data = BOBJLoader.readData(stream);
+                BOBJLoader.BOBJMesh skinned = findSkinnedBobjMesh(data);
+
+                if (skinned == null)
+                {
+                    continue;
+                }
 
                 data.initiateArmatures();
 
-                Map<String, BOBJLoader.CompiledData> meshes = BOBJLoader.loadMeshes(data);
-                BOBJLoader.CompiledData mesh = null;
+                BOBJArmature armature = skinned.armature != null
+                    ? skinned.armature
+                    : (data.armatures.isEmpty() ? null : data.armatures.values().iterator().next());
 
-                for (BOBJLoader.CompiledData candidate : meshes.values())
+                if (armature == null)
                 {
-                    if (candidate != null && candidate.posData != null && candidate.posData.length >= 3)
-                    {
-                        mesh = candidate;
-
-                        break;
-                    }
+                    continue;
                 }
 
-                if (mesh == null)
+                armature.initArmature();
+                armature.setupMatrices();
+
+                BOBJLoader.CompiledData mesh = BOBJLoader.compileMesh(data, skinned);
+
+                if (mesh == null || mesh.posData == null || mesh.posData.length < 3)
                 {
-                    try
-                    {
-                        mesh = BOBJLoader.loadMesh(data);
-                    }
-                    catch (Exception ignored)
-                    {}
+                    continue;
                 }
 
-                BOBJArmature armature = null;
-
-                if (mesh != null && mesh.mesh != null && mesh.mesh.armature != null)
-                {
-                    armature = mesh.mesh.armature;
-                }
-                else if (!data.armatures.isEmpty())
-                {
-                    armature = data.armatures.values().iterator().next();
-                }
-
-                if (armature != null)
-                {
-                    armature.initArmature();
-                    armature.setupMatrices();
-                }
-
-                if (mesh != null || armature != null)
-                {
-                    return new BobjCollisionSource(armature, mesh);
-                }
+                return new BobjCollisionSource(armature, mesh);
             }
             catch (Exception e)
             {
                 e.printStackTrace();
             }
+        }
 
-            break;
+        return null;
+    }
+
+    private static int bobjMeshPreference(Link link)
+    {
+        String path = link.path.toLowerCase();
+        int score = 0;
+
+        if (path.endsWith("/model.bobj") || path.endsWith("model.bobj"))
+        {
+            score += 100;
+        }
+
+        if (path.contains("/default") || path.contains("/slim"))
+        {
+            score += 50;
+        }
+
+        if (path.contains("/animations/") || path.contains("/emotes/") || path.endsWith("actions.bobj"))
+        {
+            score -= 100;
+        }
+
+        return score;
+    }
+
+    private static BOBJLoader.BOBJMesh findSkinnedBobjMesh(BOBJLoader.BOBJData data)
+    {
+        if (data == null || data.armatures == null || data.armatures.isEmpty() || data.meshes == null)
+        {
+            return null;
+        }
+
+        BOBJArmature armature = data.armatures.values().iterator().next();
+
+        for (BOBJLoader.BOBJMesh mesh : data.meshes)
+        {
+            if (mesh != null && mesh.armature == armature)
+            {
+                return mesh;
+            }
         }
 
         return null;
@@ -610,34 +692,36 @@ public final class ModelCollisionData
         }
     }
 
-    private static List<Box> skinBobjBoxes(BOBJLoader.CompiledData mesh, BOBJArmature armature)
+    /**
+     * Skin BOBJ vertices into model-local space (same math as BOBJModelVAO.updateMesh).
+     */
+    private static float[] skinBobjVertices(BOBJLoader.CompiledData mesh, BOBJArmature armature)
     {
         float[] posData = mesh.posData;
         float[] weightData = mesh.weightData;
         int[] boneIndexData = mesh.boneIndexData;
-        Matrix4f[] matrices = armature.matrices;
+        Matrix4f[] matrices = armature != null ? armature.matrices : null;
 
-        if (posData == null || posData.length < 3 || matrices == null || matrices.length == 0)
+        if (posData == null || posData.length < 3)
         {
-            Box fallback = aabbFromPosData(posData);
+            return null;
+        }
 
-            return fallback == null ? List.of() : List.of(fallback);
+        int vertexCount = posData.length / 3;
+        float[] out = new float[vertexCount * 3];
+
+        if (matrices == null || matrices.length == 0)
+        {
+            System.arraycopy(posData, 0, out, 0, out.length);
+
+            return out;
         }
 
         int boneCount = matrices.length;
         Vector4f sum = new Vector4f();
         Vector4f result = new Vector4f();
-        int vertexCount = posData.length / 3;
         boolean hasWeights = weightData != null && boneIndexData != null
             && weightData.length >= vertexCount * 4 && boneIndexData.length >= vertexCount * 4;
-
-        /*
-         * XZ columns (not 3D voxels): fill each cell completely so there are no gaps to fall
-         * through, and keep Y from the skinned vertex range with a minimum walkable thickness.
-         */
-        Map<Long, float[]> columns = new HashMap<>();
-        float cell = BOBJ_GRID_CELL;
-        float invCell = 1F / cell;
 
         for (int i = 0; i < vertexCount; i++)
         {
@@ -677,28 +761,61 @@ public final class ModelCollisionData
                 {
                     result.set(ox, oy, oz, 1F);
                 }
+                else if (result.w != 0F && result.w != 1F)
+                {
+                    result.x /= result.w;
+                    result.y /= result.w;
+                    result.z /= result.w;
+                }
             }
             else
             {
                 result.set(ox, oy, oz, 1F);
             }
 
-            int gx = (int) Math.floor(result.x * invCell);
-            int gz = (int) Math.floor(result.z * invCell);
-            long key = packColumnKey(gx, gz);
-            float[] bounds = columns.get(key);
+            out[i * 3] = result.x;
+            out[i * 3 + 1] = result.y;
+            out[i * 3 + 2] = result.z;
+        }
 
-            if (bounds == null)
+        return out;
+    }
+
+    /**
+     * Build world-space walkable slabs from model-local skinned vertices.
+     * Projection uses world up so horizontal / sideways form rotations stay standable.
+     */
+    public static List<Box> buildWorldSpaceBobjSlabs(float[] localVertices, Matrix4f worldMatrix)
+    {
+        if (localVertices == null || localVertices.length < 3 || worldMatrix == null)
+        {
+            return List.of();
+        }
+
+        Map<Long, float[]> columns = new HashMap<>();
+        float cell = BOBJ_GRID_CELL;
+        float invCell = 1F / cell;
+        Vector4f point = new Vector4f();
+        int vertexCount = localVertices.length / 3;
+
+        for (int i = 0; i < vertexCount; i++)
+        {
+            point.set(localVertices[i * 3], localVertices[i * 3 + 1], localVertices[i * 3 + 2], 1F);
+            worldMatrix.transform(point);
+
+            if (point.w != 0F && point.w != 1F)
             {
-                /* minY, maxY only — XZ comes from the full cell. */
-                bounds = new float[] {result.y, result.y};
-                columns.put(key, bounds);
+                point.x /= point.w;
+                point.y /= point.w;
+                point.z /= point.w;
             }
-            else
-            {
-                bounds[0] = Math.min(bounds[0], result.y);
-                bounds[1] = Math.max(bounds[1], result.y);
-            }
+
+            int gx = (int) Math.floor(point.x * invCell);
+            int gz = (int) Math.floor(point.z * invCell);
+
+            stampBobjColumn(columns, gx, gz, point.y);
+            stampBobjColumn(columns, gx + 1, gz, point.y);
+            stampBobjColumn(columns, gx, gz + 1, point.y);
         }
 
         List<Box> boxes = new ArrayList<>(columns.size());
@@ -712,25 +829,33 @@ public final class ModelCollisionData
             float maxX = minX + cell;
             float minZ = gz * cell;
             float maxZ = minZ + cell;
-            float top = entry.getValue()[1];
-            /* Only a thin walkable slab at the skinned surface — full minY..maxY pillars
-             * made players stand on the highest vertex in the column (often far above the mesh). */
+            float top = entry.getValue()[1] - (float) SURFACE_SNUG_BOBJ;
             float bottom = top - BOBJ_SLAB_THICKNESS;
 
             boxes.add(new Box(minX, bottom, minZ, maxX, top, maxZ));
         }
 
-        if (boxes.isEmpty())
+        if (boxes.size() > MAX_BOXES_BOBJ)
         {
-            Box fallback = aabbFromPosData(posData);
-
-            if (fallback != null)
-            {
-                boxes.add(fallback);
-            }
+            boxes = thinBoxes(boxes, MAX_BOXES_BOBJ);
         }
 
         return boxes;
+    }
+    private static void stampBobjColumn(Map<Long, float[]> columns, int gx, int gz, float y)
+    {
+        long key = packColumnKey(gx, gz);
+        float[] bounds = columns.get(key);
+
+        if (bounds == null)
+        {
+            columns.put(key, new float[] {y, y});
+        }
+        else
+        {
+            bounds[0] = Math.min(bounds[0], y);
+            bounds[1] = Math.max(bounds[1], y);
+        }
     }
 
     private static long packColumnKey(int gx, int gz)
@@ -854,15 +979,16 @@ public final class ModelCollisionData
     /**
      * Emit subdivided AABBs for a cube so rotated limbs keep a surface close to the visible mesh
      * (a single transformed AABB floats/sinks differently per orientation).
+     * Texture inflate is ignored — it only pads the draw and made players hover above the mesh.
      */
     private static void appendCubeBoxes(ModelCube cube, Matrix4f groupMatrix, List<Box> boxes)
     {
-        float minX = (cube.origin.x - cube.inflate) / 16F;
-        float minY = (cube.origin.y - cube.inflate) / 16F;
-        float minZ = (cube.origin.z - cube.inflate) / 16F;
-        float maxX = (cube.origin.x + cube.size.x + cube.inflate) / 16F;
-        float maxY = (cube.origin.y + cube.size.y + cube.inflate) / 16F;
-        float maxZ = (cube.origin.z + cube.size.z + cube.inflate) / 16F;
+        float minX = cube.origin.x / 16F;
+        float minY = cube.origin.y / 16F;
+        float minZ = cube.origin.z / 16F;
+        float maxX = (cube.origin.x + cube.size.x) / 16F;
+        float maxY = (cube.origin.y + cube.size.y) / 16F;
+        float maxZ = (cube.origin.z + cube.size.z) / 16F;
 
         if (minX >= maxX || minY >= maxY || minZ >= maxZ)
         {
