@@ -6,7 +6,7 @@ These rules might feel tyrannical, but they ensure that there is a proper order 
 
 The following document has two main sections: ***Feature Contribution Rules*** and ***Code Contribution Rules***.
 
-If you are using AI, you can let it handle the *Code Contribution Rules section*, but *Feature Contribution Rules* **must** be completely understood and fully read before you start adding or developing any kind of feature, improvement or bugfix for the project.
+If you are using AI, you can let it handle the *Code Contribution Rules section*, but *Feature Contribution Rules* **must** be completely understood and fully read before you start suggesting, adding or developing any kind of feature, improvement or bugfix for the project.
 
 # Feature Contribution Rules (FCR)
 
@@ -37,9 +37,25 @@ In addition to the summary above of the previous secion and the previous legend 
 
 The first one is the **MOST** important rules of all:
 
-- 🟥 New <u>features</u> or <u>improvements</u> must be previously communicated on the #[insertar nuevo canal] channel to all project leaders and developers **before adding any of them to the project**. This is to ensure that there is a general consensus among all developers where everyone makes sure that new ideas and features are solid enough or have a well-consistent design that does not break or affect other features, and also for discussing new feedback or needed improvements before adding them.
+- 🟥**1.** New <u>features</u> or <u>improvements</u> must be previously communicated on the #[insertar nuevo canal] channel to all project leaders and developers **before adding any of them to the project**. This is to ensure that there is a general consensus among all developers where everyone makes sure that new ideas and features are solid enough or have a well-consistent design that does not break or affect other features, and also for discussing new feedback or needed improvements before adding them.
 
-- 🟥 When adding new features into the mod, you can add new UI elements or improve* them (after communicating the ideas and changes), but **they must preserve all existent UI elements from all features**, unless otherwise stated by project leaders with previous permission.
+- 🟥**2.** When suggesting new features on the #[el nuevo canal de antes] channel, **you mustn't suggest more than 2-3 ideas/features at the same time or during the same beta period** (or posting multiple separate post as a "to-do" suggestion list). This is mostly to ensure that:
+  
+  1. Testers have enough <u>time</u> for properly testing all new features.
+  
+  2. Each possible bug introduced on new features can be spotted and properly fixed.
+  
+  3. Each beta/release/version doesn't get bloated with too many new features.
+  
+  Also, when suggesting a new idea or feature, you **must** explain:
+  
+  1. <u>What is the use of the new feature or what it does.</u>
+  
+  2. <u>Which problem(s) would solve and/or what does this new feature would apport to the mod or why it would be necessary to add to the mod/project.</u>
+  
+  If you want to separately list your future ideas, then you might want to use the existing #features thread channel, but keep in mind that **ideas or features listed on this channels won't count as valid until they are posted on the #[el nuevo canal de antes] channel and meets the requirements previously mentioned on this rule**.
+
+- 🟥 **3.** When adding new features into the mod, you can add new UI elements or improve* them (after communicating the ideas and changes), but **they must preserve all existent UI elements from all features**, unless otherwise stated by project leaders with previous permission.
   
   *By improving, it means that you are allowed to change UI in a way that you consider that UI elements would be better optimized, **but not removing or hiding existing elements (sliders, buttons, inputs, tracks, etc...)**, mostly because:
   
@@ -53,23 +69,27 @@ The first one is the **MOST** important rules of all:
 
 🟧There could be a few concrete cases where some exemptions could occur depending of the type of feature, but generally you may want to ask before implementing them.
 
-- 🟥 The development (and addition of new features) must follow the #dev-calendar channel, where it will be indicated if new features can be added at the current time or only bugfixes would be allowed when entering a pre-release phase.
+- 🟥 **4.** The development (and addition of new features) **must follow the #dev-calendar channel**, where it will be indicated if new features can be added at the current time or only bugfixes would be allowed when entering a pre-release phase or "resting"/"testing" periods.
 
-- 🟥 Bugfixes will be accepted as long as they does not introduce more several bugs or any important bugs. If the bugfixes, for some reason, introduces way more bugs or those new ones are important/hard to fix, the main bugfix will be reverted temporarily until the situation is properly fixed.
+- 🟥 **5.** <u>Testing</u> **any** new additions, changes or bugfixes is required before uploading them to Github, mostly to ensure that they work as intended and don't introduce important bugs into the game.
+
+- 🟥 **6.** Bugfixes will be accepted as long as they does not introduce more several bugs or any important bugs. If the bugfixes, for some reason, introduces way more bugs or those new ones are important/hard to fix, the main bugfix will be reverted temporarily until the situation is properly fixed.
+
+- 🟥 **7.** You need to know all of the features that you will add or added to the latest version, in order to be possible to list all of them on the changelog of the next update.
 
 ### Important rules:
 
-- 🟧 New changes (features, bugfixes, improvements, etc) **should be separatelly introduced on different commits** instead of generally grouping all changes into an one-time big commit, mostly to be as easy as possible to <u>identify</u> in which part of the git <u>history</u> certain parts of the code are found and for being able to locate them for future changes or corrections.
+- 🟧 **8.** New changes (features, bugfixes, improvements, etc) **should be separatelly introduced on different commits** instead of generally grouping all changes into an one-time big commit, mostly to be as easy as possible to <u>identify</u> in which part of the git <u>history</u> certain parts of the code are found and for being able to locate them for future changes or corrections.
 
-- 🟨If you are thinking about adding a new big feature that is not necesarilly a need or a must-have for the main fork/project, <u>you should think about making it as an addon instead</u>, **specially if it adds a considerable extra weight to the size of the mod .jar**. One objective of the mod is also to be as lightweight as possible, so if new features add too much weight, then making them as an addon could be a more viable alternative.
+- 🟨 **9.** If you are thinking about adding a new big feature that is not necesarilly a need or a must-have for the main fork/project, <u>you should think about making it as an addon instead</u> (or a separate mod), **specially if it adds a considerable extra weight to the size of the mod .jar**. One objective of the mod is also to be as lightweight as possible, so if new features add too much weight, then making them as an addon could be a more viable alternative.
 
 ### Tips for contributing:
 
-- 🟩Usually on the development of applications or programs, users are the ones that decides if they use a program or not, and this is also why the application of the rules must be applied to ensure that the mod is as user-friendly as possible.
+- 🟩 **10.** Usually on the development of applications or programs, users are the ones that decides if they use a program or not, and this is also why the application of the rules must be applied to ensure that the mod is as user-friendly as possible.
 
-- 🟩 As the version control of project is managed on Github, it is recommended to understand (or ask) the basics of Github/Git.
+- 🟩 **11.** As the version control of project is managed on Github, it is recommended to understand (or ask) the basics of Github/Git.
 
-- 🟩 A basic knowledge of programming would be ideal for contributing to the project even if all changes would be done through ai, but even it is not an actual requirement, understanding the basics of programming and how dev environments are managed could potentially help you to understand how these kind of contributibe projects works.
+- 🟩 **12.** A basic knowledge of programming would be ideal for contributing to the project even if all changes would be done through ai, but although it is not an actual requirement, understanding the basics of programming and how dev environments are managed could potentially help you to understand how these kind of contributibe projects works.
 
 # Code Contribution Rules (CCR)
 
@@ -150,3 +170,11 @@ Here we have:
 - All comments in the body of the code must be within `/* ... */` and never with `//`.
 - Self-explanatory comments must be avoided.
 - JavaDocs comments must be present only above the method or class definition, but prior to any **annotations**!
+
+
+
+# TLDR;
+
+**Feature Contribution Rules** -> As long as you consult your ideas to the rest of people before adding them into the mod and wait until an approval is given, everything will be fine. Bugfixes and changes should also be properly implemented without adding more bugs.
+
+**Code Contribution Rules** -> If you are using ai, tell it to use this as a coding guide and you should be fine. Otherwise, you must read this section.
