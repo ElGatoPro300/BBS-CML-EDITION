@@ -113,6 +113,7 @@ public class UIDashboard extends UIBaseMenu
             this.updateTabsBarVisibility(e.panel);
             this.menuBar.updateForPanel(e.panel);
             this.panels.updateTaskBarForPanel(e.panel);
+            this.documentTabsBar.layoutFilmStatusIcons();
             DiscordPresenceManager.INSTANCE.updateFromMenu(this);
         });
         this.panels.relative(this.main).y(20 + UIDocumentTabsBar.HEIGHT).w(1F).h(1F, -(20 + UIDocumentTabsBar.HEIGHT));
@@ -225,7 +226,7 @@ public class UIDashboard extends UIBaseMenu
     @Override
     public boolean canPause()
     {
-        if (UIWorldPropertiesOverlayPanel.isOpen())
+        if (UIWorldDropdownMenu.isOpen() || UIWorldPropertiesOverlayPanel.isOpen())
         {
             return false;
         }
@@ -257,6 +258,7 @@ public class UIDashboard extends UIBaseMenu
         BBSModClient.getCameraController().add(this.camera);
 
         this.showAnnoyingPopups();
+        UIHomePanel.onDashboardOpened(this);
         UINewsPanel.onDashboardOpened(this);
     }
 
@@ -267,6 +269,8 @@ public class UIDashboard extends UIBaseMenu
 
         if (nextMenu != this)
         {
+            /* Any leave path (Escape, replaced screen, etc.) must restore gamemode. */
+            EditorSpectatorHelper.restore();
             this.panels.close();
         }
 
@@ -279,6 +283,7 @@ public class UIDashboard extends UIBaseMenu
     @Override
     protected void closeMenu()
     {
+        EditorSpectatorHelper.restore();
         super.closeMenu();
 
         if (!this.main.isVisible())
@@ -348,6 +353,12 @@ public class UIDashboard extends UIBaseMenu
         return this.panels.panel == null || this.panels.panel.canHideHUD();
     }
 
+    @Override
+    public boolean needsWorldRender()
+    {
+        return this.panels.panel != null && this.panels.panel.needsWorldRender();
+    }
+
     public <T> T getPanel(Class<T> clazz)
     {
         return this.panels.getPanel(clazz);
@@ -396,7 +407,7 @@ public class UIDashboard extends UIBaseMenu
             return;
         }
 
-        if (this.panels.panel != null && this.panels.panel.needsBackground())
+        if (this.panels.panel != null && (this.panels.panel.needsBackground() || !this.panels.panel.needsWorldRender()))
         {
             this.background(context);
         }

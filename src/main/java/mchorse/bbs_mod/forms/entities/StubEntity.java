@@ -23,6 +23,14 @@ public class StubEntity implements IEntity
     private Form form;
     private boolean sneaking;
     private boolean sprinting;
+    private boolean swimming;
+    private boolean flying;
+    private boolean fallFlying;
+    private boolean crawling;
+    private boolean climbing;
+    private boolean blocking;
+    private boolean sleeping;
+    private boolean riptide;
     private boolean onGround = true;
     private float fallDistance;
     private int hurtTimer;
@@ -639,9 +647,39 @@ public class StubEntity implements IEntity
     }
 
     @Override
+    public boolean isSwimming()
+    {
+        return this.swimming;
+    }
+
+    @Override
+    public void setSwimming(boolean swimming)
+    {
+        this.swimming = swimming;
+    }
+
+    @Override
+    public boolean isFlying()
+    {
+        return this.flying;
+    }
+
+    @Override
+    public void setFlying(boolean flying)
+    {
+        this.flying = flying;
+    }
+
+    @Override
     public boolean isFallFlying()
     {
-        return false;
+        return this.fallFlying;
+    }
+
+    @Override
+    public void setFallFlying(boolean fallFlying)
+    {
+        this.fallFlying = fallFlying;
     }
 
     @Override
@@ -659,6 +697,60 @@ public class StubEntity implements IEntity
     @Override
     public boolean isUsingRiptide()
     {
-        return false;
+        return this.riptide;
+    }
+
+    @Override
+    public void setRiptide(boolean riptide)
+    {
+        this.riptide = riptide;
+    }
+
+    @Override
+    public boolean isCrawling()
+    {
+        return this.crawling;
+    }
+
+    @Override
+    public void setCrawling(boolean crawling)
+    {
+        this.crawling = crawling;
+    }
+
+    @Override
+    public boolean isClimbing()
+    {
+        return this.climbing;
+    }
+
+    @Override
+    public void setClimbing(boolean climbing)
+    {
+        this.climbing = climbing;
+    }
+
+    @Override
+    public boolean isBlocking()
+    {
+        return this.blocking;
+    }
+
+    @Override
+    public void setBlocking(boolean blocking)
+    {
+        this.blocking = blocking;
+    }
+
+    @Override
+    public boolean isSleeping()
+    {
+        return this.sleeping;
+    }
+
+    @Override
+    public void setSleeping(boolean sleeping)
+    {
+        this.sleeping = sleeping;
     }
 }

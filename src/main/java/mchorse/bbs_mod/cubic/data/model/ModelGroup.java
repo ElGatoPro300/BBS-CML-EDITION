@@ -5,11 +5,16 @@ import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.joml.QuaternionMath;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
+
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,9 +39,17 @@ public class ModelGroup implements IMapSerializable
     public float glowRadius;
     public float shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
     public Link textureOverride;
+    public Link textureBlendTo;
     public float textureBlend = 1F;
     public Transform initial = new Transform();
     public Transform current = new Transform();
+
+    /* Transient full local orientation for this bone, applied raw in the render
+     * matrix in place of the euler rotate triple. Null when unused this frame. */
+    public Quaternionf orient;
+
+    /* Transient parent-frame translation for IK stretch telescoping. Null when unused. */
+    public Vector3f offset;
 
     public ModelGroup(String id)
     {
@@ -47,14 +60,47 @@ public class ModelGroup implements IMapSerializable
     {
         this.lighting = 0F;
         this.color.set(1F, 1F, 1F);
+        this.color.brightness = 0F;
+        this.color.contrast = 0F;
+        this.color.hue = 0F;
+        this.color.saturation = 0F;
+        this.color.transform = new EffectTransform();
+        this.color.brightnessTransform = new EffectTransform();
+        this.color.contrastTransform = new EffectTransform();
+        this.color.hueTransform = new EffectTransform();
+        this.color.saturationTransform = new EffectTransform();
         this.paintColor.set(1F, 1F, 1F, 0F);
         this.glowingColor.set(1F, 1F, 1F, 1F);
         this.glowIntensity = 0F;
         this.glowRadius = 0F;
         this.shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
         this.textureOverride = null;
+        this.textureBlendTo = null;
         this.textureBlend = 1F;
         this.current.copy(this.initial);
+        this.orient = null;
+        this.offset = null;
+    }
+
+    /**
+     * Composes one rotation layer into {@link #orient}. The first layer seeds from
+     * the accumulated euler; later layers multiply their delta as a quaternion.
+     */
+    public void composeOrient(Quaternionf delta)
+    {
+        if (this.orient == null)
+        {
+            this.orient = QuaternionMath.composeFromEulerZYX(this.current.rotate.x, this.current.rotate.y, this.current.rotate.z);
+
+            if (this.current.rotate2.x != 0F || this.current.rotate2.y != 0F || this.current.rotate2.z != 0F)
+            {
+                this.orient.mul(QuaternionMath.composeFromEulerZYX(this.current.rotate2.x, this.current.rotate2.y, this.current.rotate2.z));
+            }
+        }
+        else
+        {
+            this.orient.mul(delta);
+        }
     }
 
     public ModelGroup copy(Model newOwner, ModelGroup newParent)
@@ -75,6 +121,7 @@ public class ModelGroup implements IMapSerializable
         group.glowRadius = this.glowRadius;
         group.shaderShadow = this.shaderShadow;
         if (this.textureOverride != null) group.textureOverride = LinkUtils.copy(this.textureOverride);
+        if (this.textureBlendTo != null) group.textureBlendTo = LinkUtils.copy(this.textureBlendTo);
         group.textureBlend = this.textureBlend;
         
         group.initial.copy(this.initial);

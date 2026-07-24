@@ -1,34 +1,37 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
-import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
+import java.util.function.Consumer;
+
+/**
+ * Simple color keyframe editor (clips such as Letterbox / Eye / Vignette).
+ * Form Color track uses {@link UIFormColorKeyframeFactory}.
+ */
 public class UIColorKeyframeFactory extends UIKeyframeFactory<Color>
 {
     private UIColor color;
-    private UIToggle spectrum;
 
     public UIColorKeyframeFactory(Keyframe<Color> keyframe, UIKeyframes editor)
     {
         super(keyframe, editor);
 
-        this.color = new UIColor((c) -> this.setValue(Color.rgba(c)));
+        this.color = new UIColor((c) -> this.applyColorEdit((color) ->
+        {
+            Color value = Color.rgba(c);
+
+            color.set(value.r, value.g, value.b, value.a);
+        }));
         this.color.setColor(keyframe.getValue().getARGBColor());
         this.color.withAlpha();
 
-        this.spectrum = new UIToggle(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM, (b) ->
-        {
-            this.keyframe.setSpectrum(b.getValue());
-        });
-        this.spectrum.tooltip(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM_TOOLTIP);
-        this.spectrum.setValue(keyframe.isSpectrum());
+        this.scroll.add(this.color.marginTop(8));
 
-        this.scroll.add(this.color);
-        this.scroll.add(this.spectrum);
+        this.update();
     }
 
     @Override
@@ -36,7 +39,45 @@ public class UIColorKeyframeFactory extends UIKeyframeFactory<Color>
     {
         super.update();
 
-        this.color.setColor(this.keyframe.getValue().getARGBColor());
-        this.spectrum.setValue(this.keyframe.isSpectrum());
+        Color value = this.keyframe.getValue() == null ? Color.white() : this.keyframe.getValue();
+
+        this.color.setColor(value.getARGBColor());
+    }
+
+    protected void applyColorEdit(Consumer<Color> editor)
+    {
+        boolean[] applied = {false};
+
+        UIReplaysEditorUtils.forEachSelectedKeyframe(this.editor, this.keyframe, (selected) ->
+        {
+            applied[0] = true;
+
+            Color color = (Color) selected.getValue();
+
+            if (color == null)
+            {
+                color = Color.white();
+                selected.setValue(color);
+            }
+
+            selected.preNotify();
+            editor.accept(color);
+            selected.postNotify();
+        });
+
+        if (!applied[0])
+        {
+            Color color = this.keyframe.getValue();
+
+            if (color == null)
+            {
+                color = Color.white();
+                this.keyframe.setValue(color);
+            }
+
+            this.keyframe.preNotify();
+            editor.accept(color);
+            this.keyframe.postNotify();
+        }
     }
 }

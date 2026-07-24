@@ -151,6 +151,7 @@ public class Model implements IMapSerializable, IModel
 
             group.lighting = transform.lighting;
             group.color.copy(transform.color);
+            group.color.a *= MathUtils.clamp(transform.opacity, 0F, 1F);
             group.paintColor.copy(transform.paintColor);
             group.glowingColor.copy(transform.glowingColor);
             group.glowIntensity = transform.glowIntensity;
@@ -159,6 +160,7 @@ public class Model implements IMapSerializable, IModel
             Link texture = transform.texture;
             group.textureOverride = texture != null ? LinkUtils.copy(texture) : null;
             group.textureBlend = transform.textureBlend;
+            group.textureBlendTo = transform.textureBlendTo != null ? LinkUtils.copy(transform.textureBlendTo) : null;
             group.current.translate.add(transform.translate);
             group.current.scale.add(transform.scale).sub(1, 1, 1);
             group.current.translate.add(transform.pivot);
@@ -249,6 +251,52 @@ public class Model implements IMapSerializable, IModel
         }
 
         return groups;
+    }
+
+    @Override
+    public String getParentGroupKey(String key)
+    {
+        ModelGroup group = this.namedGroups.get(key);
+
+        if (group == null || group.parent == null)
+        {
+            return null;
+        }
+
+        return group.parent.id;
+    }
+
+    @Override
+    public Collection<String> getRootGroupKeys()
+    {
+        List<String> roots = new ArrayList<>();
+
+        for (ModelGroup group : this.topGroups)
+        {
+            roots.add(group.id);
+        }
+
+        return roots;
+    }
+
+    @Override
+    public Collection<String> getDirectChildrenKeys(String key)
+    {
+        ModelGroup group = this.namedGroups.get(key);
+
+        if (group == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<String> children = new ArrayList<>();
+
+        for (ModelGroup child : group.children)
+        {
+            children.add(child.id);
+        }
+
+        return children;
     }
 
     @Override

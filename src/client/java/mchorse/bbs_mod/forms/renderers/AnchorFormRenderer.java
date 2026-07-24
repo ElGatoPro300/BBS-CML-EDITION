@@ -42,10 +42,15 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
 
             int w = texture.width;
             int h = texture.height;
+            int cellW = Math.max(8, x2 - x1 - 8);
+            int cellH = Math.max(8, y2 - y1 - 8);
+            float scale = Math.min((float) cellW / (float) Math.max(1, w), (float) cellH / (float) Math.max(1, h));
+            int dw = Math.max(1, Math.round(w * scale));
+            int dh = Math.max(1, Math.round(h * scale));
             int x = (x1 + x2) / 2;
             int y = (y1 + y2) / 2;
 
-            context.batcher.fullTexturedBox(texture, x - w / 2, y - h / 2, w, h);
+            context.batcher.fullTexturedBox(texture, x - dw / 2, y - dh / 2, dw, dh);
         }
         else
         {
@@ -59,8 +64,7 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
             MatrixStackUtils.multiply(stack, uiMatrix);
             /* Why? I don't know, because fuck you */
             stack.multiply(RotationAxis.NEGATIVE_Y.rotationDegrees(180F));
-            stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-            stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+            MatrixStackUtils.invertUiNormalY(stack);
 
             MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
 

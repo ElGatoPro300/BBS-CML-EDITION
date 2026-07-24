@@ -3,9 +3,12 @@ package mchorse.bbs_mod.ui.framework;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
+import mchorse.bbs_mod.ui.forms.UIFormList;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.IViewport;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.UIAnimatedCollapseShell;
+import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.utils.IViewportStack;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -73,7 +76,16 @@ public abstract class UIBaseMenu
         UIElement popka = new UIElement();
 
         popka.keys().register(Keys.KEYBINDS, () -> this.context.toggleKeybinds());
-        popka.keys().register(Keys.TRANSFORMATIONS_TOGGLE_AXES, () -> renderAxes = !renderAxes);
+        popka.keys().register(Keys.TRANSFORMATIONS_TOGGLE_AXES, () ->
+        {
+            renderAxes = !renderAxes;
+
+            if (!renderAxes)
+            {
+                Gizmo.INSTANCE.setHoveredIndex(-1);
+                Gizmo.INSTANCE.stop();
+            }
+        });
         this.root.add(popka);
 
         this.context.keybinds.relative(this.viewport).wh(0.5F, 1F);
@@ -89,7 +101,32 @@ public abstract class UIBaseMenu
         return true;
     }
 
+    /**
+     * Whether the vanilla world should render while this menu is open. Most BBS editors draw an
+     * opaque UI and do not need the world pass behind them.
+     */
+    public boolean needsWorldRender()
+    {
+        return false;
+    }
+
     public boolean canPause()
+    {
+        return true;
+    }
+
+    /**
+     * When true, {@link UIScreen} keeps Minecraft's current GUI scale (hotbar size unchanged).
+     */
+    public boolean preserveMinecraftGuiScale()
+    {
+        return false;
+    }
+
+    /**
+     * When false, hide mouse/keystroke overlay (Printscreen hints, etc.).
+     */
+    public boolean showInputOverlay()
     {
         return true;
     }
@@ -128,9 +165,24 @@ public abstract class UIBaseMenu
 
     public boolean mouseClicked(int mouseX, int mouseY, int mouseButton)
     {
-        boolean result = false;
-
         this.context.setMouse(mouseX, mouseY, mouseButton);
+
+        if (mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
+        {
+            if (this.tryTexturePickerMouseBack())
+            {
+                return true;
+            }
+
+            return this.handleKey(GLFW.GLFW_KEY_ESCAPE, 0, GLFW.GLFW_PRESS, 0);
+        }
+
+        if (mouseButton == GLFW.GLFW_MOUSE_BUTTON_5 && this.tryTexturePickerMouseForward())
+        {
+            return true;
+        }
+
+        boolean result = false;
 
         if (this.root.isEnabled())
         {
@@ -145,6 +197,57 @@ public abstract class UIBaseMenu
         }
 
         return result;
+    }
+
+    /**
+     * Texture picker Files tab uses the back mouse button for folder navigation instead of Escape.
+     */
+    private boolean tryTexturePickerMouseBack()
+    {
+        if (!this.root.isEnabled())
+        {
+            return false;
+        }
+
+        this.context.pushViewport(this.viewport);
+
+        for (UITexturePicker picker : this.root.getChildren(UITexturePicker.class))
+        {
+            if (picker.tryMouseBack(this.context))
+            {
+                this.context.popViewport();
+
+                return true;
+            }
+        }
+
+        this.context.popViewport();
+
+        return false;
+    }
+
+    private boolean tryTexturePickerMouseForward()
+    {
+        if (!this.root.isEnabled())
+        {
+            return false;
+        }
+
+        this.context.pushViewport(this.viewport);
+
+        for (UITexturePicker picker : this.root.getChildren(UITexturePicker.class))
+        {
+            if (picker.tryMouseForward(this.context))
+            {
+                this.context.popViewport();
+
+                return true;
+            }
+        }
+
+        this.context.popViewport();
+
+        return false;
     }
 
     public boolean mouseScrolled(int x, int y, double h, double v)
@@ -192,7 +295,7 @@ public abstract class UIBaseMenu
 
     public boolean handleKey(int key, int scanCode, int action, int mods)
     {
-        if (action == GLFW.GLFW_PRESS)
+        if (action == GLFW.GLFW_PRESS && this.showInputOverlay())
         {
             inputRenderer.keyPressed(this.context, key);
         }
@@ -256,6 +359,8 @@ public abstract class UIBaseMenu
         this.context.resetCursor();
 
         this.preRenderMenu(context);
+        UIAnimatedCollapseShell.tickAll();
+        UIFormList.tickCategoryCards();
 
         if (this.root.isVisible())
         {
@@ -270,7 +375,7 @@ public abstract class UIBaseMenu
             this.context.postRender();
         }
 
-        if (this.main.isVisible())
+        if (this.showInputOverlay() && this.main.isVisible())
         {
             inputRenderer.render(this, mouseX, mouseY);
         }

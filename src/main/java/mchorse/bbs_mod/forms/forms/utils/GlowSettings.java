@@ -18,6 +18,8 @@ public class GlowSettings
     public float b = 1F;
     public float intensity;
     public boolean sync = false;
+    /** When true, glow emission is applied only where paint is active. */
+    public boolean paintOnly = false;
     public float radius;
     public float centerX;
     public float centerY;
@@ -44,6 +46,7 @@ public class GlowSettings
         copy.g = this.g;
         copy.b = this.b;
         copy.sync = this.sync;
+        copy.paintOnly = this.paintOnly;
         copy.centerX = this.centerX;
         copy.centerY = this.centerY;
         copy.centerZ = this.centerZ;
@@ -114,6 +117,11 @@ public class GlowSettings
         return this.sync;
     }
 
+    public boolean resolvePaintOnly()
+    {
+        return this.paintOnly;
+    }
+
     public void fromData(BaseType data)
     {
         if (data instanceof MapType map)
@@ -123,6 +131,7 @@ public class GlowSettings
             this.b = map.has("b") ? map.getFloat("b") : 1F;
             this.intensity = map.getFloat("intensity");
             this.sync = map.getBool("sync", false);
+            this.paintOnly = map.getBool("paintOnly", false);
             this.radius = map.getFloat("radius");
             this.centerX = map.getFloat("centerX");
             this.centerY = map.getFloat("centerY");
@@ -141,6 +150,7 @@ public class GlowSettings
         map.putFloat("b", this.b);
         map.putFloat("intensity", this.intensity);
         map.putBool("sync", this.sync);
+        map.putBool("paintOnly", this.paintOnly);
         map.putFloat("radius", this.radius);
         map.putFloat("centerX", this.centerX);
         map.putFloat("centerY", this.centerY);
@@ -169,6 +179,7 @@ public class GlowSettings
             && Float.compare(this.b, that.b) == 0
             && Float.compare(this.intensity, that.intensity) == 0
             && this.sync == that.sync
+            && this.paintOnly == that.paintOnly
             && Float.compare(this.radius, that.radius) == 0
             && Float.compare(this.centerX, that.centerX) == 0
             && Float.compare(this.centerY, that.centerY) == 0
@@ -180,6 +191,6 @@ public class GlowSettings
     @Override
     public int hashCode()
     {
-        return Objects.hash(this.r, this.g, this.b, this.intensity, this.sync, this.radius, this.centerX, this.centerY, this.centerZ, this.width, this.height);
+        return Objects.hash(this.r, this.g, this.b, this.intensity, this.sync, this.paintOnly, this.radius, this.centerX, this.centerY, this.centerZ, this.width, this.height);
     }
 }

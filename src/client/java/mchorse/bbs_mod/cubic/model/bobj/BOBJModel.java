@@ -10,6 +10,7 @@ import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.render.vao.BOBJModelSimpleVAO;
 import mchorse.bbs_mod.cubic.render.vao.BOBJModelVAO;
 import mchorse.bbs_mod.forms.entities.IEntity;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -17,6 +18,7 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,12 +30,41 @@ public class BOBJModel implements IModel
 
     private BOBJModelVAO vao;
     private boolean simple;
+    private Set<Integer> deformingBones;
 
     public BOBJModel(BOBJArmature armature, BOBJLoader.CompiledData meshData, boolean simple)
     {
         this.armature = armature;
         this.meshData = meshData;
         this.simple = simple;
+    }
+
+    /**
+     * Whether any mesh vertex is weighted to this bone. Bare reach-marker bones
+     * return false so IK stretch ends on the last deforming bone.
+     */
+    public boolean boneDeformsMesh(int boneIndex)
+    {
+        if (this.deformingBones == null)
+        {
+            this.deformingBones = new HashSet<>();
+
+            if (this.meshData != null && this.meshData.boneIndexData != null && this.meshData.weightData != null)
+            {
+                int[] indices = this.meshData.boneIndexData;
+                float[] weights = this.meshData.weightData;
+
+                for (int i = 0; i < indices.length; i++)
+                {
+                    if (indices[i] >= 0 && weights[i] > 0F)
+                    {
+                        this.deformingBones.add(indices[i]);
+                    }
+                }
+            }
+        }
+
+        return this.deformingBones.contains(boneIndex);
     }
 
     public BOBJArmature getArmature()
@@ -120,12 +151,14 @@ public class BOBJModel implements IModel
 
             bone.lighting = transform.lighting;
             bone.color.copy(transform.color);
+            bone.color.a *= MathUtils.clamp(transform.opacity, 0F, 1F);
             bone.texture = transform.texture;
             bone.textureBlend = transform.textureBlend;
             bone.transform.translate.add(transform.translate);
             bone.transform.scale.add(transform.scale).sub(1, 1, 1);
             bone.transform.rotate.add(transform.rotate);
             bone.transform.rotate2.add(transform.rotate2);
+            bone.transform.pivot.add(transform.pivot);
         }
     }
 
@@ -230,6 +263,58 @@ public class BOBJModel implements IModel
         }
 
         return groups;
+    }
+
+    @Override
+    public String getParentGroupKey(String key)
+    {
+        BOBJBone bone = this.armature.bones.get(key);
+
+        if (bone == null || bone.parentBone == null)
+        {
+            return null;
+        }
+
+        return bone.parentBone.name;
+    }
+
+    @Override
+    public Collection<String> getRootGroupKeys()
+    {
+        List<String> roots = new ArrayList<>();
+
+        for (BOBJBone bone : this.armature.orderedBones)
+        {
+            if (bone.parentBone == null)
+            {
+                roots.add(bone.name);
+            }
+        }
+
+        return roots;
+    }
+
+    @Override
+    public Collection<String> getDirectChildrenKeys(String key)
+    {
+        BOBJBone parent = this.armature.bones.get(key);
+
+        if (parent == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<String> children = new ArrayList<>();
+
+        for (BOBJBone bone : this.armature.orderedBones)
+        {
+            if (bone.parentBone == parent)
+            {
+                children.add(bone.name);
+            }
+        }
+
+        return children;
     }
 
     @Override

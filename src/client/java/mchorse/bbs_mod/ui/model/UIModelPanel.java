@@ -118,6 +118,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
 
     public UIElement modelSettingsPanel;
     public UIModelPhysBonePanel physBonesPanel;
+    public UIModelConstraintsPanel constraintsPanel;
     public UIModelGeometryPanel geometryPanel;
     public UIModelIKPanel ikPanel;
     public UIScrollView sectionsView;
@@ -450,6 +451,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
         }));
 
         this.physBonesPanel = new UIModelPhysBonePanel(this);
+        this.constraintsPanel = new UIModelConstraintsPanel(this);
 
         /* Sections setup */
         this.overlay.namesList.setFileIcon(Icons.MORPH);
@@ -478,6 +480,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
         this.registerPanel(this.physBonesPanel, UIKeys.MODELS_PHYS_BONES_EDITOR, Icons.DYNAMIC_BONES);
+        this.registerPanel(this.constraintsPanel, UIKeys.MODELS_CONSTRAINTS_EDITOR, Icons.LOCKED);
         this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
@@ -1654,6 +1657,16 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
             {
                 this.ikPanel.onBoneSelected(bone);
             }
+
+            if (this.physBonesPanel.hasParent())
+            {
+                this.physBonesPanel.onBoneSelected(bone);
+            }
+
+            if (this.constraintsPanel.hasParent())
+            {
+                this.constraintsPanel.onBoneSelected(bone);
+            }
         }
         finally
         {
@@ -1735,7 +1748,12 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
             {
                 this.physBonesPanel.setConfig(data);
             }
-            
+
+            if (this.constraintsPanel != null)
+            {
+                this.constraintsPanel.setConfig(data);
+            }
+
             this.sectionsView.resize();
             this.rightView.resize();
             this.resetEditorScrolls();

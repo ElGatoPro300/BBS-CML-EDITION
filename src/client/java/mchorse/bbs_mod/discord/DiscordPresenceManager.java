@@ -52,6 +52,8 @@ public class DiscordPresenceManager
     private long sessionStart;
     private int idleRefreshTicks;
 
+    private boolean loggedInvalidAppId;
+
     private DiscordPresenceManager()
     {}
 
@@ -345,7 +347,11 @@ public class DiscordPresenceManager
 
         if (!this.isValidApplicationId(applicationId))
         {
-            LOGGER.error("Discord Rich Presence: invalid or missing application ID \"{}\". Set a valid Client ID from the Discord Developer Portal in Appearance settings.", applicationId);
+            if (!this.loggedInvalidAppId)
+            {
+                this.loggedInvalidAppId = true;
+                LOGGER.debug("Discord Rich Presence: invalid or missing application ID \"{}\". Set a valid Client ID from the Discord Developer Portal in Appearance settings.", applicationId);
+            }
 
             return;
         }

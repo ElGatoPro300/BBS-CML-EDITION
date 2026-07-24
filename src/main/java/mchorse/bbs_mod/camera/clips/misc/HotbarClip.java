@@ -130,7 +130,7 @@ public class HotbarClip extends CameraClip
         state.y = layout.y;
         state.scale = Math.max(0.05F, layout.z);
         state.alpha = alpha;
-        state.renderOrder = context.count;
+        state.renderOrder = context.applied;
 
         getHotbars(context).add(state);
     }
