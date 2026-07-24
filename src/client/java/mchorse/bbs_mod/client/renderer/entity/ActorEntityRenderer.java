@@ -92,13 +92,13 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
 
         this.setupTransforms(livingEntity, matrices, bodyYaw, tickDelta);
 
-        //RenderSystem.enableBlend();
-        //RenderSystem.enableDepthTest();
+        //GlStateManager._enableBlend();
+        //GlStateManager._enableDepthTest();
         //FormUtilsClient.render(livingEntity.getForm(), new FormRenderingContext()
         //    .set(FormRenderType.ENTITY, livingEntity.getEntity(), matrices, state.light, overlay, tickDelta)
         //    .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-        //RenderSystem.disableDepthTest();
-        //RenderSystem.disableBlend();
+        //GlStateManager._disableDepthTest();
+        //GlStateManager._disableBlend();
 
         matrices.pop();
 

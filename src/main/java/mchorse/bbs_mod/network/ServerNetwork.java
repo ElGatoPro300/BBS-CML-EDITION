@@ -333,7 +333,7 @@ public class ServerNetwork
             return;
         }
 
-        GameMode mode = GameMode.byId(modeId);
+        GameMode mode = GameMode.byId(Integer.toString(modeId));
 
         if (mode == null)
         {
@@ -626,7 +626,7 @@ public class ServerNetwork
             else if (state == ActionState.RESTORE)
             {
                 ActionPlayer actionPlayer = actions.getPlayer(filmId);
-                ServerWorld world = actionPlayer != null ? actionPlayer.getWorld() : player.getServerWorld();
+                ServerWorld world = actionPlayer != null ? actionPlayer.getWorld() : (ServerWorld) player.getEntityWorld();
 
                 actions.restoreDamage(world);
             }

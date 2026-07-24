@@ -1311,7 +1311,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 shapeResult.renderKeyframeBackground(context, builder, matrix, mx, my, 2, mc);
             }
 
-            // RenderSystem.enableBlend();
+            // GlStateManager._enableBlend();
             // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
             // BufferRenderer.drawWithGlobalProgram(builder.end());
 

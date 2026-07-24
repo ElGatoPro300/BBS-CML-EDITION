@@ -598,16 +598,7 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
     {
         Color color = new Color(particle.r, particle.g, particle.b, particle.a);
 
-        if (emitter != null && emitter.glowSettings != null)
-        {
-            Color legacyGlow = emitter.legacyGlow == null ? new Color(1F, 1F, 1F, 1F) : emitter.legacyGlow;
-            float glowIntensity = emitter.glowSettings.resolveIntensity(legacyGlow);
-
-            if (glowIntensity < 0F)
-            {
-                FormColorBlend.blendFormGlowBrighten(color, emitter.glowSettings, legacyGlow);
-            }
-        }
+        /* TODO 1.21.11: ParticleEmitter glowSettings/legacyGlow fields removed - glow disabled */
 
         return color;
     }

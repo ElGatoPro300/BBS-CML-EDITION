@@ -72,11 +72,11 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         matrices.scale(scale, scale, scale);
         MatrixStackUtils.applyTransform(matrices, properties.projectileTransform);
 
-        //RenderSystem.enableDepthTest();
+        //GlStateManager._enableDepthTest();
         //FormUtilsClient.render(projectile.getForm(), new FormRenderingContext()
         //    .set(FormRenderType.ENTITY, projectile.getEntity(), matrices, state.light, OverlayTexture.DEFAULT_UV, tickDelta)
         //    .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-        //RenderSystem.disableDepthTest();
+        //GlStateManager._disableDepthTest();
 
         matrices.pop();
 

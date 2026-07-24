@@ -105,9 +105,6 @@ public class ScreenEffectRenderer
 
         /* Vignette, color grade and film grain via shader pass */
         ColorGradeRenderer.apply(effects, grainEffects);
-        /* Must run even when letterbox follows — letterbox is PositionColor only and
-         * does not repair the texture-unit desync that breaks Subtitle text baking. */
-        ColorGradeRenderer.resyncMinecraftState(batcher);
 
         /* Letterbox bars */
         for (LetterboxEffect effect : letterboxEffects)
@@ -195,16 +192,16 @@ public class ScreenEffectRenderer
 
         if (transformed)
         {
-            MatrixStack stack = batcher.getContext().getMatrices();
+            Matrix3x2fStack stack = batcher.getContext().getMatrices();
 
-            stack.push();
-            stack.translate(effect.offsetX * screenW, effect.offsetY * screenH, 0F);
-            stack.translate(screenW / 2F, screenH / 2F, 0F);
-            stack.multiply(RotationAxis.POSITIVE_Z.rotation(MathUtils.toRad(effect.rotation)));
-            stack.scale(zoom, zoom, 1F);
-            stack.translate(-screenW / 2F, -screenH / 2F, 0F);
+            stack.pushMatrix();
+            stack.translate(effect.offsetX * screenW, effect.offsetY * screenH);
+            stack.translate(screenW / 2F, screenH / 2F);
+            stack.rotate(MathUtils.toRad(effect.rotation));
+            stack.scale(zoom, zoom);
+            stack.translate(-screenW / 2F, -screenH / 2F);
             renderEyeMask(batcher, effect, screenW, screenH, blink);
-            stack.pop();
+            stack.popMatrix();
         }
         else
         {

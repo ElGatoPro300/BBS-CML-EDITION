@@ -1090,18 +1090,16 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
      */
     private void applyIKChainsToPreview(ModelInstance model)
     {
-        if (this.config == null || this.config.ikChains.getList().isEmpty())
+        if (model == null || model.ikChains.isEmpty())
         {
             return;
         }
 
-        /* ModelFormRenderer.getAnimator() returns the live IAnimator.
-           If the model is procedural, it will be a ProceduralAnimator. */
         IAnimator animator = this.renderer.getAnimator();
 
         if (animator instanceof ProceduralAnimator pa)
         {
-            pa.setIKChains(new ArrayList<>(this.config.ikChains.getList()));
+            pa.setIKChains(new ArrayList<>(model.ikChains));
         }
     }
 

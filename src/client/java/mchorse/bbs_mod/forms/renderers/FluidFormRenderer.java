@@ -737,7 +737,7 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
 
         List<BaseFilmController> controllers = new ArrayList<>(BBSModClient.getFilms().getControllers());
 
-        UIDashboard dashboard = BBSModClient.peekDashboard();
+        UIDashboard dashboard = BBSModClient.getDashboard();
 
         if (dashboard != null && dashboard.getPanels() != null && dashboard.getPanels().panel instanceof UIFilmPanel panel)
         {

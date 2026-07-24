@@ -115,10 +115,10 @@ public class UIHotbarRenderer
         stack.translate(-SCALE_PIVOT_X, -SCALE_PIVOT_Y, 0F);
 
         /* HUD layers must ignore world depth to avoid bottom clipping against terrain. */
-        /* TODO 1.21.11: RenderSystem.disableDepthTest(); */
-        /* TODO 1.21.11: RenderSystem.depthMask(false); */
-        /* TODO 1.21.11: RenderSystem.enableBlend(); */
-        /* TODO 1.21.11: RenderSystem.defaultBlendFunc(); */
+        /* TODO 1.21.11: GlStateManager._disableDepthTest(); */
+        /* TODO 1.21.11: GlStateManager._depthMask(false); */
+        /* TODO 1.21.11: GlStateManager._enableBlend(); */
+        /* TODO 1.21.11: GlStateManager._blendFuncSeparate(770, 771, 1, 0); */
         /* TODO 1.21.11: RenderSystem.setShaderColor(1F, 1F, 1F, alpha); */
 
         /* TODO 1.21.11: batcher.getContext().drawGuiTexture(RenderLayer::getGuiTextured, HOTBAR, 0, 0, 182, 22); */
@@ -210,8 +210,8 @@ public class UIHotbarRenderer
         }
 
         /* Item glint (enchants) requires depth test in GUI item renderer. */
-        /* TODO 1.21.11: RenderSystem.enableDepthTest(); */
-        /* TODO 1.21.11: RenderSystem.depthMask(true); */
+        /* TODO 1.21.11: GlStateManager._enableDepthTest(); */
+        /* TODO 1.21.11: GlStateManager._depthMask(true); */
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
@@ -246,9 +246,9 @@ public class UIHotbarRenderer
 
         /* TODO 1.21.11: DiffuseLighting.disableGuiDepthLighting(); */
 
-        /* TODO 1.21.11: RenderSystem.disableDepthTest(); */
-        /* TODO 1.21.11: RenderSystem.depthMask(false); */
-        /* TODO 1.21.11: RenderSystem.disableBlend(); */
+        /* TODO 1.21.11: GlStateManager._disableDepthTest(); */
+        /* TODO 1.21.11: GlStateManager._depthMask(false); */
+        /* TODO 1.21.11: GlStateManager._disableBlend(); */
 
         /* TODO 1.21.11: RenderSystem.setShaderColor(1F, 1F, 1F, 1F); */
 

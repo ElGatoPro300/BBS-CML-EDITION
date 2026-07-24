@@ -24,6 +24,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Quaternionf;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -211,6 +212,50 @@ public class Gizmo
     public Mode getMode()
     {
         return this.mode;
+    }
+
+    /** The trackball sphere shows in the dedicated rotate mode and in combined. */
+    public boolean hasSphere()
+    {
+        return this.mode == Mode.ROTATE || this.mode == Mode.COMBINED;
+    }
+
+    public boolean isTrackballPickable()
+    {
+        if (!BBSSettings.gizmos.get() || !BBSSettings.gizmoTrackball.get())
+        {
+            return false;
+        }
+
+        return this.hasSphere();
+    }
+
+    public boolean hitsTrackball(Matrix4f gizmoMatrix, Vector3d rayOrigin, Vector3f rayDirection)
+    {
+        if (!this.isTrackballPickable())
+        {
+            return false;
+        }
+
+        Matrix4f inv = new Matrix4f(gizmoMatrix).invert();
+        Vector4f localOrigin = new Vector4f((float) rayOrigin.x, (float) rayOrigin.y, (float) rayOrigin.z, 1F);
+        inv.transform(localOrigin);
+        Vector4f localDir = new Vector4f(rayDirection.x, rayDirection.y, rayDirection.z, 0F);
+        inv.transform(localDir);
+
+        float a = localDir.x * localDir.x + localDir.y * localDir.y + localDir.z * localDir.z;
+        float b = 2F * (localOrigin.x * localDir.x + localOrigin.y * localDir.y + localOrigin.z * localDir.z);
+        float c = localOrigin.x * localOrigin.x + localOrigin.y * localOrigin.y + localOrigin.z * localOrigin.z - 1F;
+        float disc = b * b - 4F * a * c;
+
+        if (disc < 0F)
+        {
+            return false;
+        }
+
+        float t = (-b - (float) Math.sqrt(disc)) / (2F * a);
+
+        return t > 0F;
     }
 
     public void setViewportZoomScale(float viewportZoomScale)

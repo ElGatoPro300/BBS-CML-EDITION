@@ -9,6 +9,7 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BuiltBuffer;
 import net.minecraft.client.render.Tessellator;
@@ -259,4 +260,12 @@ public class ModelVAORenderer
     public static void beginPaintOverlayPass() {}
     public static void endPaintOverlayPass() {}
     public static int getWhiteTextureId() { return -1; }
+
+    /* Shape-key / CPU geometry stubs */
+    public static boolean isSuppressShapeKeyMainPassGlow() { return false; }
+    public static void setGroupFormColorGrade(Color groupColor) {}
+    public static void beginCpuGeometry(ShaderProgram shader) {}
+    public static void setupUniforms(MatrixStack stack, ShaderProgram shader) {}
+    public static boolean captureGradeSceneColor() { return false; }
+    public static void bindGradeSceneColorTexture() {}
 }

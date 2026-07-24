@@ -293,7 +293,7 @@ public class BBSRendering
 
         ModelBlockEntityUpdateCallback.EVENT.register((entity) ->
         {
-            if (entity.getWorld().isClient())
+            if (entity.hasWorld() && entity.getWorld().isClient())
             {
                 capturedModelBlocks.add(entity);
             }
@@ -301,7 +301,7 @@ public class BBSRendering
 
         TriggerBlockEntityUpdateCallback.EVENT.register((entity) ->
         {
-            if (entity.getWorld().isClient())
+            if (entity.hasWorld() && entity.getWorld().isClient())
             {
                 TriggerBlockEntityRenderer.capturedTriggerBlocks.add(entity);
             }
@@ -1089,8 +1089,8 @@ public class BBSRendering
             return;
         }
 
-        /* 1.21.11: depth-test state is managed via RenderPipeline; RenderSystem.disableDepthTest() removed */
-        // RenderSystem.disableDepthTest();
+        /* 1.21.11: depth-test state is managed via RenderPipeline; GlStateManager._disableDepthTest() removed */
+        // GlStateManager._disableDepthTest();
 
         /* 1.21.11: batcher.getContext().getMatrices() returns Matrix3x2fStack; use new MatrixStack() */
         MatrixStack matrices = new MatrixStack();
@@ -1121,7 +1121,7 @@ public class BBSRendering
             }
         }
 
-        /* 1.21.11: depth-test state is managed via RenderPipeline; RenderSystem.enableDepthTest() removed */
-        // RenderSystem.enableDepthTest();
+        /* 1.21.11: depth-test state is managed via RenderPipeline; GlStateManager._enableDepthTest() removed */
+        // GlStateManager._enableDepthTest();
     }
 }

@@ -162,12 +162,12 @@ public class UIStructurePickerPanel extends UIOverlayPanel
                 float t = UIStructurePickerPanel.this.getOpenAmount();
                 float slide = (1.0F - t) * -(MODES_W + 24);
 
-                context.render.batcher.getContext().getMatrices().push();
-                context.render.batcher.getContext().getMatrices().translate(slide, 0.0F, 0.0F);
+                context.render.batcher.getContext().getMatrices().pushMatrix();
+                context.render.batcher.getContext().getMatrices().translate(slide, 0.0F);
                 context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), COLOR_SIDEBAR);
                 context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0x55FFFFFF, 1);
                 super.render(context);
-                context.render.batcher.getContext().getMatrices().pop();
+                context.render.batcher.getContext().getMatrices().popMatrix();
             }
         };
         this.toolsPanel = new UIElement()
@@ -178,12 +178,12 @@ public class UIStructurePickerPanel extends UIOverlayPanel
                 float t = UIStructurePickerPanel.this.getOpenAmount();
                 float slide = (1.0F - t) * (TOOLS_W + 24);
 
-                context.render.batcher.getContext().getMatrices().push();
-                context.render.batcher.getContext().getMatrices().translate(slide, 0.0F, 0.0F);
+                context.render.batcher.getContext().getMatrices().pushMatrix();
+                context.render.batcher.getContext().getMatrices().translate(slide, 0.0F);
                 context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), COLOR_SIDEBAR);
                 context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0x55FFFFFF, 1);
                 super.render(context);
-                context.render.batcher.getContext().getMatrices().pop();
+                context.render.batcher.getContext().getMatrices().popMatrix();
             }
         };
 

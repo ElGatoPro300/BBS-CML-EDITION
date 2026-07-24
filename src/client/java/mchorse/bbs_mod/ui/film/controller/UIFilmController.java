@@ -6,10 +6,12 @@ import mchorse.bbs_mod.actions.ActionState;
 import mchorse.bbs_mod.actions.types.item.ItemDropActionClip;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.controller.RunnerCameraController;
+import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Film;
@@ -54,6 +56,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.TransformOrientation;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyAction;
@@ -1379,7 +1382,9 @@ public class UIFilmController extends UIElement
                 int tick = runner.ticks;
                 int duration = runner.getContext().clips == null ? 0 : runner.getContext().clips.calculateDuration();
 
-                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(true), duration, runner.getPosition(), MinecraftClient.getInstance().gameRenderer.getCamera(), context.matrices());
+                ClientPlayerEntity player = MinecraftClient.getInstance().player;
+                Position currentPos = player != null ? new Position((float) player.getX(), (float) player.getY(), (float) player.getZ(), player.getYaw(), player.getPitch()) : Position.ZERO;
+                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(true), duration, currentPos, MinecraftClient.getInstance().gameRenderer.getCamera(), context.matrices());
             }
         }
 
@@ -1537,7 +1542,7 @@ public class UIFilmController extends UIElement
         Draw.flush(builder, Draw.getPositionColorNoDepthLayer());
     }
 
-    public Pair<String, Boolean> getBone()
+    public Pair<String, TransformOrientation> getBone()
     {
         UIKeyframeEditor keyframeEditor = this.panel.replayEditor.keyframeEditor;
 
@@ -1608,7 +1613,7 @@ public class UIFilmController extends UIElement
         else
         {
             Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), this.panel.replayEditor.replays.replays.getIndex());
-            Pair<String, Boolean> bone = this.getBone();
+            Pair<String, TransformOrientation> bone = this.getBone();
 
             if (replay != null && this.editorController != null && !this.editorController.isReplayVisible(replay, replay.getTick(cursorTick)))
             {
@@ -1643,7 +1648,7 @@ public class UIFilmController extends UIElement
                     .transition(isPlaying ? MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false) : 0)
                     .stencil(this.stencilMap)
                     .relative(replay.relative.get())
-                    .bone(bone == null ? null : bone.a, bone != null && bone.b));
+                    .bone(bone == null ? null : bone.a, bone != null && bone.b == TransformOrientation.LOCAL));
             }
         }
 

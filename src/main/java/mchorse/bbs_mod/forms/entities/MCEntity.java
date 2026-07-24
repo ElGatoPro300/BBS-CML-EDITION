@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.entities;
 
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.mixin.EntityAccessor;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.utils.AABB;
 
@@ -689,7 +690,7 @@ public class MCEntity implements IEntity
     public void setFallFlying(boolean fallFlying)
     {
         /* Flag 7 is fall flying (elytra) in Minecraft */
-        this.mcEntity.setFlag(7, fallFlying);
+        ((EntityAccessor) this.mcEntity).invokeSetFlag(7, fallFlying);
     }
 
     @Override
@@ -721,7 +722,7 @@ public class MCEntity implements IEntity
         if (this.mcEntity instanceof LivingEntity living)
         {
             /* Flag 4 is Riptide spin attack in LivingEntity */
-            living.setLivingFlag(4, riptide);
+            ((EntityAccessor.LivingEntityAccessor) living).invokeSetLivingFlag(4, riptide);
         }
     }
 
@@ -772,7 +773,7 @@ public class MCEntity implements IEntity
         if (this.mcEntity instanceof LivingEntity living)
         {
             /* LivingFlag 1 is using item (e.g. blocking with shield) */
-            living.setLivingFlag(1, blocking);
+            ((EntityAccessor.LivingEntityAccessor) living).invokeSetLivingFlag(1, blocking);
         }
     }
 

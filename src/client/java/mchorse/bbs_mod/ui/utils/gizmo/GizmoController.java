@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.utils.gizmo;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -48,7 +49,12 @@ public class GizmoController
      */
     public boolean tryStartHandleDrag(UIContext context, UIPropTransform transform)
     {
-        if (transform == null || !Gizmo.isInteractive() || context == null || context.mouseButton != 0)
+        if (transform == null || context == null || context.mouseButton != 0)
+        {
+            return false;
+        }
+
+        if (!BBSSettings.gizmos.get())
         {
             return false;
         }
@@ -105,7 +111,7 @@ public class GizmoController
 
     public void updateHover()
     {
-        if (!Gizmo.isInteractive())
+        if (!BBSSettings.gizmos.get())
         {
             Gizmo.INSTANCE.setHoveredIndex(-1);
             this.clearPendingTrackball();
@@ -185,7 +191,7 @@ public class GizmoController
 
     private boolean hitsTrackball(UIContext context, UIPropTransform transform)
     {
-        if (context == null || transform == null || !Gizmo.INSTANCE.isTrackballPickable())
+        if (context == null || transform == null || !Gizmo.INSTANCE.hasSphere())
         {
             return false;
         }

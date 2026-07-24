@@ -6,6 +6,9 @@ import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.util.math.MatrixStack;
 
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+
 import com.mojang.blaze3d.opengl.GlStateManager;
 
 import java.util.ArrayList;
@@ -15,6 +18,7 @@ import java.util.List;
 
 public class CubicRenderer
 {
+    public static record PivotFrame(Vector3f position, Quaternionf parentRotation, Quaternionf worldRotation) {}
     public static final List<String> STENCIL_PICK_PRIORITY_BONES = Arrays.asList("low_body");
 
     /**

@@ -90,7 +90,8 @@ public class UIModelPreviewRenderer extends UIModelRenderer
                 }
                 else if (globalModel.isVAORendered())
                 {
-                    this.previewModel.borrowVaosFrom(globalModel);
+                    /* TODO 1.21.11: ModelInstance.borrowVaosFrom() removed — use setup() */
+                    this.previewModel.setup();
                 }
                 else
                 {

@@ -5,6 +5,7 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.Animator;
@@ -76,6 +77,29 @@ import java.util.function.Supplier;
 public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITickable
 {
     private static Matrix4f uiMatrix = new Matrix4f();
+    private static Float uiAngleOverride;
+
+    public static void setUIAngleOverride(Float angle)
+    {
+        uiAngleOverride = angle;
+    }
+
+    public static boolean isBobjModel(IModel model)
+    {
+        return model instanceof BOBJModel;
+    }
+
+    public static boolean isBobjModel(ModelForm form)
+    {
+        if (form == null)
+        {
+            return false;
+        }
+
+        ModelInstance instance = BBSModClient.getModels().getModel(form.model.get());
+
+        return instance != null && instance.model instanceof BOBJModel;
+    }
 
     private MatrixCache bones = new MatrixCache();
 

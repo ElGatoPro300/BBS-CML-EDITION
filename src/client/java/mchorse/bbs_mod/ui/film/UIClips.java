@@ -1519,7 +1519,7 @@ public class UIClips extends UIElement
             keyframeEditor.target(propertiesTarget);
             /* Pick a keyframe → show Properties tab. Opening the embed alone does not
              * focus that tab (keeps Camera/Action Properties if already selected). */
-            keyframeEditor.pickListener(filmPanel::focusEmbeddedKeyframePropertiesTab);
+            keyframeEditor.pickListener(() -> filmPanel.focusLinkedPropertiesTab("keyframe"));
             this.syncEmbeddedClipPanelVisibility(true);
         }
     }

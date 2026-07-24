@@ -103,6 +103,30 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         return headYawBase * (1F - t);
     }
 
+    public static void renderIntoShadowMap(ModelBlockEntity modelBlock, MatrixStack matrices, VertexConsumerProvider.Immediate consumers, float tickDelta, double camX, double camY, double camZ)
+    {
+        if (modelBlock == null)
+        {
+            return;
+        }
+
+        IEntity iEntity = modelBlock.getEntity();
+        Form form = modelBlock.getProperties().getForm();
+
+        if (form == null)
+        {
+            return;
+        }
+
+        matrices.push();
+        matrices.translate(modelBlock.getPos().getX() - camX, modelBlock.getPos().getY() - camY, modelBlock.getPos().getZ() - camZ);
+
+        FormUtilsClient.render(form, new FormRenderingContext()
+            .set(FormRenderType.MODEL_BLOCK, iEntity, matrices, 15 << 20 | 15 << 4, OverlayTexture.DEFAULT_UV, tickDelta));
+
+        matrices.pop();
+    }
+
     public ModelBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
     {}
 

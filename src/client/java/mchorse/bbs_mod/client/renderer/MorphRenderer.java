@@ -76,8 +76,8 @@ public class MorphRenderer
         {
             if (canRender(playerForm))
             {
-                /* 1.21.11: RenderSystem.enableDepthTest() removed */
-                // RenderSystem.enableDepthTest();
+                /* 1.21.11: GlStateManager._enableDepthTest() removed */
+                // GlStateManager._enableDepthTest();
 
                 Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
                 Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
@@ -109,8 +109,8 @@ public class MorphRenderer
 
                 matrixStack.pop();
 
-                /* 1.21.11: RenderSystem.disableDepthTest() removed */
-                // RenderSystem.disableDepthTest();
+                /* 1.21.11: GlStateManager._disableDepthTest() removed */
+                // GlStateManager._disableDepthTest();
             }
 
             return true;
@@ -267,8 +267,8 @@ public class MorphRenderer
 
         if (form != null)
         {
-            /* 1.21.11: RenderSystem.enableDepthTest() removed */
-            // RenderSystem.enableDepthTest();
+            /* 1.21.11: GlStateManager._enableDepthTest() removed */
+            // GlStateManager._enableDepthTest();
 
             float bodyYaw = /* 1.21.11: prevBodyYaw removed */ livingEntity.bodyYaw;
 
@@ -294,8 +294,8 @@ public class MorphRenderer
 
             matrixStack.pop();
 
-            /* 1.21.11: RenderSystem.disableDepthTest() removed */
-            // RenderSystem.disableDepthTest();
+            /* 1.21.11: GlStateManager._disableDepthTest() removed */
+            // GlStateManager._disableDepthTest();
 
             return true;
         }

@@ -217,7 +217,7 @@ public class UIItemStack extends UIElement
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
             matrices.push();
-            /* TODO 1.21.11: RenderSystem.disableDepthTest() removed */
+            /* TODO 1.21.11: GlStateManager._disableDepthTest() removed */
             consumers.setUI(true);
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
@@ -232,8 +232,8 @@ public class UIItemStack extends UIElement
             /* TODO 1.21.11: DiffuseLighting.disableGuiDepthLighting() removed */
 
             consumers.setUI(false);
-            /* TODO 1.21.11: RenderSystem.enableDepthTest() removed */
-            /* TODO 1.21.11: RenderSystem.depthFunc() removed */
+            /* TODO 1.21.11: GlStateManager._enableDepthTest() removed */
+            /* TODO 1.21.11: GlStateManager._depthFunc() removed */
             matrices.pop();
         }
 

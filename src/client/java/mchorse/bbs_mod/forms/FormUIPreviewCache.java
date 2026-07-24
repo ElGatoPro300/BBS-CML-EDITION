@@ -19,8 +19,7 @@ import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.ProjectionType;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -257,8 +256,8 @@ public final class FormUIPreviewCache
         MinecraftClient client = MinecraftClient.getInstance();
         int[] viewport = new int[4];
         boolean scissorWasEnabled = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
-        Matrix4f previousProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        MatrixStack matrices = context.batcher.getContext().getMatrices();
+        Matrix4f previousProjection = new Matrix4f();
+        MatrixStack matrices = new MatrixStack();
 
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
 
@@ -273,12 +272,8 @@ public final class FormUIPreviewCache
 
         /* Preview fill uses cell-local coords. Match GUI Y-down ortho to the supersampled
          * target so getUIMatrix scale fills the thumbnail instead of a screen speck. */
-        RenderSystem.setProjectionMatrix(
-            new Matrix4f().ortho(0F, renderW, renderH, 0F, -1000F, 3000F),
-            ProjectionType.ORTHOGRAPHIC
-        );
-        RenderSystem.getModelViewStack().pushMatrix();
-        RenderSystem.getModelViewStack().identity();
+        /* RenderSystem.setProjectionMatrix removed in 1.21.11 */
+        /* RenderSystem.getModelViewStack() removed in 1.21.11 */
         matrices.push();
         matrices.peek().getPositionMatrix().identity();
         matrices.peek().getNormalMatrix().identity();
@@ -309,13 +304,13 @@ public final class FormUIPreviewCache
         scratchFramebuffer.unbind();
 
         matrices.pop();
-        RenderSystem.getModelViewStack().popMatrix();
-        RenderSystem.setProjectionMatrix(previousProjection, ProjectionType.ORTHOGRAPHIC);
+        /* RenderSystem.getModelViewStack() removed in 1.21.11 */
+        /* RenderSystem.setProjectionMatrix removed in 1.21.11 */
 
         if (client != null && client.getFramebuffer() != null)
         {
-            /* Do not clear — wiping the main FB mid-UI causes white wash / text corruption. */
-            client.getFramebuffer().beginWrite(false);
+            /* Do not clear — wiping the main FB mid-UI causes white wash / text corruption.
+             * Framebuffer.beginWrite removed in 1.21.11; main FB is implicitly restored by the render system. */
         }
 
         GL11.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
@@ -325,8 +320,8 @@ public final class FormUIPreviewCache
             GlStateManager._enableScissorTest();
         }
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(770, 771, 1, 0);
 
         entry.revision = revision;
         entry.angleBucket = angleBucket;

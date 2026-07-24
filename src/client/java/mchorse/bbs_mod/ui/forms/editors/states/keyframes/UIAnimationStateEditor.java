@@ -6,6 +6,7 @@ import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
+import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -494,7 +495,7 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
             return matrix == null ? Matrices.EMPTY_4F : matrix;
         }
 
-        boolean bobj = root instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+        boolean bobj = root instanceof ModelForm modelForm && ModelFormRenderer.getModel(modelForm) != null && ModelFormRenderer.getModel(modelForm).model instanceof BOBJModel;
         Matrix4f matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, bone.b, bobj);
 
         return matrix == null ? Matrices.EMPTY_4F : matrix;

@@ -79,7 +79,7 @@ public class UISubtitleRenderer
         FontRenderer font = Batcher2D.getVanillaTextRenderer();
         TextRenderer vanilla = MinecraftClient.getInstance().textRenderer;
 
-        /* TODO 1.21.11: RenderSystem.depthFunc(GL11.GL_ALWAYS); */
+        /* TODO 1.21.11: GlStateManager._depthFunc(GL11.GL_ALWAYS); */
         /* TODO 1.21.11: RenderSystem.disableCull(); */
 
         for (Subtitle subtitle : subtitles)
@@ -99,14 +99,14 @@ public class UISubtitleRenderer
             float scale = subtitle.size;
             int subColor = subtitle.color;
 
-            List<String> strings = subtitle.maxWidth <= 10 ? Arrays.asList(label) : FontRenderer.wrap(vanilla, label, subtitle.maxWidth);
+            List<String> strings = subtitle.maxWidth <= 10 ? Arrays.asList(label) : FontRenderer.wrap(vanilla, label, (int) subtitle.maxWidth);
 
             for (String string : strings)
             {
                 w = Math.max(w, vanilla.getWidth(string.trim()));
             }
 
-            h = (strings.size() - 1) * subtitle.lineHeight + vanilla.fontHeight - 2;
+            h = (int) ((strings.size() - 1) * subtitle.lineHeight + vanilla.fontHeight - 2F);
 
             int fw = (int) ((w + 10) * scale);
             int fh = (int) ((h + 10) * scale);
@@ -159,7 +159,7 @@ public class UISubtitleRenderer
                 /* TODO 1.21.11: textureSize.set((float) texture.width, (float) texture.height); */
             }
 
-            /* TODO 1.21.11: RenderSystem.enableBlend(); */
+            /* TODO 1.21.11: GlStateManager._enableBlend(); */
             /* TODO 1.21.11: RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA); */
 
             batcher.texturedBox((Supplier<RenderPipeline>)(Object) program, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);

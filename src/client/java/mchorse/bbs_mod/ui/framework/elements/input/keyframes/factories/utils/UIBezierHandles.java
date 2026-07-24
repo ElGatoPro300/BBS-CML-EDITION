@@ -55,6 +55,11 @@ public class UIBezierHandles
         );
     }
 
+    public void setKeyframe(Keyframe<?> keyframe)
+    {
+        this.keyframe = keyframe;
+    }
+
     public void update()
     {
         /* TODO 1.21.11: Keyframe.getLx/getLy/getRx/getRy removed */

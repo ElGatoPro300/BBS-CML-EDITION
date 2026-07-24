@@ -7,7 +7,6 @@ import mchorse.bbs_mod.utils.colors.Color;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.Fog;
 import net.minecraft.client.render.FrameGraphBuilder;
 import net.minecraft.client.render.Frustum;
 import net.minecraft.client.render.RenderLayer;
@@ -28,6 +27,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+/* Fog class removed in 1.21.11 */
+
+
+
+
+
 @Mixin(WorldRenderer.class)
 public class WorldRendererMixin
 {
@@ -36,29 +41,7 @@ public class WorldRendererMixin
     public Framebuffer entityOutlinesFramebuffer;
 */
 
-    @Inject(method = "renderSky(Lnet/minecraft/client/render/FrameGraphBuilder;Lnet/minecraft/client/render/Camera;FLnet/minecraft/client/render/Fog;)V", at = @At("HEAD"), cancellable = true, require = 0)
-    public void onRenderSky(FrameGraphBuilder frameGraphBuilder, Camera camera, float tickDelta, Fog fog, CallbackInfo info)
-    {
-        if (BBSRendering.isChromaSkyEnabled())
-        {
-            Color color = Color.rgb(BBSRendering.getChromaSkyColor());
-
-            GL11.glClearColor(color.r, color.g, color.b, 1F);
-            GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
-
-            info.cancel();
-
-            return;
-        }
-
-        SunPathRotation.begin(new Matrix4f());
-    }
-
-    @Inject(method = "renderSky(Lnet/minecraft/client/render/FrameGraphBuilder;Lnet/minecraft/client/render/Camera;FLnet/minecraft/client/render/Fog;)V", at = @At("RETURN"), require = 0)
-    public void onRenderSkyReturn(FrameGraphBuilder frameGraphBuilder, Camera camera, float tickDelta, Fog fog, CallbackInfo info)
-    {
-        SunPathRotation.end(new Matrix4f());
-    }
+    /* renderSky injectors disabled — Fog class removed in 1.21.11 require = 0 keeps them inert */
 
     /* TODO(1.21.11 render): WorldRenderer#renderLayer was removed by the FrameGraphBuilder/
      * OrderedRenderCommandQueue terrain rewrite (per-RenderLayer submission is now handled through

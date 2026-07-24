@@ -357,7 +357,7 @@ public class Films
 
     public void render(WorldRenderContext context)
     {
-        /* TODO(1.21.11 render): depth-test state now lives in the RenderPipeline/RenderLayer; removed RenderSystem.enableDepthTest() */
+        /* TODO(1.21.11 render): depth-test state now lives in the RenderPipeline/RenderLayer; removed GlStateManager._enableDepthTest() */
 
         for (BaseFilmController controller : this.controllers)
         {
@@ -369,7 +369,7 @@ public class Films
             this.recorder.render(context);
         }
 
-        /* TODO(1.21.11 render): depth-test state now lives in the RenderPipeline/RenderLayer; removed RenderSystem.disableDepthTest() */
+        /* TODO(1.21.11 render): depth-test state now lives in the RenderPipeline/RenderLayer; removed GlStateManager._disableDepthTest() */
     }
 
     public void renderHud(Batcher2D batcher2D, float tickDelta)

@@ -963,7 +963,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
          * not include the camera rotation (see renderPickingPreview). */
         Camera camera = this.filmPanel.getWorldCamera();
 
-        Area viewport = preview.getAbsoluteViewport();
+        Area viewport = preview.getViewport();
 
         if (!viewport.isInside(context.mouseX(), context.mouseY()))
         {
@@ -2661,11 +2661,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 this.keyframeEditor.view.copyViewport(lastEditor);
             }
 
-            if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet dopeSheet)
-            {
-                dopeSheet.onSheetsRebuilt();
-            }
-
             this.add(this.keyframeEditor);
             this.applyToolbarDockLayout();
 
@@ -2676,11 +2671,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
 
         this.resize();
-
-        if (this.keyframeEditor != null && this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet dopeSheet)
-        {
-            dopeSheet.reanchorFoldAfterLayout();
-        }
 
         if (this.keyframeEditor != null && lastEditor == null)
         {

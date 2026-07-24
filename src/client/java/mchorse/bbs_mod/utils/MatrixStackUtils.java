@@ -155,6 +155,15 @@ public class MatrixStackUtils
         stack.peek().getNormalMatrix().mul(normal);
     }
 
+    /**
+     * Inverts the Y component of the normal matrix so UI rendering has correct lighting
+     * (vanilla GUI coordinate system has Y pointing down).
+     */
+    public static void invertUiNormalY(MatrixStack stack)
+    {
+        stack.peek().getNormalMatrix().mul(new Matrix3f().scale(1F, -1F, 1F));
+    }
+
     public static void scaleBack(MatrixStack matrices)
     {
         Matrix4f position = matrices.peek().getPositionMatrix();

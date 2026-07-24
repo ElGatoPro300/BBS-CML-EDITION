@@ -21,6 +21,7 @@ import mchorse.bbs_mod.forms.forms.utils.Illusion;
 import mchorse.bbs_mod.forms.forms.utils.LookAt;
 import mchorse.bbs_mod.forms.forms.utils.LookAtBone;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.forms.utils.ShadowSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
@@ -81,6 +82,7 @@ import net.minecraft.world.World;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector2f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -983,6 +985,54 @@ public abstract class BaseFilmController
      * bone's matrix is used (which reacts to the target's pose animation), otherwise
      * the target form's full visual transform is taken into account.
      */
+    public static Vector3d resolveReplayAttachmentPoint(FilmControllerContext context, int targetReplay, String attachment)
+    {
+        if (context == null || context.entities == null)
+        {
+            return null;
+        }
+
+        IEntity targetEntity = context.entities.get(targetReplay);
+
+        if (targetEntity == null)
+        {
+            return null;
+        }
+
+        return getLookAtTargetPoint(targetEntity, attachment, context.transition);
+    }
+
+    public static Quaternionf resolveReplayAttachmentRotation(FilmControllerContext context, int targetReplay, String attachment)
+    {
+        if (context == null || context.entities == null)
+        {
+            return null;
+        }
+
+        IEntity targetEntity = context.entities.get(targetReplay);
+
+        if (targetEntity == null)
+        {
+            return null;
+        }
+
+        Matrix4f matrix = getMatrixForRenderWithRotation(targetEntity, 0D, 0D, 0D, context.transition);
+        Form targetForm = targetEntity.getForm();
+
+        if (targetForm != null)
+        {
+            MatrixCache map = FormUtilsClient.getRenderer(targetForm).collectMatrices(targetEntity, context.transition);
+            Matrix4f visualMatrix = getLookAtVisualMatrix(map, targetForm, attachment);
+
+            if (visualMatrix != null)
+            {
+                matrix.mul(visualMatrix);
+            }
+        }
+
+        return matrix.getNormalizedRotation(new Quaternionf());
+    }
+
     private static Vector3d getLookAtTargetPoint(IEntity targetEntity, String attachment, float transition)
     {
         Matrix4f matrix = getMatrixForRenderWithRotation(targetEntity, 0D, 0D, 0D, transition);
@@ -2410,21 +2460,8 @@ public abstract class BaseFilmController
     {
         float tick = replay.getTick(this.getTick()) + this.getTransition(entity, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
 
-        float shadowSize = replay.shadowSize.get();
-        float shadowOpacity = replay.shadowOpacity.get();
-
-        if (!replay.keyframes.shadowSize.isEmpty())
-        {
-            shadowSize = replay.keyframes.shadowSize.interpolate(tick).floatValue();
-        }
-
-        if (!replay.keyframes.shadowOpacity.isEmpty())
-        {
-            shadowOpacity = replay.keyframes.shadowOpacity.interpolate(tick).floatValue();
-        }
-
-        shadowSize = Math.max(0F, shadowSize);
-        shadowOpacity = MathUtils.clamp(shadowOpacity, 0F, 1F);
+        float shadowSize = Math.max(0F, replay.shadowSize.get());
+        float shadowOpacity = MathUtils.clamp(replay.shadowOpacity.get(), 0F, 1F);
 
         return FilmControllerContext.instance
             .setup(this.entities, entity, replay, context)
@@ -2438,6 +2475,19 @@ public abstract class BaseFilmController
 
     public void shutdown()
     {}
+
+    public static ShadowSettings resolveShadowSettings(Replay replay, float tick)
+    {
+        ShadowSettings settings = new ShadowSettings();
+        settings.opacity = MathUtils.clamp(replay.shadowOpacity.get(), 0F, 1F);
+        settings.widthX = Math.max(0F, replay.shadowSize.get());
+        settings.widthZ = Math.max(0F, replay.shadowSizeZ.get());
+        settings.offsetX = replay.shadowOffsetX.get();
+        settings.offsetY = replay.shadowOffsetY.get();
+        settings.offsetZ = replay.shadowOffsetZ.get();
+
+        return settings;
+    }
 
     public static enum UpdateMode
     {

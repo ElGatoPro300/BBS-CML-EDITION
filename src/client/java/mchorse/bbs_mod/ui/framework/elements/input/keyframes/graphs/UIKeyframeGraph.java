@@ -814,8 +814,8 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             }
         }
 
-        // RenderSystem.enableBlend();
-        // RenderSystem.defaultBlendFunc();
+        // GlStateManager._enableBlend();
+        // GlStateManager._blendFuncSeparate(770, 771, 1, 0);
         // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         if (keyframes.isEmpty())

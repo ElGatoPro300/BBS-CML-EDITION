@@ -93,6 +93,12 @@ public class ModelInstance implements IModelInstance
     public ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
     public ActionsConfig actions = new ActionsConfig();
 
+    /* Fields restored from 1.21.1 for IK/constraints/physics */
+    public ModelForm form;
+    public MapType jointLimits;
+    public MapType limbConstraints;
+    public MapType springChains;
+
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
 
     public ModelInstance(String id, IModel model, Animations animations, Link texture)
@@ -139,6 +145,11 @@ public class ModelInstance implements IModelInstance
     public List<PhysBoneDefinition> getPhysBones()
     {
         return this.physBones;
+    }
+
+    public boolean hasShapeKeys()
+    {
+        return this.model != null && !this.model.getShapeKeys().isEmpty();
     }
 
     public Map<ModelGroup, ModelVAO> getVaos()

@@ -54,7 +54,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
 
     /* Axes gizmo: opaque POSITION_COLOR triangles drawn without depth testing so the gizmo stays visible
      * on top while previewing in the model editor (old code bracketed the draw with
-     * RenderSystem.disableDepthTest()/enableDepthTest(), which no longer exists as a mutable global toggle). */
+     * GlStateManager._disableDepthTest()/enableDepthTest(), which no longer exists as a mutable global toggle). */
     private static RenderPipeline axesPipeline;
     private static RenderLayer axesLayer;
 

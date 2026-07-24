@@ -161,12 +161,12 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         }
     }
 
-    private boolean shouldUseDroppedMode(boolean isDropped)
+    boolean shouldUseDroppedMode(boolean isDropped)
     {
         return isDropped || this.form.sameAnimationWhenDropped.get();
     }
 
-    private ItemDisplayContext getRenderMode(boolean useDroppedMode)
+    ItemDisplayContext getRenderMode(boolean useDroppedMode)
     {
         if (useDroppedMode)
         {
@@ -185,7 +185,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         return this.form.modelTransform.get();
     }
 
-    private void applyDroppedAnimation(FormRenderingContext context, boolean useDroppedMode)
+    void applyDroppedAnimation(FormRenderingContext context, boolean useDroppedMode)
     {
         if (!useDroppedMode || context.entity == null || context.entity.getWorld() == null)
         {
