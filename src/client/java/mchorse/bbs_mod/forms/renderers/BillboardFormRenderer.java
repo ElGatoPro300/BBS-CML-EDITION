@@ -248,7 +248,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
     private void renderQuad(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, float alphaFactor, FormRenderingContext deferContext, Link textureLink)
     {
-        Color storedFormColor = this.form.color.get();
+        Color storedFormColor = this.form.getFormColor();
         boolean hasColorAdjustments = storedFormColor != null && storedFormColor.hasColorAdjustments();
         boolean colorTransformWanted = FormColorBlend.wantsColorTransformMask(storedFormColor);
         Color color = new Color().set(overlayColor, true);
@@ -285,7 +285,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
         boolean shadowPass = shadowPassEarly;
 
-        FormColorBlend.applyShadowPassColorFix(color, this.form.color.get(), this.form.paintSettings.get(), this.form.paintColor.get(), shadowPass);
+        FormColorBlend.applyShadowPassColorFix(color, this.form.getFormColor(), this.form.paintSettings.get(), this.form.paintColor.get(), shadowPass);
 
         if (color.a <= 0.001F && !shadowPass)
         {

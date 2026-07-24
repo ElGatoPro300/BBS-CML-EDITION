@@ -42,6 +42,7 @@ public class BillboardForm extends Form
         this.add(this.crop);
         this.add(this.resizeCrop);
         this.add(this.color);
+        this.registerColorOverlays();
         this.add(this.offsetX);
         this.add(this.offsetY);
         this.add(this.rotation);

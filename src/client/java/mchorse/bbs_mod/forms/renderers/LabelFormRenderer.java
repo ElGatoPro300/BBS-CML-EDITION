@@ -66,7 +66,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         GlowSettings glowSettings = this.form.glowSettings.get();
         Color legacyGlow = this.form.glowingColor.get();
         float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
-        Color color = this.form.color.get().copy();
+        Color color = this.form.getFormColor().copy();
 
         if (glowIntensity < 0F)
         {
@@ -426,7 +426,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         Color shadowColor = this.form.shadowColor.get().copy();
         Color color = new Color().set(context.color, true);
 
-        color.mul(this.form.color.get());
+        color.mul(this.form.getFormColor());
 
         if (glowIntensity < 0F)
         {
@@ -575,7 +575,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         Color shadowColor = this.form.shadowColor.get().copy();
         Color color = new Color().set(context.color, true);
 
-        color.mul(this.form.color.get());
+        color.mul(this.form.getFormColor());
 
         if (glowIntensity < 0F)
         {

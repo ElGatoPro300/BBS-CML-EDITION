@@ -30,6 +30,7 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,9 +72,17 @@ public class UIReplaysEditorUtils
             return;
         }
 
+        UIKeyframeSheet hostSheet = editor.getGraph() != null ? editor.getGraph().getSheet(keyframe) : null;
+
         for (UIKeyframeSheet sheet : editor.getGraph().getSheets())
         {
             if (sheet.channel.getFactory() != keyframe.getFactory())
+            {
+                continue;
+            }
+
+            /* Color / color_overlay tracks share KeyframeFactories.COLOR — only edit the host sheet. */
+            if (hostSheet != null && sheet != hostSheet && sheet.channel.getFactory() == KeyframeFactories.COLOR)
             {
                 continue;
             }
@@ -99,7 +108,8 @@ public class UIReplaysEditorUtils
 
         for (UIKeyframeSheet sheet : editor.getGraph().getSheets())
         {
-            if (!"color".equals(sheet.id))
+            /* Paint companions only follow the main Color track, not color overlays. */
+            if (!"color".equals(sheet.id) && (sheet.id == null || !sheet.id.endsWith("/color")))
             {
                 continue;
             }

@@ -859,6 +859,12 @@ public class FormProperties extends ValueGroup
             }
 
             Color color = new Color(settings.r, settings.g, settings.b, settings.intensity);
+
+            if (settings.transform != null && settings.transform.isActive())
+            {
+                color.transform = settings.transform.copy();
+            }
+
             int index = paintColor.insert(kf.getTick(), color);
             Keyframe<Color> out = paintColor.get(index);
 
@@ -1144,18 +1150,37 @@ public class FormProperties extends ValueGroup
     {
         for (String key : data.keys())
         {
-            if (key.equals("color") || key.endsWith("/color")
-                || key.equals("paint_color") || key.endsWith("/paint_color")
-                || key.equals("glowing_color") || key.endsWith("/glowing_color"))
+            if (this.isColorKeyframeChannelKey(key))
             {
                 this.flattenColorChannelValuesToInt(data.getMap(key));
             }
         }
     }
 
+    private boolean isColorKeyframeChannelKey(String key)
+    {
+        if (key == null || key.isEmpty())
+        {
+            return false;
+        }
+
+        String name = key;
+        int slash = key.lastIndexOf('/');
+
+        if (slash >= 0 && slash + 1 < key.length())
+        {
+            name = key.substring(slash + 1);
+        }
+
+        return name.equals("color")
+            || name.equals("paint_color")
+            || name.equals("glowing_color")
+            || name.startsWith("color_overlay");
+    }
+
     /**
      * Older builds ClassCast on Map color values. Keep the rich map in {@code value_bbs}
-     * so this build round-trips Color Grade / transforms / blend_a.
+     * so this build round-trips Color Grade / transforms / blend_a / paint companions.
      */
     private void flattenColorChannelValuesToInt(MapType colorData)
     {
@@ -1180,11 +1205,18 @@ public class FormProperties extends ValueGroup
 
             if (value != null && value.isMap())
             {
-                MapType valueMap = value.asMap();
+                MapType valueMap = value.asMap().copy().asMap();
+
+                if (!valueMap.has(mchorse.bbs_mod.utils.keyframes.factories.ColorKeyframeFactory.BLEND_A) && valueMap.has("color"))
+                {
+                    Color packed = Color.rgba(valueMap.getInt("color"));
+
+                    valueMap.putFloat(mchorse.bbs_mod.utils.keyframes.factories.ColorKeyframeFactory.BLEND_A, packed.a);
+                }
 
                 if (!keyframeMap.has("value_bbs"))
                 {
-                    keyframeMap.put("value_bbs", valueMap.copy());
+                    keyframeMap.put("value_bbs", valueMap);
                 }
 
                 if (valueMap.has("color"))
@@ -1482,6 +1514,11 @@ public class FormProperties extends ValueGroup
                         settings.g = color.g;
                         settings.b = color.b;
                         settings.intensity = color.a;
+
+                        if (color.transform != null && color.transform.isActive())
+                        {
+                            settings.transform = color.transform.copy();
+                        }
                     }
 
                     merged.insert(t, settings);

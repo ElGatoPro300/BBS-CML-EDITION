@@ -14,6 +14,7 @@ import mchorse.bbs_mod.settings.values.core.ValueData;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.settings.values.core.ValueString;
+import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Pose;
@@ -40,6 +41,11 @@ public class ModelForm extends Form
     public final ValueData ik = new ValueData("ik");
     public final ValueData springs = new ValueData("springs");
     public final ValueData constraints = new ValueData("constraints");
+    /**
+     * When enabled on a Model Block, the model's cubes/meshes get real collision
+     * so players can walk and stand on the model.
+     */
+    public final ValueBoolean solidHitbox = new ValueBoolean("solid_hitbox", false);
 
     public final List<ValuePose> additionalOverlays = new ArrayList<>();
 
@@ -79,6 +85,7 @@ public class ModelForm extends Form
 
         this.add(this.actions);
         this.add(this.color);
+        this.registerColorOverlays();
         this.add(this.shapeKeys);
 
         this.ik.invisible();
@@ -87,6 +94,8 @@ public class ModelForm extends Form
         this.add(this.ik);
         this.add(this.springs);
         this.add(this.constraints);
+        this.solidHitbox.invisible();
+        this.add(this.solidHitbox);
     }
 
     @Override

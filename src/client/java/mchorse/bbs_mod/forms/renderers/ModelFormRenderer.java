@@ -624,7 +624,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (stencilMap != null)
         {
-            Color stencilFormColor = this.form.color.get().copyWithBlendIntensity();
+            Color stencilFormColor = this.form.getFormColor().copyWithBlendIntensity();
             boolean stencilColorTransformActive = this.canApplyColorTransformMask(model);
 
             try
@@ -698,7 +698,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
         boolean paintActive = this.hasAnyPaint(model);
         boolean bbsModelShader = this.usesBbsModelShader(model);
-        Color storedFormColor = this.form.color.get();
+        Color storedFormColor = this.form.getFormColor();
         boolean hasBoneColorGrade = this.hasAnyBoneColorGrade(model);
         boolean hasColorAdjustments = (storedFormColor != null && storedFormColor.hasColorAdjustments()) || hasBoneColorGrade;
         /* Iris entity shaders have no ColorEffect uniforms — keep the live Iris lighting pass
@@ -1893,7 +1893,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
 
         /* FormColorGrade / bone grades need model.fsh; do not stay on Iris entity for those. */
-        Color formColor = this.form.color.get();
+        Color formColor = this.form.getFormColor();
         boolean needsBbsGrade = (formColor != null && formColor.hasColorAdjustments())
             || this.hasAnyBoneColorGrade(model);
 
@@ -1962,7 +1962,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             return false;
         }
 
-        Color color = this.form.color.get();
+        Color color = this.form.getFormColor();
 
         if (color == null)
         {
@@ -1998,7 +1998,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
      */
     private Color resolveBakeFormColor(ModelInstance model, boolean ui)
     {
-        Color stored = this.form.color.get();
+        Color stored = this.form.getFormColor();
 
         if (!stored.hasColorAdjustments())
         {
@@ -2332,7 +2332,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 return;
             }
 
-            FormColorBlend.applyShadowPassColorFix(color, this.form.color.get(), this.form.paintSettings.get(), this.form.paintColor.get(), context.isShadowPass || BBSRendering.isIrisShadowPass(), this.hasAnyPaint(model));
+            FormColorBlend.applyShadowPassColorFix(color, this.form.getFormColor(), this.form.paintSettings.get(), this.form.paintColor.get(), context.isShadowPass || BBSRendering.isIrisShadowPass(), this.hasAnyPaint(model));
 
             /* Opacity 0: capture bones for body parts, skip albedo so shader path leaves no halo. */
             if (color.a <= 0.001F && !context.isShadowPass && !BBSRendering.isIrisShadowPass() && context.stencilMap == null)
@@ -2371,7 +2371,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
 
         this.form.applyFormOpacity(color);
-        FormColorBlend.applyShadowPassColorFix(color, this.form.color.get(), this.form.paintSettings.get(), this.form.paintColor.get(), context.isShadowPass || BBSRendering.isIrisShadowPass(), this.hasAnyPaint(model));
+        FormColorBlend.applyShadowPassColorFix(color, this.form.getFormColor(), this.form.paintSettings.get(), this.form.paintColor.get(), context.isShadowPass || BBSRendering.isIrisShadowPass(), this.hasAnyPaint(model));
 
         if (color.a <= 0.001F && !context.isShadowPass && !BBSRendering.isIrisShadowPass() && context.stencilMap == null)
         {

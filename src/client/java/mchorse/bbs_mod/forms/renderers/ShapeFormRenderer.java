@@ -176,7 +176,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             BBSModClient.getTextures().bindTexture(ParticleScheme.DEFAULT_TEXTURE);
         }
 
-        Color rawFormColor = this.form.color.get();
+        Color rawFormColor = this.form.getFormColor();
         Color formColor = rawFormColor.copyWithBlendIntensity();
         boolean wantsColorTransformMask = FormColorBlend.wantsColorTintOverlay(rawFormColor);
         PaintSettings paintSettings = this.form.paintSettings.get();
@@ -226,7 +226,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
         // Apply Color
         Color c = finalColor;
-        FormColorBlend.applyShadowPassColorFix(c, this.form.color.get(), this.form.paintSettings.get(), this.form.paintColor.get(), BBSRendering.isIrisShadowPass());
+        FormColorBlend.applyShadowPassColorFix(c, this.form.getFormColor(), this.form.paintSettings.get(), this.form.paintColor.get(), BBSRendering.isIrisShadowPass());
         // RenderSystem.setShaderColor is not enough for VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL
         // We need to pass color per vertex
 

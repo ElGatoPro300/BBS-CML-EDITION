@@ -9,8 +9,10 @@ import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAOData;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.cubic.render.vao.StructureVAOCollector;
+import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
@@ -26,6 +28,7 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.iris.ShaderOpacityPatch;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.block.AttachedStemBlock;
@@ -78,6 +81,7 @@ import net.irisshaders.iris.api.v0.IrisApi;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -392,7 +396,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             this.lastLightIntensity = currentLightIntensityUi;
         }
 
-        Color storedFormColor = this.form.color.get();
+        Color storedFormColor = this.form.getFormColor();
         Color rawFormColor = storedFormColor.copyWithBlendIntensity();
         Color formColor = rawFormColor.copy();
         boolean colorTransformWanted = FormColorBlend.wantsColorTintOverlay(storedFormColor);
@@ -637,14 +641,22 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     FormRenderingContext uiContext = new FormRenderingContext()
                         .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
-                    IModelVAO colorVao = this.getStructureVao();
+                    Color overlayTint = Color.white();
 
-                    if (colorVao != null)
+                    overlayTint.a = tint.a;
+
+                    if (this.hasChunkedStructureVao())
                     {
-                        Color overlayTint = Color.white();
+                        this.renderStructureChunkedVaoColorTintOverlay(uiContext, overlayTint, formColor, LightmapTextureManager.MAX_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+                    }
+                    else
+                    {
+                        IModelVAO colorVao = this.getStructureVao();
 
-                        overlayTint.a = tint.a;
-                        this.renderStructureVaoColorTintOverlay(colorVao, matrices, overlayTint, formColor, LightmapTextureManager.MAX_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+                        if (colorVao != null)
+                        {
+                            this.renderStructureVaoColorTintOverlay(colorVao, matrices, overlayTint, formColor, LightmapTextureManager.MAX_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+                        }
                     }
                 }
             }
@@ -714,7 +726,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 remeshTranslucent = drawSpecials && (!bakedSpecials || picking || context.ui);
             }
 
-            Color storedFormColor3D = this.form.color.get();
+            Color storedFormColor3D = this.form.getFormColor();
             Color rawFormColor3D = storedFormColor3D.copyWithBlendIntensity();
             Color formColor3D = rawFormColor3D.copy();
             boolean colorTransformWanted = FormColorBlend.wantsColorTintOverlay(storedFormColor3D);
@@ -736,6 +748,17 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             if (mainTint3D.a <= 0.001F && !shadowPass && !picking)
             {
                 return;
+            }
+
+            /* Soft opacity must remesh every block the same way. Opaque VAO + separate grass
+             * remesh made solids pop away while biome blocks faded. */
+            boolean softOpacityActive = !shadowPass && !picking && mainTint3D.a < ShaderOpacityPatch.LIVE_DEPTH_WRITE_ALPHA;
+
+            if (softOpacityActive)
+            {
+                remeshBiome = false;
+                remeshTranslucent = false;
+                remeshAnimated = false;
             }
 
         GlowSettings glowSettings = this.form.glowSettings.get();
@@ -778,7 +801,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                     pickingVao = this.getStructureVaoPicking();
                 }
 
-                Color tintPicking = this.form.color.get();
+                Color tintPicking = this.form.getFormColor();
                 int light = 0;
                 GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
@@ -884,8 +907,107 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             }
             else
             {
-                /* Under Iris keep the entity program so pack lighting stays; Color Grade runs
-                 * after composite via ColorGradeOverlay. No-shader uploads FormColorGrade here. */
+                float opacityAlpha = mainTint3D.a;
+                /* Orbit/UI must stay live — post-deferred never redraws editor previews. */
+                boolean softOpacityLive = context.ui;
+                boolean delaySoftOpacity = softOpacityActive && !softOpacityLive
+                    && ShaderOpacityPatch.shouldDelayUntilPostDeferred(opacityAlpha, false);
+
+                if (delaySoftOpacity || softOpacityActive)
+                {
+                    /* One translucent remesh for every block (solids + grass + glass). Keeps
+                     * opacity uniform — VAO solids previously vanished while remesh grass faded. */
+                    boolean irisCamera = BBSRendering.isIrisWorldModelPass();
+                    boolean useEntityLayers = shaders || irisCamera;
+                    int lightSnapshot = light;
+                    int overlaySnapshot = context.overlay;
+                    Color tintSnapshot = mainTint3D.copy();
+                    Color paintSnapshot = resolvedPaint.copy();
+                    boolean depthWrite = ShaderOpacityPatch.shouldWriteDepthForOpacity(opacityAlpha);
+                    Runnable softDraw = () ->
+                    {
+                        Function<VertexConsumer, VertexConsumer> softRecolor = this.getMainConsumer(tintSnapshot, paintSnapshot);
+                        VertexConsumerProvider.Immediate consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+
+                        RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+                        RenderSystem.enableBlend();
+                        RenderSystem.defaultBlendFunc();
+                        RenderSystem.depthMask(depthWrite);
+
+                        try
+                        {
+                            this.renderStructureCulledWorld(context, context.stack, consumers, lightSnapshot, overlaySnapshot, useEntityLayers, softRecolor, true, false);
+                            consumers.draw();
+                        }
+                        finally
+                        {
+                            RecolorVertexConsumer.newColor = null;
+                            RenderSystem.depthMask(true);
+                        }
+                    };
+
+                    if (delaySoftOpacity)
+                    {
+                        Matrix4f positionMatrix = irisCamera
+                            ? new Matrix4f(context.stack.peek().getPositionMatrix())
+                            : ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(context.stack.peek().getPositionMatrix()));
+                        Matrix3f normalMatrix = new Matrix3f(context.stack.peek().getNormalMatrix());
+                        IEntity entitySnapshot = context.entity;
+                        FormRenderType typeSnapshot = context.type;
+                        float transitionSnapshot = context.transition;
+                        FormRenderDepth.Frame depthFrameSnapshot = context.renderDepthFrame;
+                        double sortDepth = FormRenderDepth.resolveSortDepth(this.form, depthFrameSnapshot);
+                        double distanceSq = this.getCameraDistanceSq(context);
+                        boolean afterFluids = ShaderOpacityPatch.shouldFlushAfterFluids(opacityAlpha);
+                        Runnable deferredDraw = () ->
+                        {
+                            MatrixStack overlayStack = new MatrixStack();
+
+                            overlayStack.peek().getPositionMatrix().set(positionMatrix);
+                            overlayStack.peek().getNormalMatrix().set(normalMatrix);
+
+                            FormRenderingContext deferredContext = new FormRenderingContext()
+                                .set(typeSnapshot, entitySnapshot, overlayStack, lightSnapshot, overlaySnapshot, transitionSnapshot);
+
+                            deferredContext.renderDepthFrame = depthFrameSnapshot;
+
+                            Function<VertexConsumer, VertexConsumer> softRecolor = this.getMainConsumer(tintSnapshot, paintSnapshot);
+                            VertexConsumerProvider.Immediate consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+
+                            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+                            RenderSystem.enableBlend();
+                            RenderSystem.defaultBlendFunc();
+                            RenderSystem.depthMask(depthWrite);
+
+                            try
+                            {
+                                this.renderStructureCulledWorld(deferredContext, overlayStack, consumers, lightSnapshot, overlaySnapshot, useEntityLayers, softRecolor, true, false);
+                                consumers.draw();
+                            }
+                            finally
+                            {
+                                RecolorVertexConsumer.newColor = null;
+                                RenderSystem.depthMask(true);
+                            }
+                        };
+
+                        if (irisCamera)
+                        {
+                            ShaderOpacityPatch.submitPostDeferredForm(sortDepth, distanceSq, depthWrite, afterFluids, deferredDraw);
+                        }
+                        else
+                        {
+                            ShaderOpacityPatch.submitPostDeferredBbsForm(sortDepth, distanceSq, depthWrite, afterFluids, deferredDraw);
+                        }
+                    }
+                    else
+                    {
+                        softDraw.run();
+                    }
+                }
+                else
+                {
+                /* Fully opaque live VAO — Iris entity lighting when available. */
                 boolean irisEntity = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld() && !forceBbsForColorEffects;
                 ShaderProgram shader = irisEntity
                     ? GameRenderer.getRenderTypeEntityTranslucentCullProgram()
@@ -917,6 +1039,11 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 try
                 {
                     this.drawOpaqueStructureVaos(shader, context, mainTint3D, light, context.overlay);
+
+                    if (bakedSpecials && !picking)
+                    {
+                        this.drawBakedSpecialsVao(shader, context, specialsVao, mainTint3D, light, context.overlay);
+                    }
                 }
                 finally
                 {
@@ -924,8 +1051,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                     this.clearVaoPaint();
                     this.clearVaoGlow();
                 }
+                } /* end opaque live VAO */
 
-                if (useColorGradeOverlay)
+                if (useColorGradeOverlay && !softOpacityActive)
                 {
                     this.submitDeferredStructureColorGradeOverlay(context, storedFormColor3D, mainTint3D.a, context.overlay);
                 }
@@ -948,11 +1076,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                     }
                     catch (Throwable ignored)
                     {}
-                }
-
-                if (bakedSpecials && !picking)
-                {
-                    this.drawBakedSpecialsVao(shader, context, specialsVao, mainTint3D, light, context.overlay);
                 }
 
                 if (remeshBiome && this.hasBiomeTintedLayer)
@@ -1022,14 +1145,22 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                     }
                     else
                     {
-                        IModelVAO colorVao = this.getStructureVao();
+                        Color overlayTint = Color.white();
 
-                        if (colorVao != null)
+                        overlayTint.a = mainTint3D.a;
+
+                        if (this.hasChunkedStructureVao())
                         {
-                            Color overlayTint = Color.white();
+                            this.renderStructureChunkedVaoColorTintOverlay(context, overlayTint, formColor3D, LightmapTextureManager.MAX_LIGHT_COORDINATE, context.overlay);
+                        }
+                        else
+                        {
+                            IModelVAO colorVao = this.getStructureVao();
 
-                            overlayTint.a = mainTint3D.a;
-                            this.renderStructureVaoColorTintOverlay(colorVao, context.stack, overlayTint, formColor3D, LightmapTextureManager.MAX_LIGHT_COORDINATE, context.overlay);
+                            if (colorVao != null)
+                            {
+                                this.renderStructureVaoColorTintOverlay(colorVao, context.stack, overlayTint, formColor3D, LightmapTextureManager.MAX_LIGHT_COORDINATE, context.overlay);
+                            }
                         }
                     }
                 }
@@ -1790,7 +1921,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
     private Color resolveStructureBlendColor()
     {
-        Color storedFormColor = this.form.color.get();
+        Color storedFormColor = this.form.getFormColor();
         Color rawFormColor = storedFormColor.copyWithBlendIntensity();
         Color tint = Color.white();
 
@@ -1889,7 +2020,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
      */
     private Color resolveStructureBlockEntityColor()
     {
-        Color tint = FormColorBlend.resolveBlockEntityTint(this.form.color.get(), this.form.paintSettings.get(), this.form.paintColor.get());
+        Color tint = FormColorBlend.resolveBlockEntityTint(this.form.getFormColor(), this.form.paintSettings.get(), this.form.paintColor.get());
 
         this.form.applyFormOpacity(tint);
 
@@ -2223,8 +2354,16 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         if (optimize)
         {
             IModelVAO vao = this.getStructureVao();
+            boolean hasChunked = this.hasChunkedStructureVao();
 
-            if (vao != null)
+            if (hasChunked)
+            {
+                FormRenderingContext paintContext = new FormRenderingContext()
+                    .set(context.type, context.entity, stack, light, overlay, context.transition);
+
+                this.renderStructureChunkedVaoPaintOverlay(paintContext, Color.white(), paintOverlay, light, overlay, transform);
+            }
+            else if (vao != null)
             {
                 /* White tint — paint strength must not depend on Blend Color (same as Block/Item). */
                 this.renderStructureVaoPaintOverlay(vao, stack, Color.white(), paintOverlay, light, overlay, transform);
@@ -2279,6 +2418,49 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             RenderSystem.depthMask(false);
             ModelVAORenderer.render(BBSShaders.getModel(), vao, stack, tint.r, tint.g, tint.b, tint.a, light, overlay);
+        }
+        finally
+        {
+            RenderSystem.depthMask(true);
+            ModelVAORenderer.clearPaintEffectTransform();
+            ModelVAORenderer.endPaintOverlayPass();
+            this.clearVaoPaint();
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
+        }
+    }
+
+    private void renderStructureChunkedVaoPaintOverlay(FormRenderingContext context, Color tint, Color paintOverlay, int light, int overlay, EffectTransform transform)
+    {
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+        Matrix4f formRootInverse = new Matrix4f(context.stack.peek().getPositionMatrix()).invert();
+        Vector3f paintMaskHalf = new Vector3f();
+
+        this.resolveStructureMaskHalf(transform, paintMaskHalf);
+
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
+
+        try
+        {
+            this.clearVaoColorTint();
+            ModelVAORenderer.beginPaintOverlayPass(false);
+            GL11.glPolygonOffset(-1F, -2F);
+            ModelVAORenderer.setPaint(paintOverlay.r, paintOverlay.g, paintOverlay.b, paintOverlay.a);
+            ModelVAORenderer.setPaintEffectTransform(formRootInverse, transform, paintMaskHalf, true);
+            RenderSystem.setShader(BBSShaders::getModel);
+            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            RenderSystem.depthMask(false);
+            this.drawOpaqueStructureVaos(BBSShaders.getModel(), context, tint, light, overlay);
+
+            IModelVAO specials = this.getStructureSpecialsVao();
+
+            if (specials != null)
+            {
+                this.drawBakedSpecialsVao(BBSShaders.getModel(), context, specials, tint, light, overlay);
+            }
         }
         finally
         {
@@ -2398,10 +2580,19 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
     private void submitDeferredStructureVaoColorTintOverlay(FormRenderingContext context, Color formColor, float alpha, int overlay)
     {
+        if (!this.hasChunkedStructureVao() && this.getStructureVao() == null)
+        {
+            return;
+        }
+
         Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(context.stack.peek().getPositionMatrix()));
         Matrix3f normalMatrix = new Matrix3f(context.stack.peek().getNormalMatrix());
         Color formColorSnapshot = formColor.copy();
         Color tint = Color.white();
+        IEntity entitySnapshot = context.entity;
+        FormRenderType typeSnapshot = context.type;
+        float transitionSnapshot = context.transition;
+        int overlaySnapshot = overlay;
 
         tint.a = alpha;
 
@@ -2412,22 +2603,25 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             overlayStack.peek().getPositionMatrix().set(positionMatrix);
             overlayStack.peek().getNormalMatrix().set(normalMatrix);
 
-            IModelVAO vao = this.getStructureVao();
+            FormRenderingContext overlayContext = new FormRenderingContext()
+                .set(typeSnapshot, entitySnapshot, overlayStack, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlaySnapshot, transitionSnapshot);
 
-            if (vao != null)
-            {
-                this.renderStructureVaoColorTintOverlay(vao, overlayStack, tint, formColorSnapshot, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay);
-            }
+            this.renderStructureChunkedVaoColorTintOverlay(overlayContext, tint, formColorSnapshot, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlaySnapshot);
         });
     }
 
     /**
      * Iris post-composite Color Grade: regrade pack-lit VAO pixels (same as ModelFormRenderer).
-     * One VAO redraw — never remesh structure blocks.
+     * Uses chunked opaque VAOs for large structures — never remesh blocks.
      */
     private void submitDeferredStructureColorGradeOverlay(FormRenderingContext context, Color gradeSource, float alpha, int overlay)
     {
         if (gradeSource == null || !gradeSource.hasColorAdjustments())
+        {
+            return;
+        }
+
+        if (!this.hasChunkedStructureVao() && this.getStructureVao() == null)
         {
             return;
         }
@@ -2440,23 +2634,26 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         Matrix4f formRootInverse = new Matrix4f(positionMatrix).invert();
         Vector3f colorMaskHalf = new Vector3f();
         Vector3f structureSize = new Vector3f();
+        IEntity entitySnapshot = context.entity;
+        FormRenderType typeSnapshot = context.type;
+        float transitionSnapshot = context.transition;
+        IModelVAO specialsSnapshot = this.getStructureSpecialsVao();
 
         this.resolveStructureMaskHalf(gradeSnapshot.transform, colorMaskHalf);
         this.resolveStructureMaskSize(structureSize);
 
         ModelVAORenderer.submitColorGradeOverlay(() ->
         {
-            IModelVAO vao = this.getStructureVao();
-
-            if (vao == null)
-            {
-                return;
-            }
-
             MatrixStack overlayStack = new MatrixStack();
 
             overlayStack.peek().getPositionMatrix().set(positionMatrix);
             overlayStack.peek().getNormalMatrix().set(normalMatrix);
+
+            FormRenderingContext overlayContext = new FormRenderingContext()
+                .set(typeSnapshot, entitySnapshot, overlayStack, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlaySnapshot, transitionSnapshot);
+            Color tint = Color.white();
+
+            tint.a = alphaSnapshot;
 
             try
             {
@@ -2467,7 +2664,12 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 ModelVAORenderer.clearGlowing();
                 RenderSystem.setShader(BBSShaders::getModel);
                 RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
-                ModelVAORenderer.render(BBSShaders.getModel(), vao, overlayStack, 1F, 1F, 1F, alphaSnapshot, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlaySnapshot);
+                this.drawOpaqueStructureVaos(BBSShaders.getModel(), overlayContext, tint, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlaySnapshot);
+
+                if (specialsSnapshot != null)
+                {
+                    this.drawBakedSpecialsVao(BBSShaders.getModel(), overlayContext, specialsSnapshot, tint, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlaySnapshot);
+                }
             }
             finally
             {
@@ -2483,14 +2685,26 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     {
         Color tintUniform = this.resolveStructureColorTintUniform(formColor);
         IModelVAO vao = this.getStructureVao();
+        boolean hasChunked = this.hasChunkedStructureVao();
 
-        /* Always prefer one VAO redraw. Remeshing every block for Color Grade destroyed FPS. */
-        if (optimize && vao != null)
+        /* Prefer VAO redraw (single or chunked). Remeshing every block for Color Grade destroyed FPS. */
+        if (optimize && (vao != null || hasChunked))
         {
             Color overlayTint = Color.white();
 
             overlayTint.a = alpha;
-            this.renderStructureVaoColorTintOverlay(vao, stack, overlayTint, tintUniform != null ? tintUniform : formColor, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay);
+
+            if (hasChunked)
+            {
+                FormRenderingContext overlayContext = new FormRenderingContext()
+                    .set(context.type, context.entity, stack, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay, context.transition);
+
+                this.renderStructureChunkedVaoColorTintOverlay(overlayContext, overlayTint, tintUniform != null ? tintUniform : formColor, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay);
+            }
+            else
+            {
+                this.renderStructureVaoColorTintOverlay(vao, stack, overlayTint, tintUniform != null ? tintUniform : formColor, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay);
+            }
 
             if (this.hasBiomeTintedLayer)
             {
@@ -2519,7 +2733,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
      */
     private Color resolveStructureColorTintUniform(Color formColor)
     {
-        Color stored = this.form.color.get();
+        Color stored = this.form.getFormColor();
 
         if (stored != null && stored.hasColorAdjustments())
         {
@@ -2561,7 +2775,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             ModelVAORenderer.setColorEffectTransform(formRootInverse, formColor.transform, colorMaskHalf);
             ModelVAORenderer.setFormColorTint(formColor.r, formColor.g, formColor.b, formColor.a);
 
-            Color gradeSource = this.form.color.get();
+            Color gradeSource = this.form.getFormColor();
 
             if (gradeSource != null && gradeSource.hasColorAdjustments())
             {
@@ -2575,6 +2789,60 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             RenderSystem.setShader(BBSShaders::getModel);
             RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
             ModelVAORenderer.render(BBSShaders.getModel(), vao, stack, tint.r, tint.g, tint.b, tint.a, light, overlay);
+        }
+        finally
+        {
+            ModelVAORenderer.clearColorEffectTransform();
+            ModelVAORenderer.clearFormColorTint();
+            ModelVAORenderer.clearFormColorGrade();
+            ModelVAORenderer.endColorTintOverlayPass();
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
+        }
+    }
+
+    /**
+     * Color-tint / grade overlay for large chunked structure VAOs (Iris post-composite).
+     */
+    private void renderStructureChunkedVaoColorTintOverlay(FormRenderingContext context, Color tint, Color formColor, int light, int overlay)
+    {
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+        Matrix4f formRootInverse = new Matrix4f(context.stack.peek().getPositionMatrix()).invert();
+        Vector3f colorMaskHalf = new Vector3f();
+
+        this.resolveStructureMaskHalf(formColor.transform, colorMaskHalf);
+
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
+
+        try
+        {
+            ModelVAORenderer.beginColorTintOverlayPass();
+            GL11.glPolygonOffset(mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_FACTOR, mchorse.bbs_mod.forms.renderers.utils.FlatPaintOverlayPass.POLYGON_OFFSET_UNITS);
+            ModelVAORenderer.setColorEffectTransform(formRootInverse, formColor.transform, colorMaskHalf);
+            ModelVAORenderer.setFormColorTint(formColor.r, formColor.g, formColor.b, formColor.a);
+
+            Color gradeSource = this.form.getFormColor();
+
+            if (gradeSource != null && gradeSource.hasColorAdjustments())
+            {
+                Vector3f structureSize = new Vector3f();
+
+                this.resolveStructureMaskSize(structureSize);
+                ModelVAORenderer.setFormColorGrade(gradeSource.brightness, gradeSource.contrast, gradeSource.hue, gradeSource.saturation);
+                ModelVAORenderer.setGradeEffectTransformsForStructure(gradeSource, structureSize.x, structureSize.y, structureSize.z);
+            }
+
+            RenderSystem.setShader(BBSShaders::getModel);
+            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+            this.drawOpaqueStructureVaos(BBSShaders.getModel(), context, tint, light, overlay);
+
+            IModelVAO specials = this.getStructureSpecialsVao();
+
+            if (specials != null)
+            {
+                this.drawBakedSpecialsVao(BBSShaders.getModel(), context, specials, tint, light, overlay);
+            }
         }
         finally
         {
@@ -2620,7 +2888,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
     private void runStructureBlocksColorTintOverlay(Color formColor, MatrixStack stack, Runnable draw)
     {
-        this.runStructureBlocksColorTintOverlay(formColor, stack, this.form.color.get(), draw);
+        this.runStructureBlocksColorTintOverlay(formColor, stack, this.form.getFormColor(), draw);
     }
 
     private void runStructureBlocksColorTintOverlay(Color formColor, MatrixStack stack, Color gradeSource, Runnable draw)
@@ -3432,47 +3700,71 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
     private boolean isLocalChunkVisible(FormRenderingContext context, VaoChunk chunk)
     {
-        if (context == null || context.entity == null)
+        if (context == null || context.stack == null)
         {
             return true;
         }
 
-        float sx = this.form.scaleX.get();
-        float sy = this.form.scaleY.get();
-        float sz = this.form.scaleZ.get();
-        double ex = context.entity.getX();
-        double ey = context.entity.getY();
-        double ez = context.entity.getZ();
-        double minX = ex + chunk.minX * sx;
-        double minY = ey + chunk.minY * sy;
-        double minZ = ez + chunk.minZ * sz;
-        double maxX = ex + chunk.maxX * sx;
-        double maxY = ey + chunk.maxY * sy;
-        double maxZ = ez + chunk.maxZ * sz;
-        double cx = context.camera.position.x;
-        double cy = context.camera.position.y;
-        double cz = context.camera.position.z;
-        Vector3f look = context.camera.getLookDirection();
+        double maxRange = this.getPlayerRenderDistanceBlocks() + CHUNK_SIZE * 2D;
+        double maxRangeSq = maxRange * maxRange;
 
-        /* Behind-camera reject: if the nearest AABB point is well behind the look plane, skip. */
-        double nx = mchorse.bbs_mod.utils.MathUtils.clamp(cx, minX, maxX);
-        double ny = mchorse.bbs_mod.utils.MathUtils.clamp(cy, minY, maxY);
-        double nz = mchorse.bbs_mod.utils.MathUtils.clamp(cz, minZ, maxZ);
-        double vx = nx - cx;
-        double vy = ny - cy;
-        double vz = nz - cz;
-        double along = vx * look.x + vy * look.y + vz * look.z;
+        /* Same matrix path as ModelVAORenderer: ModelView * stack → eye space. Cull by
+         * distance to the camera (origin in eye space), not a wrong world AABB. */
+        Matrix4f mat = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(context.stack.peek().getPositionMatrix());
+        float[] xs = {chunk.minX, chunk.maxX};
+        float[] ys = {chunk.minY, chunk.maxY};
+        float[] zs = {chunk.minZ, chunk.maxZ};
+        double eyeMinX = Double.POSITIVE_INFINITY;
+        double eyeMinY = Double.POSITIVE_INFINITY;
+        double eyeMinZ = Double.POSITIVE_INFINITY;
+        double eyeMaxX = Double.NEGATIVE_INFINITY;
+        double eyeMaxY = Double.NEGATIVE_INFINITY;
+        double eyeMaxZ = Double.NEGATIVE_INFINITY;
+        Vector4f corner = new Vector4f();
 
-        if (along < -CHUNK_SIZE * 2D)
+        for (float x : xs)
         {
-            /* Still allow if camera is inside the chunk AABB. */
-            if (cx < minX || cx > maxX || cy < minY || cy > maxY || cz < minZ || cz > maxZ)
+            for (float y : ys)
             {
-                return false;
+                for (float z : zs)
+                {
+                    corner.set(x, y, z, 1F).mul(mat);
+                    eyeMinX = Math.min(eyeMinX, corner.x);
+                    eyeMinY = Math.min(eyeMinY, corner.y);
+                    eyeMinZ = Math.min(eyeMinZ, corner.z);
+                    eyeMaxX = Math.max(eyeMaxX, corner.x);
+                    eyeMaxY = Math.max(eyeMaxY, corner.y);
+                    eyeMaxZ = Math.max(eyeMaxZ, corner.z);
+                }
             }
         }
 
-        return true;
+        double nx = mchorse.bbs_mod.utils.MathUtils.clamp(0D, eyeMinX, eyeMaxX);
+        double ny = mchorse.bbs_mod.utils.MathUtils.clamp(0D, eyeMinY, eyeMaxY);
+        double nz = mchorse.bbs_mod.utils.MathUtils.clamp(0D, eyeMinZ, eyeMaxZ);
+
+        return nx * nx + ny * ny + nz * nz <= maxRangeSq;
+    }
+
+    /**
+     * Blocks covered by the client's chunk view distance (same idea as vanilla world load).
+     */
+    private double getPlayerRenderDistanceBlocks()
+    {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        int chunks = 12;
+
+        try
+        {
+            if (mc != null && mc.options != null)
+            {
+                chunks = Math.max(2, mc.options.getViewDistance().getValue());
+            }
+        }
+        catch (Throwable ignored)
+        {}
+
+        return chunks * 16D;
     }
 
     private IModelVAO getStructureVaoPicking()

@@ -79,7 +79,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         MatrixStackUtils.multiply(matrices, uiMatrix);
         matrices.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
-        Color storedFormColor = this.form.color.get();
+        Color storedFormColor = this.form.getFormColor();
         Color rawFormColor = storedFormColor.copyWithBlendIntensity();
         Color formColor = rawFormColor.copy();
         boolean colorTransformWanted = FormColorBlend.wantsColorTintOverlay(storedFormColor);
@@ -177,7 +177,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
                 });
             }
 
-            Color storedFormColor = this.form.color.get();
+            Color storedFormColor = this.form.getFormColor();
             Color rawFormColor = storedFormColor.copyWithBlendIntensity();
             Color formColor = rawFormColor.copy();
             boolean colorTransformWanted = FormColorBlend.wantsColorTintOverlay(storedFormColor);
@@ -595,7 +595,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
     private Color resolveBlockEntityColor()
     {
-        Color tint = FormColorBlend.resolveBlockEntityTint(this.form.color.get(), this.form.paintSettings.get(), this.form.paintColor.get());
+        Color tint = FormColorBlend.resolveBlockEntityTint(this.form.getFormColor(), this.form.paintSettings.get(), this.form.paintColor.get());
 
         this.form.applyFormOpacity(tint);
 

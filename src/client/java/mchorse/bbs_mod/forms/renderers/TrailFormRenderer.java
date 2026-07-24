@@ -162,7 +162,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         }
 
         Link defaultTexture = this.form.texture.get();
-        Color storedFormColor = this.form.color.get();
+        Color storedFormColor = this.form.getFormColor();
         Color blendedTint = new Color().set(context.color, true);
         Color unblendedTint = new Color().set(context.color, true);
 
@@ -199,7 +199,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         float paintStrength = paintSettings.resolveIntensity(legacyPaint);
         boolean positivePaint = FormColorBlend.hasPositivePaint(paintSettings, legacyPaint);
         Color resolvedPaint = positivePaint ? FormColorBlend.resolvePaintColor(paintSettings, legacyPaint) : null;
-        EffectTransform colorTransform = this.form.color.get().transform;
+        EffectTransform colorTransform = this.form.getFormColor().transform;
         EffectTransform paintTransform = paintSettings.transform;
 
         GlowSettings glowSettings = this.form.glowSettings.get();

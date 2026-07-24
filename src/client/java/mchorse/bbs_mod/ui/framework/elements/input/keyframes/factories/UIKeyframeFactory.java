@@ -85,7 +85,21 @@ public abstract class UIKeyframeFactory <T> extends UIElement
 
     private static boolean isFormColorPropertyId(String id)
     {
-        return "color".equals(id) || (id != null && id.endsWith("/color"));
+        if (id == null)
+        {
+            return false;
+        }
+
+        String name = id;
+        int slash = id.lastIndexOf('/');
+
+        if (slash >= 0 && slash + 1 < id.length())
+        {
+            name = id.substring(slash + 1);
+        }
+
+        return "color".equals(name) || "color_overlay".equals(name)
+            || (name.startsWith("color_overlay") && name.length() > "color_overlay".length());
     }
 
     public static void saveScroll(UIKeyframeFactory editor)

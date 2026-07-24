@@ -76,46 +76,44 @@ public class ColorKeyframeFactory implements IKeyframeFactory<Color>
     @Override
     public BaseType toData(Color value)
     {
-        if (value.needsMapSerialization())
+        /* Always write a Map with blend_a so save_as_compatible flattening can keep
+         * Color Grade / Blend intensity / transforms in value_bbs (never bare Int alone). */
+        MapType map = new MapType();
+
+        map.putInt("color", value.getARGBColor());
+        map.putFloat(BLEND_A, value.a);
+
+        if (value.hasActiveTransform())
         {
-            MapType map = new MapType();
-
-            map.putInt("color", value.getARGBColor());
-
-            if (value.hasActiveTransform())
-            {
-                map.put("transform", value.transform.toData());
-            }
-
-            if (Math.abs(value.brightness) > ColorAdjustments.EPSILON)
-            {
-                map.putFloat("brightness", value.brightness);
-            }
-
-            if (Math.abs(value.contrast) > ColorAdjustments.EPSILON)
-            {
-                map.putFloat("contrast", value.contrast);
-            }
-
-            if (Math.abs(value.hue) > ColorAdjustments.EPSILON)
-            {
-                map.putFloat("hue", value.hue);
-            }
-
-            if (Math.abs(value.saturation) > ColorAdjustments.EPSILON)
-            {
-                map.putFloat("saturation", value.saturation);
-            }
-
-            this.writeTransform(map, "brightnessTransform", value.brightnessTransform);
-            this.writeTransform(map, "contrastTransform", value.contrastTransform);
-            this.writeTransform(map, "hueTransform", value.hueTransform);
-            this.writeTransform(map, "saturationTransform", value.saturationTransform);
-
-            return map;
+            map.put("transform", value.transform.toData());
         }
 
-        return new IntType(value.getARGBColor());
+        if (Math.abs(value.brightness) > ColorAdjustments.EPSILON)
+        {
+            map.putFloat("brightness", value.brightness);
+        }
+
+        if (Math.abs(value.contrast) > ColorAdjustments.EPSILON)
+        {
+            map.putFloat("contrast", value.contrast);
+        }
+
+        if (Math.abs(value.hue) > ColorAdjustments.EPSILON)
+        {
+            map.putFloat("hue", value.hue);
+        }
+
+        if (Math.abs(value.saturation) > ColorAdjustments.EPSILON)
+        {
+            map.putFloat("saturation", value.saturation);
+        }
+
+        this.writeTransform(map, "brightnessTransform", value.brightnessTransform);
+        this.writeTransform(map, "contrastTransform", value.contrastTransform);
+        this.writeTransform(map, "hueTransform", value.hueTransform);
+        this.writeTransform(map, "saturationTransform", value.saturationTransform);
+
+        return map;
     }
 
     @Override

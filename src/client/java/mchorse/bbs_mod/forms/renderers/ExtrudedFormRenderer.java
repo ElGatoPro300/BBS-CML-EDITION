@@ -130,7 +130,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         PaintSettings paint = this.form.paintSettings.get();
         float paintStrength = paint.resolveIntensity(this.form.paintColor.get());
         boolean irisWorldModelPass = BBSRendering.isIrisWorldModelPass();
-        boolean hasColorGrade = this.form.color.get() != null && this.form.color.get().hasColorAdjustments();
+        boolean hasColorGrade = this.form.getFormColor() != null && this.form.getFormColor().hasColorAdjustments();
         /* PositionTexColor has no PaintColor / FormColorGrade — keep BBS model.fsh when those run. */
         boolean useShadedFormat = shading
             || ((paintStrength != 0F || hasColorGrade) && !irisWorldModelPass);
@@ -191,7 +191,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             Color color = Colors.COLOR.set(overlayColor, true);
             GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-            Color storedFormColor = this.form.color.get();
+            Color storedFormColor = this.form.getFormColor();
             boolean shadowPass = BBSRendering.isIrisShadowPass();
             boolean ui = modelRenderer;
 

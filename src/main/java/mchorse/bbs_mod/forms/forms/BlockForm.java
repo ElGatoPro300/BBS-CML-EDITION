@@ -38,6 +38,7 @@ public class BlockForm extends Form
         this.add(this.blockState);
         this.add(this.blockEntityNbt);
         this.add(this.color);
+        this.registerColorOverlays();
         this.add(this.breaking);
         this.add(this.repeatX);
         this.add(this.repeatY);

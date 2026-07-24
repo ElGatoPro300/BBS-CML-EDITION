@@ -36,6 +36,7 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.entity.LivingEntity;
@@ -101,6 +102,13 @@ public abstract class Form extends ValueGroup
     public final List<ValueTransform> additionalTransforms = new ArrayList<>();
     public final List<ValueIllusion> additionalIllusions = new ArrayList<>();
     public final List<ValueTransform> additionalIllusionTransforms = new ArrayList<>();
+    /**
+     * Extra Blend Color tracks (same count knob as pose/transform/illusion overlays).
+     * Registered only by forms that expose a {@code color} property via {@link #registerColorOverlays()}.
+     */
+    public final ValueColor colorOverlay = new ValueColor("color_overlay", new Color(1F, 1F, 1F, 0F));
+    public final List<ValueColor> additionalColors = new ArrayList<>();
+    private transient boolean colorOverlaysRegistered;
 
     /* Hitbox properties */
     public final ValueBoolean hitbox = new ValueBoolean("hitbox", false);
@@ -493,6 +501,17 @@ public abstract class Form extends ValueGroup
 
         if (data instanceof MapType map)
         {
+            /* Prefer rich Color Grade / blend map saved beside legacy Int color. */
+            if (map.has("color_bbs"))
+            {
+                BaseValue colorValue = this.get("color");
+
+                if (colorValue instanceof ValueColor valueColor)
+                {
+                    valueColor.fromData(map.get("color_bbs"));
+                }
+            }
+
             if (map.has("glow"))
             {
                 MapType glowMap = map.getMap("glow");
@@ -580,6 +599,107 @@ public abstract class Form extends ValueGroup
     }
 
     /**
+     * Registers {@code color_overlay} / {@code color_overlayN} tracks. Call from subclasses that
+     * expose a Blend Color property so the count matches {@code pose_transform_overlays}.
+     */
+    protected void registerColorOverlays()
+    {
+        if (this.colorOverlaysRegistered)
+        {
+            return;
+        }
+
+        this.colorOverlaysRegistered = true;
+        this.add(this.colorOverlay);
+
+        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
+        {
+            ValueColor overlay = new ValueColor("color_overlay" + i, new Color(1F, 1F, 1F, 0F));
+
+            this.additionalColors.add(overlay);
+            this.add(overlay);
+        }
+    }
+
+    /**
+     * Base {@code color} plus stacked color overlays (same idea as transform overlays).
+     */
+    public Color getFormColor()
+    {
+        BaseValue property = this.get("color");
+        Color base = property instanceof ValueColor valueColor
+            ? valueColor.get()
+            : new Color(1F, 1F, 1F, 0F);
+
+        return this.composeColorOverlays(base);
+    }
+
+    /**
+     * Stacks registered color overlays onto {@code base}. Neutral overlays (intensity 0, no
+     * grade / mask) are skipped so empty overlay tracks do not change the result.
+     */
+    public Color composeColorOverlays(Color base)
+    {
+        Color out = base == null ? new Color(1F, 1F, 1F, 0F) : base.copy();
+
+        if (!this.colorOverlaysRegistered)
+        {
+            return out;
+        }
+
+        this.applyColorOverlay(out, this.colorOverlay.get());
+
+        for (ValueColor overlay : this.additionalColors)
+        {
+            this.applyColorOverlay(out, overlay.get());
+        }
+
+        return out;
+    }
+
+    private void applyColorOverlay(Color target, Color overlay)
+    {
+        if (overlay == null)
+        {
+            return;
+        }
+
+        float intensity = MathUtils.clamp(overlay.a, 0F, 1F);
+        boolean hasGrade = overlay.hasColorAdjustments() || overlay.hasActiveGradeTransform();
+        boolean hasMask = overlay.hasActiveTransform();
+
+        if (intensity <= 0.001F && !hasGrade && !hasMask)
+        {
+            return;
+        }
+
+        if (intensity > 0.001F)
+        {
+            target.r = mchorse.bbs_mod.utils.interps.Lerps.lerp(target.r, overlay.r, intensity);
+            target.g = mchorse.bbs_mod.utils.interps.Lerps.lerp(target.g, overlay.g, intensity);
+            target.b = mchorse.bbs_mod.utils.interps.Lerps.lerp(target.b, overlay.b, intensity);
+            target.a = MathUtils.clamp(target.a + intensity * (1F - target.a), 0F, 1F);
+        }
+
+        if (hasMask)
+        {
+            target.transform = overlay.transform.copy();
+        }
+
+        if (hasGrade)
+        {
+            target.brightness = overlay.brightness;
+            target.contrast = overlay.contrast;
+            target.hue = overlay.hue;
+            target.saturation = overlay.saturation;
+            target.brightnessTransform = overlay.brightnessTransform == null ? null : overlay.brightnessTransform.copy();
+            target.contrastTransform = overlay.contrastTransform == null ? null : overlay.contrastTransform.copy();
+            target.hueTransform = overlay.hueTransform == null ? null : overlay.hueTransform.copy();
+            target.saturationTransform = overlay.saturationTransform == null ? null : overlay.saturationTransform.copy();
+        }
+    }
+
+    /**
      * Multiplies {@code color.a} by the Opacity track. Blend Color stores tint strength in
      * {@code color.a}; call {@link Color#applyBlendIntensity()} first so RGB is resolved and
      * opacity stays independent.
@@ -613,8 +733,8 @@ public abstract class Form extends ValueGroup
     }
 
     /**
-     * Older builds fade via {@code color.a} only. Write Int ARGB (not Map) so Int-only
-     * Color factories in older builds do not ClassCastException.
+     * Older builds fade via {@code color.a} only. Write Int ARGB for them, and keep the
+     * modern Color map (grade / blend intensity / transforms) in {@code color_bbs}.
      */
     private void dualWriteOpacityIntoColor(MapType map)
     {
@@ -633,6 +753,13 @@ public abstract class Form extends ValueGroup
         }
 
         Color source = valueColor.get().copy();
+        BaseType modernData = KeyframeFactories.COLOR.toData(source);
+
+        if (modernData instanceof MapType modernMap)
+        {
+            modernMap.putFloat(mchorse.bbs_mod.utils.keyframes.factories.ColorKeyframeFactory.BLEND_A, source.a);
+            map.put("color_bbs", modernMap);
+        }
 
         map.put("color", new IntType(Colors.setA(source.getRGBColor(), opacityA)));
     }
