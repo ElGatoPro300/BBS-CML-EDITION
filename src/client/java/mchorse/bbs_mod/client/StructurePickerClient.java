@@ -1033,6 +1033,17 @@ public class StructurePickerClient
             return ActionResult.PASS;
         }
 
+        /* Let Model Block open its editor while holding the picker. */
+        if (hitResult != null && hitResult.getType() == HitResult.Type.BLOCK)
+        {
+            MinecraftClient mc = MinecraftClient.getInstance();
+
+            if (mc.world != null && mc.world.getBlockState(hitResult.getBlockPos()).getBlock() instanceof mchorse.bbs_mod.blocks.ModelBlock)
+            {
+                return ActionResult.PASS;
+            }
+        }
+
         return ActionResult.SUCCESS;
     }
 
