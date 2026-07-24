@@ -121,6 +121,8 @@ public class ModelBlockEntity extends BlockEntity
 
         blockEntity.entity.setPosition(x, y, z);
 
+        mchorse.bbs_mod.forms.structure.ModelBlockSolidCollisions.updateRegistration(blockEntity);
+
         /* Initialize previous position/yaw on the very first tick to avoid
          * a huge movement delta (spike) when the block is placed. */
         try
@@ -250,6 +252,7 @@ public class ModelBlockEntity extends BlockEntity
         BlockState newState = blockState.with(ModelBlock.LIGHT_LEVEL, level);
 
         world.markDirty(pos);
+        mchorse.bbs_mod.forms.structure.ModelBlockSolidCollisions.updateRegistration(this);
 
         if (blockState != newState)
         {
@@ -259,5 +262,12 @@ public class ModelBlockEntity extends BlockEntity
         {
             world.updateListeners(pos, blockState, newState, Block.NOTIFY_LISTENERS);
         }
+    }
+
+    @Override
+    public void markRemoved()
+    {
+        mchorse.bbs_mod.forms.structure.ModelBlockSolidCollisions.unregister(this);
+        super.markRemoved();
     }
 }

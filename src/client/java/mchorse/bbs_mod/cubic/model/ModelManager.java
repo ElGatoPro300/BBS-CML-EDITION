@@ -264,6 +264,7 @@ public class ModelManager implements IWatchDogListener
 
             this.failedModels.remove(id);
             this.models.put(id, model);
+            mchorse.bbs_mod.forms.structure.ModelCollisionData.invalidate(id);
         }
 
         return model;
@@ -324,6 +325,7 @@ public class ModelManager implements IWatchDogListener
 
         this.models.clear();
         this.failedModels.clear();
+        mchorse.bbs_mod.forms.structure.ModelCollisionData.invalidateAll();
         PoseManager.INSTANCE.clear();
         ShapeKeysManager.INSTANCE.clear();
         this.setupLoaders();
