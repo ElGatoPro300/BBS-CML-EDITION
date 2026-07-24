@@ -69,7 +69,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         MatrixStackUtils.invertUiNormalY(matrices);
 
-        Color storedFormColor = this.form.color.get();
+        Color storedFormColor = this.form.getFormColor();
         Color rawFormColor = storedFormColor.copyWithBlendIntensity();
         Color formColor = rawFormColor.copy();
         boolean colorTransformWanted = FormColorBlend.wantsColorTintOverlay(storedFormColor);
@@ -131,6 +131,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         DiffuseLighting.disableGuiDepthLighting();
 
         matrices.pop();
+        BBSRendering.restoreGuiRenderState();
     }
 
     @Override
@@ -182,7 +183,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
                 light = 0;
             }
 
-            Color storedFormColor = this.form.color.get();
+            Color storedFormColor = this.form.getFormColor();
             Color rawFormColor = storedFormColor.copyWithBlendIntensity();
             Color formColor = rawFormColor.copy();
             boolean colorTransformWanted = FormColorBlend.wantsColorTintOverlay(storedFormColor);

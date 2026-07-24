@@ -69,6 +69,9 @@ public abstract class FormRenderer <T extends Form>
         this.renderInUI(context, x1, y1, x2, y2);
 
         context.batcher.flush();
+        /* Glow/paint overlays leave additive blend; text drawn in that state looks
+         * doubled and washed white. Restore before any Batcher2D labels. */
+        BBSRendering.restoreGuiRenderState();
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
         FontRenderer font = context.batcher.getFont();

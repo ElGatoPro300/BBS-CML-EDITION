@@ -210,6 +210,7 @@ public final class FormUIPreviewCache
         );
         context.batcher.flush();
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        BBSRendering.restoreGuiRenderState();
     }
 
     private static boolean thisBeginFill()
@@ -318,6 +319,7 @@ public final class FormUIPreviewCache
         if (client != null && client.getFramebuffer() != null)
         {
             /* Do not clear — wiping the main FB mid-UI causes white wash / text corruption. */
+            BBSRendering.ensureMainFramebuffer();
             client.getFramebuffer().beginWrite(false);
         }
 
@@ -328,8 +330,6 @@ public final class FormUIPreviewCache
             GlStateManager._enableScissorTest();
         }
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
         BBSRendering.restoreGuiRenderState();
 
         entry.revision = revision;
